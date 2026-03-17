@@ -1,0 +1,465 @@
+import * as XLSX from 'xlsx'
+
+export function exportToCSV<T extends Record<string, unknown>>(
+  data: T[],
+  filename: string,
+  columns?: { key: keyof T; header: string }[]
+) {
+  if (data.length === 0) return
+
+  // If columns specified, use them; otherwise use all keys from first row
+  const headers = columns
+    ? columns.map(c => c.header)
+    : Object.keys(data[0])
+
+  const keys = columns
+    ? columns.map(c => c.key)
+    : Object.keys(data[0]) as (keyof T)[]
+
+  // Create CSV content
+  const csvRows = [
+    headers.join(','),
+    ...data.map(row =>
+      keys.map(key => {
+        const value = row[key]
+        // Handle values that might contain commas or quotes
+        if (value === null || value === undefined) return ''
+        const stringValue = String(value)
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return `"${stringValue.replace(/"/g, '""')}"`
+        }
+        return stringValue
+      }).join(',')
+    )
+  ]
+
+  const csvContent = csvRows.join('\n')
+  downloadFile(csvContent, `${filename}.csv`, 'text/csv')
+}
+
+export function exportToExcel<T extends Record<string, unknown>>(
+  data: T[],
+  filename: string,
+  sheetName: string = 'Sheet1',
+  columns?: { key: keyof T; header: string }[]
+) {
+  if (data.length === 0) return
+
+  // Transform data to use custom headers if provided
+  const exportData = columns
+    ? data.map(row => {
+        const newRow: Record<string, unknown> = {}
+        columns.forEach(col => {
+          newRow[col.header] = row[col.key]
+        })
+        return newRow
+      })
+    : data
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${filename}.xlsx`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+// Column name variations for import mapping
+export const athleteColumnMappings: Record<string, string> = {
+  // name
+  'name': 'name',
+  'athlete name': 'name',
+  'full name': 'name',
+  'athlete': 'name',
+  'player': 'name',
+  'player name': 'name',
+
+  // email
+  'email': 'email',
+  'email address': 'email',
+  'e-mail': 'email',
+
+  // phone
+  'phone': 'phone',
+  'phone number': 'phone',
+  'telephone': 'phone',
+  'mobile': 'phone',
+  'cell': 'phone',
+  'cell phone': 'phone',
+
+  // school
+  'school': 'school',
+  'university': 'school',
+  'college': 'school',
+  'institution': 'school',
+  'team': 'school',
+
+  // sport
+  'sport': 'sport',
+  'sports': 'sport',
+
+  // position
+  'position': 'position',
+  'pos': 'position',
+  'role': 'position',
+
+  // league_level
+  'league_level': 'league_level',
+  'league level': 'league_level',
+  'level': 'league_level',
+  'league': 'league_level',
+  'division': 'league_level',
+
+  // eligibility_year
+  'eligibility_year': 'eligibility_year',
+  'eligibility year': 'eligibility_year',
+  'eligibility': 'eligibility_year',
+  'class year': 'eligibility_year',
+  'graduation year': 'eligibility_year',
+  'grad year': 'eligibility_year',
+  'year': 'eligibility_year',
+
+  // recruiting_status
+  'recruiting_status': 'recruiting_status',
+  'recruiting status': 'recruiting_status',
+  'status': 'recruiting_status',
+  'recruit status': 'recruiting_status',
+
+  // transfer_portal_status
+  'transfer_portal_status': 'transfer_portal_status',
+  'transfer portal status': 'transfer_portal_status',
+  'portal status': 'transfer_portal_status',
+  'transfer status': 'transfer_portal_status',
+  'portal': 'transfer_portal_status',
+
+  // marketability_score
+  'marketability_score': 'marketability_score',
+  'marketability score': 'marketability_score',
+  'marketability': 'marketability_score',
+  'market score': 'marketability_score',
+  'score': 'marketability_score',
+  'rating': 'marketability_score',
+
+  // notes
+  'notes': 'notes',
+  'note': 'notes',
+  'comments': 'notes',
+  'comment': 'notes',
+  'description': 'notes',
+
+  // Social Media - Instagram
+  'instagram': 'instagram_handle',
+  'instagram handle': 'instagram_handle',
+  'instagram_handle': 'instagram_handle',
+  'ig': 'instagram_handle',
+  'ig handle': 'instagram_handle',
+  'instagram followers': 'instagram_followers',
+  'instagram_followers': 'instagram_followers',
+  'ig followers': 'instagram_followers',
+
+  // Social Media - Twitter/X
+  'twitter': 'twitter_handle',
+  'twitter handle': 'twitter_handle',
+  'twitter_handle': 'twitter_handle',
+  'x': 'twitter_handle',
+  'x handle': 'twitter_handle',
+  'twitter followers': 'twitter_followers',
+  'twitter_followers': 'twitter_followers',
+  'x followers': 'twitter_followers',
+
+  // Social Media - TikTok
+  'tiktok': 'tiktok_handle',
+  'tiktok handle': 'tiktok_handle',
+  'tiktok_handle': 'tiktok_handle',
+  'tik tok': 'tiktok_handle',
+  'tiktok followers': 'tiktok_followers',
+  'tiktok_followers': 'tiktok_followers',
+
+  // Social Media - YouTube
+  'youtube': 'youtube_channel',
+  'youtube channel': 'youtube_channel',
+  'youtube_channel': 'youtube_channel',
+  'yt': 'youtube_channel',
+  'yt channel': 'youtube_channel',
+  'youtube subscribers': 'youtube_subscribers',
+  'youtube_subscribers': 'youtube_subscribers',
+  'yt subscribers': 'youtube_subscribers',
+  'subscribers': 'youtube_subscribers',
+
+  // Social Media - Other
+  'nil valuation': 'nil_valuation',
+  'nil_valuation': 'nil_valuation',
+  'nil value': 'nil_valuation',
+  'nil': 'nil_valuation',
+  'total following': 'total_following',
+  'total followers': 'total_following',
+  'social reach': 'total_following',
+  'followers': 'total_following',
+
+  // Football-specific
+  'height': 'height',
+  'weight': 'weight',
+  '40 yard dash': 'forty_yard_dash',
+  '40 yard': 'forty_yard_dash',
+  '40 time': 'forty_yard_dash',
+  'forty yard dash': 'forty_yard_dash',
+  'position group': 'position_group',
+  'school offers': 'school_offers',
+  'offers': 'offers',
+  'hudl': 'hudl_link',
+  'hudl link': 'hudl_link',
+  'hudl_link': 'hudl_link',
+  'film': 'hudl_link',
+  'film link': 'hudl_link',
+
+  // Basketball-specific
+  'ppg': 'ppg',
+  'points per game': 'ppg',
+  'recruiting ranking': 'recruiting_ranking',
+  'ranking': 'recruiting_ranking',
+
+  // Track & Field-specific
+  'event': 'event',
+  'primary event': 'event',
+  'personal best': 'personal_best',
+  'pb': 'personal_best',
+  'pr': 'personal_best',
+  'national ranking': 'national_ranking',
+  'conference': 'conference',
+
+  // Soccer-specific
+  'goals': 'goals',
+  'assists': 'assists',
+  'club team': 'club_team',
+  'club': 'club_team',
+  'international eligibility': 'international_eligibility',
+
+  // Tennis-specific
+  'utr': 'utr_rating',
+  'utr rating': 'utr_rating',
+  'singles ranking': 'singles_ranking',
+  'doubles ranking': 'doubles_ranking',
+
+  // Baseball-specific
+  'batting average': 'batting_average',
+  'avg': 'batting_average',
+  'ba': 'batting_average',
+  'era': 'era',
+  'velocity': 'velocity',
+  'velo': 'velocity',
+}
+
+// Fields that go into social_media JSON
+export const socialMediaFields = [
+  'instagram_handle',
+  'instagram_followers',
+  'twitter_handle',
+  'twitter_followers',
+  'tiktok_handle',
+  'tiktok_followers',
+  'youtube_channel',
+  'youtube_subscribers',
+  'nil_valuation',
+]
+
+// Fields that go into sport_specific_stats JSON
+export const sportSpecificFields = [
+  'height',
+  'weight',
+  'forty_yard_dash',
+  'position_group',
+  'school_offers',
+  'offers',
+  'hudl_link',
+  'ppg',
+  'recruiting_ranking',
+  'event',
+  'personal_best',
+  'national_ranking',
+  'conference',
+  'goals',
+  'assists',
+  'club_team',
+  'international_eligibility',
+  'utr_rating',
+  'singles_ranking',
+  'doubles_ranking',
+  'batting_average',
+  'era',
+  'velocity',
+]
+
+export function parseImportFile(file: File): Promise<Record<string, unknown>[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result
+        const workbook = XLSX.read(data, { type: 'array' })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[]
+        resolve(jsonData)
+      } catch (error) {
+        reject(error)
+      }
+    }
+
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+export function mapColumns(
+  data: Record<string, unknown>[],
+  mappings: Record<string, string>
+): Record<string, unknown>[] {
+  return data.map(row => {
+    const mappedRow: Record<string, unknown> = {}
+
+    Object.entries(row).forEach(([key, value]) => {
+      const normalizedKey = key.toLowerCase().trim()
+      const mappedKey = mappings[normalizedKey]
+
+      if (mappedKey) {
+        mappedRow[mappedKey] = value
+      } else {
+        // Keep unmapped columns with original key
+        mappedRow[key] = value
+      }
+    })
+
+    return mappedRow
+  })
+}
+
+export function normalizeAthleteData(data: Record<string, unknown>[]): Record<string, unknown>[] {
+  return data.map(row => {
+    const normalized: Record<string, unknown> = { ...row }
+
+    // Normalize league_level
+    if (normalized.league_level) {
+      const level = String(normalized.league_level).toLowerCase().trim()
+      if (level.includes('high') || level === 'hs') {
+        normalized.league_level = 'high_school'
+      } else if (level.includes('college') || level === 'ncaa' || level.includes('university')) {
+        normalized.league_level = 'college'
+      } else if (level.includes('pro') || level === 'nba' || level === 'nfl' || level === 'mlb' || level === 'nhl' || level === 'mls') {
+        normalized.league_level = 'professional'
+      } else if (level.includes('international') || level.includes('intl')) {
+        normalized.league_level = 'international'
+      } else {
+        normalized.league_level = 'college' // default
+      }
+    }
+
+    // Normalize recruiting_status
+    if (normalized.recruiting_status) {
+      const status = String(normalized.recruiting_status).toLowerCase().trim()
+      if (status.includes('not') || status === 'inactive') {
+        normalized.recruiting_status = 'not_recruiting'
+      } else if (status.includes('open') || status.includes('contact')) {
+        normalized.recruiting_status = 'open_to_contact'
+      } else if (status.includes('active') || status.includes('recruiting')) {
+        normalized.recruiting_status = 'actively_recruiting'
+      } else if (status.includes('commit')) {
+        normalized.recruiting_status = 'committed'
+      } else if (status.includes('sign')) {
+        normalized.recruiting_status = 'signed'
+      } else {
+        normalized.recruiting_status = 'not_recruiting' // default
+      }
+    }
+
+    // Normalize transfer_portal_status
+    if (normalized.transfer_portal_status) {
+      const status = String(normalized.transfer_portal_status).toLowerCase().trim()
+      if (status.includes('not') || status === 'no' || status === 'n/a' || status === '') {
+        normalized.transfer_portal_status = 'not_in_portal'
+      } else if (status.includes('enter') || status.includes('in portal') || status === 'yes') {
+        normalized.transfer_portal_status = 'entered_portal'
+      } else if (status.includes('commit')) {
+        normalized.transfer_portal_status = 'committed'
+      } else if (status.includes('transfer')) {
+        normalized.transfer_portal_status = 'transferred'
+      } else {
+        normalized.transfer_portal_status = 'not_in_portal' // default
+      }
+    }
+
+    // Normalize marketability_score to number
+    if (normalized.marketability_score !== undefined && normalized.marketability_score !== null && normalized.marketability_score !== '') {
+      const score = Number(normalized.marketability_score)
+      normalized.marketability_score = isNaN(score) ? null : Math.min(100, Math.max(0, score))
+    } else {
+      normalized.marketability_score = null
+    }
+
+    // Normalize eligibility_year to number
+    if (normalized.eligibility_year !== undefined && normalized.eligibility_year !== null && normalized.eligibility_year !== '') {
+      const year = Number(normalized.eligibility_year)
+      normalized.eligibility_year = isNaN(year) ? null : year
+    } else {
+      normalized.eligibility_year = null
+    }
+
+    // Ensure required fields have defaults
+    if (!normalized.league_level) normalized.league_level = 'college'
+    if (!normalized.recruiting_status) normalized.recruiting_status = 'not_recruiting'
+    if (!normalized.transfer_portal_status) normalized.transfer_portal_status = 'not_in_portal'
+
+    // Extract social media fields into social_media JSON
+    const socialMedia: Record<string, unknown> = {}
+    socialMediaFields.forEach(field => {
+      if (normalized[field] !== undefined && normalized[field] !== null && normalized[field] !== '') {
+        // Convert follower counts to numbers
+        if (field.includes('followers') || field.includes('subscribers') || field === 'nil_valuation') {
+          const num = Number(normalized[field])
+          if (!isNaN(num)) {
+            socialMedia[field] = num
+          }
+        } else {
+          // Clean up handles (remove @ if present)
+          const value = String(normalized[field]).trim()
+          socialMedia[field] = value.startsWith('@') ? value.substring(1) : value
+        }
+        delete normalized[field]
+      }
+    })
+    if (Object.keys(socialMedia).length > 0) {
+      normalized.social_media = socialMedia
+    }
+
+    // Extract sport-specific fields into sport_specific_stats JSON
+    const sportStats: Record<string, unknown> = {}
+    sportSpecificFields.forEach(field => {
+      if (normalized[field] !== undefined && normalized[field] !== null && normalized[field] !== '') {
+        sportStats[field] = normalized[field]
+        delete normalized[field]
+      }
+    })
+    if (Object.keys(sportStats).length > 0) {
+      normalized.sport_specific_stats = sportStats
+    }
+
+    return normalized
+  })
+}

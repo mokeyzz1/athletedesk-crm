@@ -58,9 +58,9 @@ function PipelineCard({ item, isDragging }: { item: PipelineWithAthlete; isDragg
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm p-4 border-l-4 ${getPriorityColor(item.priority)} ${
-        isDragging ? 'shadow-lg ring-2 ring-brand-500 ring-opacity-50' : 'hover:shadow-md'
-      } transition-all duration-150`}
+      className={`bg-white rounded border border-gray-200 p-4 ${
+        isDragging ? 'border-brand-400 bg-brand-50' : 'hover:border-gray-300'
+      } transition-colors`}
     >
       <div className="font-medium text-gray-900">
         {item.athletes?.name ?? 'Unknown Athlete'}
@@ -80,9 +80,9 @@ function PipelineCard({ item, isDragging }: { item: PipelineWithAthlete; isDragg
         </div>
       )}
       <div className="mt-2 flex items-center justify-between">
-        <span className={`text-xs px-2 py-0.5 rounded-full ${
-          item.priority === 'high' ? 'bg-red-100 text-red-700' :
-          item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+        <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+          item.priority === 'high' ? 'bg-red-50 text-red-700' :
+          item.priority === 'medium' ? 'bg-yellow-50 text-yellow-700' :
           'bg-gray-100 text-gray-600'
         }`}>
           {item.priority}
@@ -136,16 +136,16 @@ function StageColumn({
   items: PipelineWithAthlete[]
 }) {
   return (
-    <div className="flex-shrink-0 w-72">
-      <div className={`${stage.color} border-t-2 ${stage.borderColor} rounded-t-lg px-4 py-3`}>
+    <div className="flex-shrink-0 w-64 md:w-72">
+      <div className="border-b border-gray-200 px-3 py-2">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">{stage.label}</h3>
-          <span className="bg-white px-2 py-1 rounded-full text-sm font-medium text-gray-600 shadow-sm">
+          <h3 className="font-medium text-gray-700">{stage.label}</h3>
+          <span className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-medium text-gray-600">
             {items.length}
           </span>
         </div>
       </div>
-      <div className="bg-gray-50 rounded-b-lg p-2 min-h-[400px]">
+      <div className="bg-gray-50 rounded-b border border-t-0 border-gray-200 p-2 min-h-[400px]">
         <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {items.map((item) => (
@@ -238,70 +238,74 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
   const totalInPipeline = pipelineData.length
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 min-h-[56px] md:h-[92px] flex items-center justify-between px-4 md:px-6 py-3 md:py-0 bg-gray-50 border-b border-gray-200">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Recruiting Pipeline</h1>
-          <p className="text-gray-600">
-            {totalInPipeline} athlete{totalInPipeline !== 1 ? 's' : ''} in pipeline
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Pipeline</h1>
+          <p className="text-gray-500 text-sm">
+            {totalInPipeline} athlete{totalInPipeline !== 1 ? 's' : ''}
             {isUpdating && <span className="ml-2 text-brand-600">Saving...</span>}
           </p>
         </div>
-        <Link href="/athletes/new" className="btn-primary">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <Link href="/athletes/new" className="btn-primary text-sm">
+          <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          Add Athlete
+          <span className="hidden md:inline">Add Athlete</span>
         </Link>
       </div>
 
-      {totalInPipeline > 0 ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {stageGroups.map((stage) => (
-              <StageColumn key={stage.key} stage={stage} items={stage.items} />
-            ))}
-          </div>
-          <DragOverlay>
-            {activeItem && <PipelineCard item={activeItem} isDragging />}
-          </DragOverlay>
-        </DndContext>
-      ) : (
-        <div className="card">
-          <div className="empty-state">
-            <svg className="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <p className="empty-state-title">Your pipeline is empty</p>
-            <p className="empty-state-description">Start tracking athlete prospects through your recruiting process. Add athletes and assign them to pipeline stages.</p>
-            <Link href="/athletes/new" className="btn-primary mt-4 inline-flex">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4">
+        {totalInPipeline > 0 ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {stageGroups.map((stage) => (
+                <StageColumn key={stage.key} stage={stage} items={stage.items} />
+              ))}
+            </div>
+            <DragOverlay>
+              {activeItem && <PipelineCard item={activeItem} isDragging />}
+            </DragOverlay>
+          </DndContext>
+        ) : (
+          <div className="card">
+            <div className="empty-state">
+              <svg className="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              Add First Prospect
-            </Link>
+              <p className="empty-state-title">Your pipeline is empty</p>
+              <p className="empty-state-description">Start tracking athlete prospects through your recruiting process. Add athletes and assign them to pipeline stages.</p>
+              <Link href="/athletes/new" className="btn-primary mt-4 inline-flex">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add First Prospect
+              </Link>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="text-sm text-gray-500 flex items-center gap-4">
-        <span className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded bg-red-500"></span>
-          High Priority
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded bg-yellow-500"></span>
-          Medium Priority
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded bg-gray-400"></span>
-          Low Priority
-        </span>
+        <div className="text-sm text-gray-500 flex items-center gap-4">
+          <span className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-red-500"></span>
+            High Priority
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-yellow-500"></span>
+            Medium Priority
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-gray-400"></span>
+            Low Priority
+          </span>
+        </div>
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
-import { Header } from '@/components/layout/header'
+import { MobileHeader } from '@/components/layout/mobile-header'
 import type { User } from '@/lib/database.types'
 
 export default async function DashboardLayout({
@@ -31,13 +31,19 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar user={profile} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={profile} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
+      {/* Desktop sidebar - hidden on mobile */}
+      <div className="hidden md:flex flex-shrink-0">
+        <Sidebar user={profile} />
       </div>
+
+      {/* Mobile header with hamburger - only on mobile */}
+      <div className="md:hidden">
+        <MobileHeader user={profile} />
+      </div>
+
+      <main className="flex-1 flex flex-col overflow-hidden pt-14 md:pt-0">
+        {children}
+      </main>
     </div>
   )
 }

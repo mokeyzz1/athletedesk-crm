@@ -145,11 +145,12 @@ export default function TeamManagementPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 h-[92px] flex items-center justify-between px-6 bg-gray-50 border-b border-gray-200">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Team Management</h1>
-          <p className="text-gray-600">Manage your team members and their roles</p>
+          <p className="text-gray-500 text-sm">Manage your team members and their roles</p>
         </div>
         <button
           onClick={() => setShowInviteModal(true)}
@@ -162,6 +163,8 @@ export default function TeamManagementPage() {
         </button>
       </div>
 
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
       {/* Role Legend */}
       <div className="card">
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Role Permissions</h3>
@@ -213,15 +216,11 @@ export default function TeamManagementPage() {
               <tr key={user.id} className="table-row-hover">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    {user.avatar_url ? (
-                      <img className="h-10 w-10 rounded-full" src={user.avatar_url} alt={user.name} />
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-brand-100 flex items-center justify-center">
-                        <span className="text-brand-600 font-medium">
-                          {user.name.split(' ').map(n => n[0]).join('')}
-                        </span>
-                      </div>
-                    )}
+                    <img
+                      className="h-10 w-10 rounded-full"
+                      src={user.avatar_url || ''}
+                      alt={user.name}
+                    />
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
                         {user.name}
@@ -370,6 +369,7 @@ export default function TeamManagementPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

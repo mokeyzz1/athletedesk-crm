@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 
 interface GreetingProps {
   name: string
+  className?: string
 }
 
-export function Greeting({ name }: GreetingProps) {
+export function Greeting({ name, className }: GreetingProps) {
   const [greeting, setGreeting] = useState('')
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export function Greeting({ name }: GreetingProps) {
   if (!greeting) return null
 
   return (
-    <h1 className="text-3xl md:text-4xl font-display font-medium tracking-tight text-gray-900">
+    <h1 className={`text-2xl font-display font-medium tracking-tight ${className || 'text-gray-900'}`}>
       {greeting}, {firstName}
     </h1>
   )

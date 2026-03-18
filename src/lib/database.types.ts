@@ -23,6 +23,7 @@ export type PriorityLevel = 'high' | 'medium' | 'low'
 export type OutreachMethod = 'email' | 'phone' | 'linkedin' | 'event'
 export type ResponseStatus = 'no_response' | 'interested' | 'not_interested' | 'in_discussion' | 'deal_closed'
 export type PaymentStatus = 'pending' | 'invoiced' | 'paid'
+export type TaskStatus = 'todo' | 'in_progress' | 'done'
 
 export interface Database {
   public: {
@@ -352,6 +353,88 @@ export interface Database {
           updated_at?: string
         }
       }
+      tasks: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          assigned_to: string
+          created_by: string
+          athlete_id: string | null
+          due_date: string | null
+          priority: PriorityLevel
+          status: TaskStatus
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          assigned_to: string
+          created_by: string
+          athlete_id?: string | null
+          due_date?: string | null
+          priority?: PriorityLevel
+          status?: TaskStatus
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          assigned_to?: string
+          created_by?: string
+          athlete_id?: string | null
+          due_date?: string | null
+          priority?: PriorityLevel
+          status?: TaskStatus
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      task_comments: {
+        Row: {
+          id: string
+          task_id: string
+          author_id: string
+          content: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          author_id: string
+          content: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          updated_at?: string
+        }
+      }
+      comment_mentions: {
+        Row: {
+          id: string
+          comment_id: string
+          mentioned_user_id: string
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          mentioned_user_id: string
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: {
+          is_read?: boolean
+        }
+      }
     }
     Views: {
       dashboard_summary: {
@@ -430,6 +513,7 @@ export interface Database {
       outreach_method: OutreachMethod
       response_status: ResponseStatus
       payment_status: PaymentStatus
+      task_status: TaskStatus
     }
   }
 }
@@ -451,6 +535,15 @@ export type FinancialTrackingInsert = Database['public']['Tables']['financial_tr
 
 export type Document = Database['public']['Tables']['documents']['Row']
 export type DocumentInsert = Database['public']['Tables']['documents']['Insert']
+
+export type Task = Database['public']['Tables']['tasks']['Row']
+export type TaskInsert = Database['public']['Tables']['tasks']['Insert']
+export type TaskUpdate = Database['public']['Tables']['tasks']['Update']
+
+export type TaskComment = Database['public']['Tables']['task_comments']['Row']
+export type TaskCommentInsert = Database['public']['Tables']['task_comments']['Insert']
+export type CommentMention = Database['public']['Tables']['comment_mentions']['Row']
+export type CommentMentionInsert = Database['public']['Tables']['comment_mentions']['Insert']
 
 export type AthleteWithPipeline = Database['public']['Views']['athletes_with_pipeline']['Row']
 export type DashboardSummary = Database['public']['Views']['dashboard_summary']['Row']

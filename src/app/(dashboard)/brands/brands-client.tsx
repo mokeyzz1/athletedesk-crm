@@ -123,11 +123,12 @@ export function BrandsClient({ outreach }: BrandsClientProps) {
   })) || []
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 h-[92px] flex items-center justify-between px-6 bg-gray-50 border-b border-gray-200">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Brand Outreach</h1>
-          <p className="text-gray-600">Track brand partnerships and sponsorship deals</p>
+          <p className="text-gray-500 text-sm">Track brand partnerships and sponsorship deals</p>
         </div>
         <div className="flex items-center gap-3">
           {outreach && outreach.length > 0 && (
@@ -151,6 +152,8 @@ export function BrandsClient({ outreach }: BrandsClientProps) {
         </div>
       </div>
 
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
       {outreach && outreach.length > 0 ? (
         <div className="card overflow-hidden p-0">
           <table className="min-w-full divide-y divide-gray-200">
@@ -235,6 +238,7 @@ export function BrandsClient({ outreach }: BrandsClientProps) {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

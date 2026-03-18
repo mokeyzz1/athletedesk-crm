@@ -129,51 +129,56 @@ export function FinancialsClient({ financials }: FinancialsClientProps) {
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 min-h-[56px] md:h-[92px] flex items-center justify-between px-4 md:px-6 py-3 md:py-0 bg-gray-50 border-b border-gray-200">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Financial Tracking</h1>
-          <p className="text-gray-600">Manage deals, commissions, and payments</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Financials</h1>
+          <p className="text-gray-500 text-sm hidden md:block">Manage deals, commissions, and payments</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           {financials && financials.length > 0 && (
-            <ExportButtons
-              data={exportData}
-              filename="financials"
-              columns={financialExportColumns}
-              sheetName="Financials"
-            />
+            <div className="hidden sm:block">
+              <ExportButtons
+                data={exportData}
+                filename="financials"
+                columns={financialExportColumns}
+                sheetName="Financials"
+              />
+            </div>
           )}
-          <Link href="/financials/new" className="btn-primary">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Link href="/financials/new" className="btn-primary text-sm">
+            <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            Add Deal
+            <span className="hidden md:inline">Add Deal</span>
           </Link>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="stat-card">
-          <p className="text-sm font-medium text-gray-600">Total Deals</p>
-          <p className="stat-value">{totals.totalDeals}</p>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+          <div className="bg-white rounded border border-gray-200 p-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Total Deals</p>
+            <p className="text-3xl font-semibold text-gray-900">{totals.totalDeals}</p>
+          </div>
+          <div className="bg-white rounded border border-gray-200 p-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Total Deal Value</p>
+            <p className="text-2xl font-semibold text-gray-900">{formatCurrency(totals.totalValue)}</p>
+          </div>
+          <div className="bg-white rounded border border-gray-200 p-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Agency Revenue</p>
+            <p className="text-2xl font-semibold text-gray-900">{formatCurrency(totals.totalAgencyFee)}</p>
+          </div>
+          <div className="bg-white rounded border border-gray-200 p-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Pending Payments</p>
+            <p className="text-3xl font-semibold text-gray-900">{totals.pendingPayments}</p>
+          </div>
         </div>
-        <div className="stat-card">
-          <p className="text-sm font-medium text-gray-600">Total Deal Value</p>
-          <p className="stat-value">{formatCurrency(totals.totalValue)}</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-sm font-medium text-gray-600">Agency Revenue</p>
-          <p className="text-[32px] font-bold text-green-600 mt-2">{formatCurrency(totals.totalAgencyFee)}</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-sm font-medium text-gray-600">Pending Payments</p>
-          <p className="text-[32px] font-bold text-yellow-600 mt-2">{totals.pendingPayments}</p>
-        </div>
-      </div>
 
-      {/* Deals Table */}
+        {/* Deals Table */}
       {financials && financials.length > 0 ? (
         <div className="card overflow-hidden p-0">
           <table className="min-w-full divide-y divide-gray-200">
@@ -261,6 +266,7 @@ export function FinancialsClient({ financials }: FinancialsClientProps) {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

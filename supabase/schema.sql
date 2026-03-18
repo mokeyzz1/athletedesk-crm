@@ -26,6 +26,7 @@ CREATE TYPE priority_level AS ENUM ('high', 'medium', 'low');
 CREATE TYPE outreach_method AS ENUM ('email', 'phone', 'linkedin', 'event');
 CREATE TYPE response_status AS ENUM ('no_response', 'interested', 'not_interested', 'in_discussion', 'deal_closed');
 CREATE TYPE payment_status AS ENUM ('pending', 'invoiced', 'paid');
+CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'done');
 
 -- ============================================
 -- USERS TABLE
@@ -498,3 +499,68 @@ ORDER BY c.follow_up_date ASC;
 GRANT SELECT ON dashboard_summary TO authenticated;
 GRANT SELECT ON athletes_with_pipeline TO authenticated;
 GRANT SELECT ON pending_follow_ups TO authenticated;
+
+-- ============================================
+-- TASKS TABLE
+-- ============================================
+
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  description TEXT,
+  assigned_to UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  athlete_id UUID REFERENCES athletes(id) ON DELETE SET NULL,
+  due_date DATE,
+  priority priority_level NOT NULL DEFAULT 'medium',
+  status task_status NOT NULL DEFAULT 'todo',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for tasks
+CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
+CREATE INDEX idx_tasks_created_by ON tasks(created_by);
+CREATE INDEX idx_tasks_athlete ON tasks(athlete_id);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX idx_tasks_priority ON tasks(priority);
+
+-- Trigger for updated_at
+CREATE TRIGGER update_tasks_updated_at
+  BEFORE UPDATE ON tasks
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Enable RLS
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for tasks
+CREATE POLICY "Users can view all tasks"
+  ON tasks FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Admins and agents can create tasks"
+  ON tasks FOR INSERT
+  TO authenticated
+  WITH CHECK (get_user_role() IN ('admin', 'agent'));
+
+CREATE POLICY "Assignee or admin can update tasks"
+  ON tasks FOR UPDATE
+  TO authenticated
+  USING (
+    get_user_role() = 'admin' OR
+    assigned_to = get_current_user_id()
+  )
+  WITH CHECK (
+    get_user_role() = 'admin' OR
+    assigned_to = get_current_user_id()
+  );
+
+CREATE POLICY "Admins can delete tasks"
+  ON tasks FOR DELETE
+  TO authenticated
+  USING (get_user_role() = 'admin');
+
+-- Grant access to tasks table
+GRANT ALL ON tasks TO authenticated;

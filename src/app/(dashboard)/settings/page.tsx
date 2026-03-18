@@ -16,29 +16,26 @@ export default async function SettingsPage() {
   const profile = data as User | null
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600">Manage your account and team</p>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 h-[92px] flex items-center px-6 bg-gray-50 border-b border-gray-200">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-500 text-sm">Manage your account and team</p>
+        </div>
       </div>
 
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
       <div className="card">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h2>
         <div className="space-y-4">
           <div className="flex items-center space-x-4">
-            {profile?.avatar_url ? (
-              <img
-                className="h-20 w-20 rounded-full"
-                src={profile.avatar_url}
-                alt={profile.name}
-              />
-            ) : (
-              <div className="h-20 w-20 rounded-full bg-brand-600 flex items-center justify-center">
-                <span className="text-white text-2xl font-medium">
-                  {profile?.name.split(' ').map(n => n[0]).join('')}
-                </span>
-              </div>
-            )}
+            <img
+              className="h-20 w-20 rounded-full"
+              src={profile?.avatar_url || ''}
+              alt={profile?.name || ''}
+            />
             <div>
               <h3 className="text-lg font-medium text-gray-900">{profile?.name}</h3>
               <p className="text-gray-500">{profile?.email}</p>
@@ -94,6 +91,7 @@ export default async function SettingsPage() {
           </p>
         </div>
       )}
+      </div>
     </div>
   )
 }

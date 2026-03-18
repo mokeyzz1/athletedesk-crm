@@ -230,47 +230,52 @@ export function AthletesClient({ athletes }: AthletesClientProps) {
 
   return (
     <>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex-shrink-0 min-h-[64px] md:h-[92px] flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-0 bg-gray-50 border-b border-gray-200">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Athletes</h1>
-            <p className="text-gray-600">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Athletes</h1>
+            <p className="text-gray-500 text-sm">
               {filteredAthletes.length} of {athletes?.length || 0} athletes
               {hasActiveFilters && ' (filtered)'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             {athletes && athletes.length > 0 && (
-              <ExportButtons
-                data={exportData}
-                filename="athletes"
-                columns={athleteExportColumns}
-                sheetName="Athletes"
-              />
+              <div className="hidden sm:block">
+                <ExportButtons
+                  data={exportData}
+                  filename="athletes"
+                  columns={athleteExportColumns}
+                  sheetName="Athletes"
+                />
+              </div>
             )}
             <button
               onClick={() => setShowImportModal(true)}
-              className="btn-secondary"
+              className="btn-secondary text-sm"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
-              Import
+              <span className="hidden md:inline">Import</span>
             </button>
-            <Link href="/athletes/new" className="btn-primary">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <Link href="/athletes/new" className="btn-primary text-sm">
+              <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              Add Athlete
+              <span className="hidden md:inline">Add Athlete</span>
             </Link>
           </div>
         </div>
 
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4">
         {/* Search and Filters */}
         <div className="card p-3">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-wrap">
             {/* Search */}
-            <div className="relative flex-1 min-w-[200px]">
+            <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
               <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -283,59 +288,61 @@ export function AthletesClient({ athletes }: AthletesClientProps) {
               />
             </div>
 
-            {/* Filters */}
-            <select
-              value={sportFilter}
-              onChange={(e) => setSportFilter(e.target.value)}
-              className="input py-1.5 text-sm w-[120px]"
-            >
-              <option value="">All Sports</option>
-              {sports.map(sport => (
-                <option key={sport} value={sport}>{sport}</option>
-              ))}
-            </select>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input py-1.5 text-sm w-[130px]"
-            >
-              <option value="">All Statuses</option>
-              {statuses.map(status => (
-                <option key={status.value} value={status.value}>{status.label}</option>
-              ))}
-            </select>
-
-            <select
-              value={pipelineFilter}
-              onChange={(e) => setPipelineFilter(e.target.value)}
-              className="input py-1.5 text-sm w-[140px]"
-            >
-              <option value="">All Stages</option>
-              <option value="not_in_pipeline">Not in Pipeline</option>
-              {pipelineStages.map(stage => (
-                <option key={stage.value} value={stage.value}>{stage.label}</option>
-              ))}
-            </select>
-
-            <select
-              value={portalFilter}
-              onChange={(e) => setPortalFilter(e.target.value)}
-              className="input py-1.5 text-sm w-[120px]"
-            >
-              <option value="">Portal</option>
-              <option value="in_portal">In Portal</option>
-              <option value="not_in_portal">Not in Portal</option>
-            </select>
-
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-sm text-gray-500 hover:text-gray-700"
+            {/* Filters - scrollable on mobile */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+              <select
+                value={sportFilter}
+                onChange={(e) => setSportFilter(e.target.value)}
+                className="input py-1.5 text-sm min-w-[100px]"
               >
-                Clear
-              </button>
-            )}
+                <option value="">Sport</option>
+                {sports.map(sport => (
+                  <option key={sport} value={sport}>{sport}</option>
+                ))}
+              </select>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="input py-1.5 text-sm min-w-[100px]"
+              >
+                <option value="">Status</option>
+                {statuses.map(status => (
+                  <option key={status.value} value={status.value}>{status.label}</option>
+                ))}
+              </select>
+
+              <select
+                value={pipelineFilter}
+                onChange={(e) => setPipelineFilter(e.target.value)}
+                className="input py-1.5 text-sm min-w-[100px]"
+              >
+                <option value="">Stage</option>
+                <option value="not_in_pipeline">Not in Pipeline</option>
+                {pipelineStages.map(stage => (
+                  <option key={stage.value} value={stage.value}>{stage.label}</option>
+                ))}
+              </select>
+
+              <select
+                value={portalFilter}
+                onChange={(e) => setPortalFilter(e.target.value)}
+                className="input py-1.5 text-sm min-w-[90px]"
+              >
+                <option value="">Portal</option>
+                <option value="in_portal">In Portal</option>
+                <option value="not_in_portal">Not in Portal</option>
+              </select>
+
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -612,6 +619,7 @@ export function AthletesClient({ athletes }: AthletesClientProps) {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       <AthleteImportModal

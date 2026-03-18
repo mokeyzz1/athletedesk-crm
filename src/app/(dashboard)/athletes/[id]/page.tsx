@@ -377,7 +377,13 @@ export default async function AthletePage({ params }: AthletePageProps) {
                 </ul>
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">No activity recorded yet.</p>
+              <div className="text-center py-8">
+                <svg className="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="mt-2 text-sm font-medium text-gray-900">No activity yet</p>
+                <p className="mt-1 text-sm text-gray-500">Activities will appear here as you work with this athlete.</p>
+              </div>
             )}
             {activities.length > 10 && (
               <div className="mt-4 text-center">

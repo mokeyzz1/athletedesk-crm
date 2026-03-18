@@ -291,11 +291,12 @@ export default function ContractsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 h-[92px] flex items-center justify-between px-6 bg-gray-50 border-b border-gray-200">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Contracts & Documents</h1>
-          <p className="text-gray-600">
+          <p className="text-gray-500 text-sm">
             {filteredDocuments.length} of {documents.length} documents
             {hasActiveFilters && ' (filtered)'}
           </p>
@@ -308,13 +309,15 @@ export default function ContractsPage() {
         </button>
       </div>
 
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
       {/* Filters */}
-      <div className="card p-4">
-        <div className="flex flex-wrap gap-4">
+      <div className="card p-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <select
             value={athleteFilter}
             onChange={(e) => setAthleteFilter(e.target.value)}
-            className="input min-w-[180px]"
+            className="input py-1.5 text-sm w-[140px]"
           >
             <option value="">All Athletes</option>
             {athletes.map(athlete => (
@@ -325,7 +328,7 @@ export default function ContractsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="input min-w-[160px]"
+            className="input py-1.5 text-sm w-[130px]"
           >
             <option value="">All Types</option>
             {documentTypes.map(type => (
@@ -336,7 +339,7 @@ export default function ContractsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="input min-w-[140px]"
+            className="input py-1.5 text-sm w-[120px]"
           >
             <option value="">All Statuses</option>
             {statusOptions.map(status => (
@@ -345,8 +348,8 @@ export default function ContractsPage() {
           </select>
 
           {hasActiveFilters && (
-            <button onClick={clearFilters} className="btn-secondary text-sm">
-              Clear Filters
+            <button onClick={clearFilters} className="text-sm text-gray-500 hover:text-gray-700">
+              Clear
             </button>
           )}
         </div>
@@ -559,6 +562,7 @@ export default function ContractsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

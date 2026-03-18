@@ -29,6 +29,12 @@ export async function GET(request: Request) {
           role: 'intern', // Default role, admin can upgrade
         }
         await supabase.from('users').insert(newUser as never)
+      } else {
+        // Update avatar_url on every login to keep it fresh
+        await supabase
+          .from('users')
+          .update({ avatar_url: data.user.user_metadata.avatar_url })
+          .eq('google_sso_id', data.user.id)
       }
 
       return NextResponse.redirect(`${origin}${next}`)

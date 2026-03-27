@@ -30,16 +30,16 @@ export function AthletePanelProvider({ children }: AthletePanelProviderProps) {
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
-  const supabase = createClient()
 
   // Fetch users for the panel
   useEffect(() => {
     async function fetchUsers() {
+      const supabase = createClient()
       const { data } = await supabase.from('users').select('*')
       if (data) setUsers(data as User[])
     }
     fetchUsers()
-  }, [supabase])
+  }, [])
 
   const openAthletePanel = useCallback((athleteId: string) => {
     setSelectedAthleteId(athleteId)

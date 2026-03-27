@@ -22,7 +22,6 @@ export function AthletePanel({
   users,
   onAthleteUpdated
 }: AthletePanelProps) {
-  const supabase = createClient()
   const [athlete, setAthlete] = useState<Athlete | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -47,6 +46,7 @@ export function AthletePanel({
       setIsLoading(true)
       setError(null)
 
+      const supabase = createClient()
       const { data, error: fetchError } = await supabase
         .from('athletes')
         .select('*')
@@ -66,7 +66,7 @@ export function AthletePanel({
     }
 
     fetchAthlete()
-  }, [athleteId, isOpen, supabase])
+  }, [athleteId, isOpen])
 
   const handleSportChange = (sport: string) => {
     setSelectedSport(sport)
@@ -117,6 +117,7 @@ export function AthletePanel({
       social_media: Object.keys(filteredSocialMedia).length > 0 ? filteredSocialMedia as Json : null,
     }
 
+    const supabase = createClient()
     const { error: updateError } = await supabase
       .from('athletes')
       .update(updateData as never)
@@ -147,6 +148,7 @@ export function AthletePanel({
 
     setIsDeleting(true)
 
+    const supabase = createClient()
     const { error: deleteError } = await supabase
       .from('athletes')
       .delete()

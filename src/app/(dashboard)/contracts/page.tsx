@@ -176,6 +176,12 @@ export default function ContractsPage() {
     setIsUploading(true)
 
     try {
+      // Validate file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+      if (file.size > maxSize) {
+        throw new Error('File size must be less than 10MB')
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 

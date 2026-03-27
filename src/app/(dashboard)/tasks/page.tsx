@@ -49,7 +49,7 @@ export default async function TasksPage() {
   return (
     <TasksClient
       tasks={tasks}
-      currentUser={currentUser as User}
+      currentUser={currentUser as unknown as User}
       users={users}
       athletes={athletes}
     />

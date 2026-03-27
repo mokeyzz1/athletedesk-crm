@@ -53,14 +53,14 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
         task_id: taskId,
         author_id: currentUser.id,
         content: content
-      })
+      } as never)
       .select(`
         *,
         author:author_id(id, name, avatar_url)
       `)
-      .single()
+      .single() as unknown as { data: TaskCommentWithAuthor | null; error: Error | null }
 
-    if (commentError) {
+    if (commentError || !newComment) {
       console.error('Error posting comment:', commentError)
       return
     }
@@ -72,11 +72,11 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
         mentioned_user_id: userId
       }))
 
-      await supabase.from('comment_mentions').insert(mentions)
+      await supabase.from('comment_mentions').insert(mentions as never)
     }
 
     // Update local state
-    setComments(prev => [...prev, newComment as TaskCommentWithAuthor])
+    setComments(prev => [...prev, newComment])
   }
 
   const formatTimeAgo = (dateStr: string) => {

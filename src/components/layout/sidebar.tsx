@@ -193,7 +193,7 @@ export function Sidebar({ user }: SidebarProps) {
           .from('users')
           .select('id')
           .eq('google_sso_id', (await supabase.auth.getUser()).data.user?.id || '')
-          .single()
+          .single() as unknown as { data: { id: string } | null }
 
         if (userData) {
           const { count } = await supabase
@@ -342,7 +342,7 @@ export function Sidebar({ user }: SidebarProps) {
                                 const mentionId = notif.id.replace('mention-', '')
                                 supabase
                                   .from('comment_mentions')
-                                  .update({ is_read: true })
+                                  .update({ is_read: true } as never)
                                   .eq('id', mentionId)
                                   .then(() => {
                                     setNotifications(prev => prev.filter(n => n.id !== notif.id))

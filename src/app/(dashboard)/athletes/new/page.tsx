@@ -173,9 +173,11 @@ export default function NewAthletePage() {
   const marketingLeads = users.filter(u => u.role === 'marketing' || u.role === 'admin')
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Add New Athlete</h1>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Add New Athlete</h1>
         <p className="text-gray-600">Enter the athlete&apos;s information below</p>
       </div>
 
@@ -393,6 +395,8 @@ export default function NewAthletePage() {
           </button>
         </div>
       </form>
+        </div>
+      </div>
     </div>
   )
 }

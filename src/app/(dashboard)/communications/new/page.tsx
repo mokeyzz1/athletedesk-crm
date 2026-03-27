@@ -28,7 +28,7 @@ export default function NewCommunicationPage() {
         const { data: userData } = await supabase
           .from('users')
           .select('*')
-          .eq('id', user.id)
+          .eq('google_sso_id', user.id)
           .single()
         if (userData) setCurrentUser(userData as User)
       }
@@ -94,9 +94,11 @@ export default function NewCommunicationPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Log Communication</h1>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Log Communication</h1>
         <p className="text-gray-600">Record a call, email, text, or meeting with an athlete</p>
       </div>
 
@@ -214,6 +216,8 @@ export default function NewCommunicationPage() {
           onClose={() => setShowTemplates(false)}
         />
       )}
+        </div>
+      </div>
     </div>
   )
 }

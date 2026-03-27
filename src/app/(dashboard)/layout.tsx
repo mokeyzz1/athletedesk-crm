@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { MobileHeader } from '@/components/layout/mobile-header'
+import { DashboardProviders } from '@/components/layout/dashboard-providers'
 import type { User } from '@/lib/database.types'
 
 export default async function DashboardLayout({
@@ -42,7 +43,9 @@ export default async function DashboardLayout({
       </div>
 
       <main className="flex-1 flex flex-col overflow-hidden pt-14 md:pt-0">
-        {children}
+        <DashboardProviders>
+          {children}
+        </DashboardProviders>
       </main>
     </div>
   )

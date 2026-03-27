@@ -74,7 +74,7 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
     // Update task status
     await supabase
       .from('tasks')
-      .update({ status: newStatus })
+      .update({ status: newStatus } as never)
       .eq('id', taskId)
 
     setDraggedTaskId(null)

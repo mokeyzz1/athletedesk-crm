@@ -55,7 +55,7 @@ export function TaskPanel({
           creator:created_by(id, name),
           athletes:athlete_id(id, name)
         `)
-        .eq('id', taskId)
+        .eq('id', taskId!)
         .single()
 
       if (fetchError) {

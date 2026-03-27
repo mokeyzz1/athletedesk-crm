@@ -18,8 +18,10 @@ import {
   verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
+import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import type { RecruitingPipeline, PipelineStage } from '@/lib/database.types'
 
 interface PipelineWithAthlete extends RecruitingPipeline {
@@ -46,7 +48,7 @@ const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string; borde
   { key: 'signed_client', label: 'Signed', color: 'bg-green-50', borderColor: 'border-green-300' },
 ]
 
-function PipelineCard({ item, isDragging }: { item: PipelineWithAthlete; isDragging?: boolean }) {
+function PipelineCard({ item, isDragging, onEditClick }: { item: PipelineWithAthlete; isDragging?: boolean; onEditClick?: (athleteId: string) => void }) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'border-l-red-500'
@@ -87,19 +89,32 @@ function PipelineCard({ item, isDragging }: { item: PipelineWithAthlete; isDragg
         }`}>
           {item.priority}
         </span>
-        <Link
-          href={`/athletes/${item.athlete_id}`}
-          className="text-xs text-brand-600 hover:text-brand-700 font-medium"
-          onClick={(e) => e.stopPropagation()}
-        >
-          View →
-        </Link>
+        <div className="flex items-center gap-2">
+          {onEditClick && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onEditClick(item.athlete_id)
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+            >
+              Edit
+            </button>
+          )}
+          <Link
+            href={`/athletes/${item.athlete_id}`}
+            className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            View →
+          </Link>
+        </div>
       </div>
     </div>
   )
 }
 
-function SortableCard({ item }: { item: PipelineWithAthlete }) {
+function SortableCard({ item, onEditClick }: { item: PipelineWithAthlete; onEditClick?: (athleteId: string) => void }) {
   const {
     attributes,
     listeners,
@@ -123,7 +138,7 @@ function SortableCard({ item }: { item: PipelineWithAthlete }) {
       {...listeners}
       className="cursor-grab active:cursor-grabbing"
     >
-      <PipelineCard item={item} />
+      <PipelineCard item={item} onEditClick={onEditClick} />
     </div>
   )
 }
@@ -131,10 +146,17 @@ function SortableCard({ item }: { item: PipelineWithAthlete }) {
 function StageColumn({
   stage,
   items,
+  onEditClick,
 }: {
   stage: typeof PIPELINE_STAGES[number]
   items: PipelineWithAthlete[]
+  onEditClick?: (athleteId: string) => void
 }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `stage-${stage.key}`,
+    data: { stage: stage.key }
+  })
+
   return (
     <div className="flex-shrink-0 w-64 md:w-72">
       <div className="border-b border-gray-200 px-3 py-2">
@@ -145,11 +167,16 @@ function StageColumn({
           </span>
         </div>
       </div>
-      <div className="bg-gray-50 rounded-b border border-t-0 border-gray-200 p-2 min-h-[400px]">
+      <div
+        ref={setNodeRef}
+        className={`bg-gray-50 rounded-b border border-t-0 border-gray-200 p-2 min-h-[400px] transition-colors ${
+          isOver ? 'bg-brand-50 border-brand-300' : ''
+        }`}
+      >
         <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {items.map((item) => (
-              <SortableCard key={item.id} item={item} />
+              <SortableCard key={item.id} item={item} onEditClick={onEditClick} />
             ))}
           </div>
         </SortableContext>
@@ -168,6 +195,7 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
   const [activeItem, setActiveItem] = useState<PipelineWithAthlete | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const supabase = createClient()
+  const { openAthletePanel } = useAthletePanel()
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -200,10 +228,15 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
     // Find which stage the item was dropped into
     let newStage: PipelineStage | null = null
 
-    // Check if dropped on another card
-    const overItem = pipelineData.find((p) => p.id === over.id)
-    if (overItem) {
-      newStage = overItem.pipeline_stage
+    // Check if dropped on a stage column
+    if (String(over.id).startsWith('stage-')) {
+      newStage = String(over.id).replace('stage-', '') as PipelineStage
+    } else {
+      // Check if dropped on another card
+      const overItem = pipelineData.find((p) => p.id === over.id)
+      if (overItem) {
+        newStage = overItem.pipeline_stage
+      }
     }
 
     // If dropped in the same stage, no need to update
@@ -267,7 +300,7 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
           >
             <div className="flex gap-4 overflow-x-auto pb-4">
               {stageGroups.map((stage) => (
-                <StageColumn key={stage.key} stage={stage} items={stage.items} />
+                <StageColumn key={stage.key} stage={stage} items={stage.items} onEditClick={openAthletePanel} />
               ))}
             </div>
             <DragOverlay>

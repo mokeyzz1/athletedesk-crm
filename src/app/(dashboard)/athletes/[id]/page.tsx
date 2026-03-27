@@ -5,6 +5,7 @@ import type { Athlete, CommunicationLog, RecruitingPipeline, FinancialTracking, 
 import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } from '@/lib/sport-fields'
 import { AthleteDocuments } from './athlete-documents'
 import { SendEmailButton } from './send-email-button'
+import { EditAthleteButton } from '@/components/athletes/edit-athlete-button'
 
 interface AthletePageProps {
   params: Promise<{ id: string }>
@@ -140,7 +141,9 @@ export default async function AthletePage({ params }: AthletePageProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-4">
@@ -166,9 +169,7 @@ export default async function AthletePage({ params }: AthletePageProps) {
             </div>
           </div>
         </div>
-        <Link href={`/athletes/${id}/edit`} className="btn-secondary">
-          Edit Athlete
-        </Link>
+        <EditAthleteButton athleteId={id} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -508,6 +509,7 @@ export default async function AthletePage({ params }: AthletePageProps) {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

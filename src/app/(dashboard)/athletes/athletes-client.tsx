@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { AthleteWithPipeline } from '@/lib/database.types'
 import { AthleteImportModal } from '@/components/import/athlete-import-modal'
 import { ExportButtons } from '@/components/export/export-buttons'
+import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } from '@/lib/sport-fields'
 
 interface AthletesClientProps {
@@ -54,6 +55,7 @@ export function AthletesClient({ athletes }: AthletesClientProps) {
   const [sortColumn, setSortColumn] = useState<SortColumn>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const router = useRouter()
+  const { openAthletePanel } = useAthletePanel()
 
   // Get unique values for filters
   const sports = useMemo(() => {
@@ -468,7 +470,11 @@ export function AthletesClient({ athletes }: AthletesClientProps) {
                       const totalFollowing = socialMedia ? calculateTotalFollowing(socialMedia) : 0
 
                       return (
-                        <tr key={athlete.id} className="table-row-hover">
+                        <tr
+                          key={athlete.id}
+                          className="table-row-hover cursor-pointer"
+                          onClick={() => openAthletePanel(athlete.id)}
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center">
@@ -565,13 +571,21 @@ export function AthletesClient({ athletes }: AthletesClientProps) {
                               <span className="text-sm text-gray-400">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <Link
-                              href={`/athletes/${athlete.id}`}
-                              className="text-brand-600 hover:text-brand-900"
-                            >
-                              View
-                            </Link>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-3">
+                              <button
+                                onClick={() => openAthletePanel(athlete.id)}
+                                className="text-brand-600 hover:text-brand-900"
+                              >
+                                Edit
+                              </button>
+                              <Link
+                                href={`/athletes/${athlete.id}`}
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                View
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       )

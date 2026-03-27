@@ -24,7 +24,7 @@ export default function GlobalError({
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
           <p className="text-gray-500 mb-8">
-            We're sorry, but something unexpected happened. Please try again.
+            We&apos;re sorry, but something unexpected happened. Please try again.
           </p>
           <button
             onClick={reset}

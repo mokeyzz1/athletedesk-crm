@@ -43,11 +43,26 @@ export default function NewFinancialPage() {
 
     const formData = new FormData(e.currentTarget)
 
+    const dealValueNum = parseFloat(formData.get('deal_value') as string)
+    const agencyPctNum = parseFloat(formData.get('agency_percentage') as string)
+
+    // Validate values
+    if (dealValueNum < 0) {
+      setError('Deal value cannot be negative')
+      setIsSubmitting(false)
+      return
+    }
+    if (agencyPctNum < 0 || agencyPctNum > 100) {
+      setError('Agency percentage must be between 0 and 100')
+      setIsSubmitting(false)
+      return
+    }
+
     const financialData: FinancialTrackingInsert = {
       athlete_id: formData.get('athlete_id') as string,
       deal_name: formData.get('deal_name') as string,
-      deal_value: parseFloat(formData.get('deal_value') as string),
-      agency_percentage: parseFloat(formData.get('agency_percentage') as string),
+      deal_value: dealValueNum,
+      agency_percentage: agencyPctNum,
       deal_date: formData.get('deal_date') as string,
       payment_status: 'pending',
       invoice_date: (formData.get('invoice_date') as string) || null,
@@ -68,8 +83,10 @@ export default function NewFinancialPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Record New Deal</h1>
         <p className="text-gray-600">Add a new financial record for an athlete deal</p>
       </div>
@@ -214,6 +231,8 @@ export default function NewFinancialPage() {
           </button>
         </div>
       </form>
+        </div>
+      </div>
     </div>
   )
 }

@@ -33,7 +33,7 @@ export async function GET(request: Request) {
         // Update avatar_url on every login to keep it fresh
         await supabase
           .from('users')
-          .update({ avatar_url: data.user.user_metadata.avatar_url })
+          .update({ avatar_url: data.user.user_metadata.avatar_url } as never)
           .eq('google_sso_id', data.user.id)
       }
 

@@ -33,13 +33,17 @@ export default function EditAthletePage() {
         .eq('id', id)
         .single()
 
-      if (athleteData) {
-        const athlete = athleteData as Athlete
-        setAthlete(athlete)
-        setSelectedSport(athlete.sport)
-        setSportSpecificStats((athlete.sport_specific_stats as Record<string, unknown>) || {})
-        setSocialMedia((athlete.social_media as SocialMediaData) || {})
+      if (!athleteData) {
+        // Athlete not found, redirect to athletes list
+        router.push('/athletes')
+        return
       }
+
+      const athlete = athleteData as Athlete
+      setAthlete(athlete)
+      setSelectedSport(athlete.sport)
+      setSportSpecificStats((athlete.sport_specific_stats as Record<string, unknown>) || {})
+      setSocialMedia((athlete.social_media as SocialMediaData) || {})
 
       const { data: usersData } = await supabase.from('users').select('*')
       if (usersData) {
@@ -49,7 +53,7 @@ export default function EditAthletePage() {
       setIsLoading(false)
     }
     fetchData()
-  }, [supabase, id])
+  }, [supabase, id, router])
 
   const handleSportChange = (sport: string) => {
     setSelectedSport(sport)
@@ -119,14 +123,18 @@ export default function EditAthletePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-3xl mx-auto">
-        <div className="card animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
-          <div className="space-y-4">
-            <div className="h-10 bg-gray-200 rounded"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
+      <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="card animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
+              <div className="space-y-4">
+                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -135,16 +143,22 @@ export default function EditAthletePage() {
 
   if (!athlete) {
     return (
-      <div className="max-w-3xl mx-auto">
-        <div className="card text-center py-12">
-          <p className="text-gray-500">Athlete not found</p>
+      <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="card text-center py-12">
+              <p className="text-gray-500">Athlete not found</p>
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+        <div className="max-w-3xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Edit Athlete</h1>
         <p className="text-gray-600">Update {athlete.name}&apos;s information</p>
@@ -391,6 +405,8 @@ export default function EditAthletePage() {
           </button>
         </div>
       </form>
+        </div>
+      </div>
     </div>
   )
 }

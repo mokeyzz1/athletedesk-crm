@@ -30,11 +30,11 @@ export default async function DashboardPage() {
     .select('*', { count: 'exact', head: true })
     .eq('recruiting_status', 'signed')
 
-  // Get athletes in pipeline count
+  // Get athletes in pipeline count (actively recruiting or open to contact)
   const { count: pipelineCount } = await supabase
     .from('athletes')
     .select('*', { count: 'exact', head: true })
-    .in('recruiting_status', ['prospect', 'contacted', 'negotiating'])
+    .in('recruiting_status', ['actively_recruiting', 'open_to_contact'])
 
   // Fetch pending follow-ups
   const { data: followUpsData } = await supabase
@@ -100,6 +100,11 @@ export default async function DashboardPage() {
   const monthlyAgencyFee = monthlyDeals?.reduce((sum, d) => sum + Number(d.agency_fee), 0) ?? 0
 
   // Fetch recent activity for activity feed
+  type RecentComm = { id: string; athlete_id: string; type: string; subject: string | null; communication_date: string; athletes: { name: string } | null }
+  type RecentDeal = { id: string; athlete_id: string; deal_name: string; deal_value: number; created_at: string; athletes: { name: string } | null }
+  type RecentBrand = { id: string; athlete_id: string; brand_name: string; response_status: string; created_at: string; athletes: { name: string } | null }
+  type RecentDoc = { id: string; athlete_id: string; name: string; document_type: string; created_at: string; athletes: { name: string } | null }
+
   const [
     { data: recentComms },
     { data: recentDeals },
@@ -110,22 +115,22 @@ export default async function DashboardPage() {
       .from('communications_log')
       .select('id, athlete_id, type, subject, communication_date, athletes(name)')
       .order('created_at', { ascending: false })
-      .limit(3),
+      .limit(3) as unknown as { data: RecentComm[] | null },
     supabase
       .from('financial_tracking')
       .select('id, athlete_id, deal_name, deal_value, created_at, athletes(name)')
       .order('created_at', { ascending: false })
-      .limit(3),
+      .limit(3) as unknown as { data: RecentDeal[] | null },
     supabase
       .from('brand_outreach')
       .select('id, athlete_id, brand_name, response_status, created_at, athletes(name)')
       .order('created_at', { ascending: false })
-      .limit(3),
+      .limit(3) as unknown as { data: RecentBrand[] | null },
     supabase
       .from('documents')
       .select('id, athlete_id, name, document_type, created_at, athletes(name)')
       .order('created_at', { ascending: false })
-      .limit(2)
+      .limit(2) as unknown as { data: RecentDoc[] | null }
   ])
 
   // Combine and sort activities
@@ -144,7 +149,7 @@ export default async function DashboardPage() {
     ...(recentComms || []).map(c => ({
       id: `comm-${c.id}`,
       type: 'communication' as const,
-      title: `${c.type} with ${(c.athletes as { name: string } | null)?.name || 'Unknown'}`,
+      title: `${c.type} with ${c.athletes?.name || 'Unknown'}`,
       subtitle: c.subject || 'No subject',
       timestamp: c.communication_date,
       icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
@@ -155,7 +160,7 @@ export default async function DashboardPage() {
       id: `deal-${d.id}`,
       type: 'deal' as const,
       title: `New deal: ${d.deal_name}`,
-      subtitle: (d.athletes as { name: string } | null)?.name || 'Unknown',
+      subtitle: d.athletes?.name || 'Unknown',
       timestamp: d.created_at,
       icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
       color: 'text-gray-500 bg-gray-100',
@@ -165,7 +170,7 @@ export default async function DashboardPage() {
       id: `brand-${b.id}`,
       type: 'brand' as const,
       title: `Brand outreach: ${b.brand_name}`,
-      subtitle: (b.athletes as { name: string } | null)?.name || 'Unknown',
+      subtitle: b.athletes?.name || 'Unknown',
       timestamp: b.created_at,
       icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
       color: 'text-gray-500 bg-gray-100',
@@ -175,7 +180,7 @@ export default async function DashboardPage() {
       id: `doc-${d.id}`,
       type: 'document' as const,
       title: `Document uploaded`,
-      subtitle: `${d.name} for ${(d.athletes as { name: string } | null)?.name || 'Unknown'}`,
+      subtitle: `${d.name} for ${d.athletes?.name || 'Unknown'}`,
       timestamp: d.created_at,
       icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
       color: 'text-gray-500 bg-gray-100',
@@ -203,7 +208,7 @@ export default async function DashboardPage() {
   const { data: activeDealsData } = await supabase
     .from('financial_tracking')
     .select('deal_value')
-    .eq('payment_status', 'pending')
+    .eq('payment_status', 'pending') as unknown as { data: { deal_value: number }[] | null }
   const activeDealsValue = activeDealsData?.reduce((sum, d) => sum + Number(d.deal_value), 0) ?? 0
 
   // Fetch active brand discussions

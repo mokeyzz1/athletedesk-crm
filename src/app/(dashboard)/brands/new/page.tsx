@@ -21,7 +21,7 @@ export default function NewBrandOutreachPage() {
         const { data: userData } = await supabase
           .from('users')
           .select('*')
-          .eq('id', user.id)
+          .eq('google_sso_id', user.id)
           .single()
         if (userData) setCurrentUser(userData as User)
       }
@@ -78,9 +78,11 @@ export default function NewBrandOutreachPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">New Brand Outreach</h1>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">New Brand Outreach</h1>
         <p className="text-gray-600">Log a new brand partnership opportunity</p>
       </div>
 
@@ -234,6 +236,8 @@ export default function NewBrandOutreachPage() {
           </button>
         </div>
       </form>
+        </div>
+      </div>
     </div>
   )
 }

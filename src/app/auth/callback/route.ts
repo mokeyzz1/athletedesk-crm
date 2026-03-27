@@ -28,7 +28,11 @@ export async function GET(request: Request) {
           avatar_url: data.user.user_metadata.avatar_url,
           role: 'intern', // Default role, admin can upgrade
         }
-        await supabase.from('users').insert(newUser as never)
+        const { error: insertError } = await supabase.from('users').insert(newUser as never)
+        if (insertError) {
+          console.error('Failed to create user:', insertError)
+          return NextResponse.redirect(`${origin}/login?error=Failed to create user profile`)
+        }
       } else {
         // Update avatar_url on every login to keep it fresh
         await supabase

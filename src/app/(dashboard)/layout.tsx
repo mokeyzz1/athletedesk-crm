@@ -27,7 +27,10 @@ export default async function DashboardLayout({
   const profile = data as User | null
 
   if (!profile) {
-    redirect('/login')
+    // User is authenticated but has no profile - this shouldn't happen
+    // Sign them out and redirect to login to try again
+    await supabase.auth.signOut()
+    redirect('/login?error=Profile not found. Please sign in again.')
   }
 
   return (

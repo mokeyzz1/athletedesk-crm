@@ -6,6 +6,7 @@ import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } fr
 import { AthleteDocuments } from './athlete-documents'
 import { SendEmailButton } from './send-email-button'
 import { EditAthleteButton } from '@/components/athletes/edit-athlete-button'
+import { PipelineStatusCard } from './pipeline-status-card'
 
 interface AthletePageProps {
   params: Promise<{ id: string }>
@@ -397,43 +398,7 @@ export default async function AthletePage({ params }: AthletePageProps) {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Pipeline Status */}
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pipeline Status</h2>
-            {pipeline ? (
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm text-gray-500">Stage</span>
-                  <p className="text-sm font-medium text-gray-900 capitalize">
-                    {pipeline.pipeline_stage.replace(/_/g, ' ')}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-500">Priority</span>
-                  <p className="capitalize">
-                    <span className={`badge-${pipeline.priority === 'high' ? 'red' : pipeline.priority === 'medium' ? 'yellow' : 'gray'}`}>
-                      {pipeline.priority}
-                    </span>
-                  </p>
-                </div>
-                {pipeline.last_contact_date && (
-                  <div>
-                    <span className="text-sm text-gray-500">Last Contact</span>
-                    <p className="text-sm text-gray-900">
-                      {new Date(pipeline.last_contact_date).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-                {pipeline.next_action && (
-                  <div>
-                    <span className="text-sm text-gray-500">Next Action</span>
-                    <p className="text-sm text-gray-900">{pipeline.next_action}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-sm">Not in pipeline</p>
-            )}
-          </div>
+          <PipelineStatusCard pipeline={pipeline} />
 
           {/* Assigned Staff */}
           <div className="card">

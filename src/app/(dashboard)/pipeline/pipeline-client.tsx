@@ -48,15 +48,26 @@ const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string; borde
   { key: 'signed_client', label: 'Signed', color: 'bg-green-50', borderColor: 'border-green-300' },
 ]
 
-function PipelineCard({ item, isDragging, onEditClick }: { item: PipelineWithAthlete; isDragging?: boolean; onEditClick?: (athleteId: string) => void }) {
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'border-l-red-500'
-      case 'medium': return 'border-l-yellow-500'
-      case 'low': return 'border-l-gray-400'
-      default: return 'border-l-gray-300'
-    }
-  }
+function PipelineCard({
+  item,
+  isDragging,
+  onEditClick,
+  onPriorityChange
+}: {
+  item: PipelineWithAthlete
+  isDragging?: boolean
+  onEditClick?: (athleteId: string) => void
+  onPriorityChange?: (pipelineId: string, newPriority: 'high' | 'medium' | 'low') => void
+}) {
+  const [showPriorityMenu, setShowPriorityMenu] = useState(false)
+
+  const priorities: { value: 'high' | 'medium' | 'low'; label: string; bgColor: string; textColor: string }[] = [
+    { value: 'high', label: 'High', bgColor: 'bg-red-50', textColor: 'text-red-700' },
+    { value: 'medium', label: 'Medium', bgColor: 'bg-yellow-50', textColor: 'text-yellow-700' },
+    { value: 'low', label: 'Low', bgColor: 'bg-gray-100', textColor: 'text-gray-600' },
+  ]
+
+  const currentPriority = priorities.find(p => p.value === item.priority) || priorities[1]
 
   return (
     <div
@@ -82,13 +93,52 @@ function PipelineCard({ item, isDragging, onEditClick }: { item: PipelineWithAth
         </div>
       )}
       <div className="mt-2 flex items-center justify-between">
-        <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-          item.priority === 'high' ? 'bg-red-50 text-red-700' :
-          item.priority === 'medium' ? 'bg-yellow-50 text-yellow-700' :
-          'bg-gray-100 text-gray-600'
-        }`}>
-          {item.priority}
-        </span>
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowPriorityMenu(!showPriorityMenu)
+            }}
+            className={`text-xs px-2 py-0.5 rounded font-medium cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 ${currentPriority.bgColor} ${currentPriority.textColor}`}
+          >
+            {item.priority}
+          </button>
+          {showPriorityMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowPriorityMenu(false)
+                }}
+              />
+              <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 py-1 min-w-[100px]">
+                {priorities.map((p) => (
+                  <button
+                    key={p.value}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (onPriorityChange && p.value !== item.priority) {
+                        onPriorityChange(item.id, p.value)
+                      }
+                      setShowPriorityMenu(false)
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-gray-50 flex items-center gap-2 ${
+                      p.value === item.priority ? 'bg-gray-50' : ''
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${
+                      p.value === 'high' ? 'bg-red-500' :
+                      p.value === 'medium' ? 'bg-yellow-500' :
+                      'bg-gray-400'
+                    }`} />
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {onEditClick && (
             <button
@@ -114,7 +164,15 @@ function PipelineCard({ item, isDragging, onEditClick }: { item: PipelineWithAth
   )
 }
 
-function SortableCard({ item, onEditClick }: { item: PipelineWithAthlete; onEditClick?: (athleteId: string) => void }) {
+function SortableCard({
+  item,
+  onEditClick,
+  onPriorityChange
+}: {
+  item: PipelineWithAthlete
+  onEditClick?: (athleteId: string) => void
+  onPriorityChange?: (pipelineId: string, newPriority: 'high' | 'medium' | 'low') => void
+}) {
   const {
     attributes,
     listeners,
@@ -138,7 +196,7 @@ function SortableCard({ item, onEditClick }: { item: PipelineWithAthlete; onEdit
       {...listeners}
       className="cursor-grab active:cursor-grabbing"
     >
-      <PipelineCard item={item} onEditClick={onEditClick} />
+      <PipelineCard item={item} onEditClick={onEditClick} onPriorityChange={onPriorityChange} />
     </div>
   )
 }
@@ -147,10 +205,12 @@ function StageColumn({
   stage,
   items,
   onEditClick,
+  onPriorityChange,
 }: {
   stage: typeof PIPELINE_STAGES[number]
   items: PipelineWithAthlete[]
   onEditClick?: (athleteId: string) => void
+  onPriorityChange?: (pipelineId: string, newPriority: 'high' | 'medium' | 'low') => void
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `stage-${stage.key}`,
@@ -176,7 +236,7 @@ function StageColumn({
         <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {items.map((item) => (
-              <SortableCard key={item.id} item={item} onEditClick={onEditClick} />
+              <SortableCard key={item.id} item={item} onEditClick={onEditClick} onPriorityChange={onPriorityChange} />
             ))}
           </div>
         </SortableContext>
@@ -214,6 +274,35 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
   const handleDragStart = (event: DragStartEvent) => {
     const item = pipelineData.find((p) => p.id === event.active.id)
     if (item) setActiveItem(item)
+  }
+
+  const handlePriorityChange = async (pipelineId: string, newPriority: 'high' | 'medium' | 'low') => {
+    // Optimistic update
+    setPipelineData((prev) =>
+      prev.map((item) =>
+        item.id === pipelineId ? { ...item, priority: newPriority } : item
+      )
+    )
+
+    // Update in database
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('recruiting_pipeline')
+      .update({ priority: newPriority } as never)
+      .eq('id', pipelineId)
+
+    if (error) {
+      // Revert on error
+      const originalItem = pipelineData.find(p => p.id === pipelineId)
+      if (originalItem) {
+        setPipelineData((prev) =>
+          prev.map((item) =>
+            item.id === pipelineId ? { ...item, priority: originalItem.priority } : item
+          )
+        )
+      }
+      console.error('Failed to update priority:', error)
+    }
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -300,7 +389,7 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
           >
             <div className="flex gap-4 overflow-x-auto pb-4">
               {stageGroups.map((stage) => (
-                <StageColumn key={stage.key} stage={stage} items={stage.items} onEditClick={openAthletePanel} />
+                <StageColumn key={stage.key} stage={stage} items={stage.items} onEditClick={openAthletePanel} onPriorityChange={handlePriorityChange} />
               ))}
             </div>
             <DragOverlay>

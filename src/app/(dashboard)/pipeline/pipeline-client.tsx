@@ -93,7 +93,7 @@ function PipelineCard({
         </div>
       )}
       <div className="mt-2 flex items-center justify-between">
-        <div className="relative">
+        <div className="relative" onPointerDown={(e) => e.stopPropagation()}>
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -139,7 +139,7 @@ function PipelineCard({
             </>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()}>
           {onEditClick && (
             <button
               onClick={(e) => {

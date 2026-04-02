@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { AthleteWithPipeline } from '@/lib/database.types'
@@ -8,6 +8,7 @@ import { AthleteImportModal } from '@/components/import/athlete-import-modal'
 import { ExportButtons } from '@/components/export/export-buttons'
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } from '@/lib/sport-fields'
+import { usePipelineStore } from '@/stores/pipeline-store'
 
 interface AthletesClientProps {
   athletes: AthleteWithPipeline[] | null
@@ -45,7 +46,8 @@ const athleteExportColumns = [
 type SortColumn = 'name' | 'sport' | 'school' | 'status' | 'pipeline' | 'priority' | 'social' | 'marketability'
 type SortDirection = 'asc' | 'desc'
 
-export function AthletesClient({ athletes }: AthletesClientProps) {
+export function AthletesClient({ athletes: initialAthletes }: AthletesClientProps) {
+  const [athletes, setAthletes] = useState(initialAthletes)
   const [showImportModal, setShowImportModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sportFilter, setSportFilter] = useState('')
@@ -54,8 +56,28 @@ export function AthletesClient({ athletes }: AthletesClientProps) {
   const [portalFilter, setPortalFilter] = useState('')
   const [sortColumn, setSortColumn] = useState<SortColumn>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [openPriorityMenu, setOpenPriorityMenu] = useState<string | null>(null)
   const router = useRouter()
   const { openAthletePanel } = useAthletePanel()
+  const { updatePriority, pipelines } = usePipelineStore()
+
+  // Sync with store changes
+  useEffect(() => {
+    if (pipelines.size > 0) {
+      setAthletes(prev => prev?.map(a => {
+        const pipelineData = pipelines.get(a.id)
+        if (pipelineData) {
+          return { ...a, priority: pipelineData.priority, pipeline_stage: pipelineData.pipeline_stage }
+        }
+        return a
+      }) || null)
+    }
+  }, [pipelines])
+
+  const handlePriorityChange = async (athleteId: string, newPriority: 'high' | 'medium' | 'low') => {
+    setOpenPriorityMenu(null)
+    await updatePriority(athleteId, newPriority)
+  }
 
   // Get unique values for filters
   const sports = useMemo(() => {
@@ -513,11 +535,39 @@ export function AthletesClient({ athletes }: AthletesClientProps) {
                               <span className="text-sm text-gray-400">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {athlete.priority ? (
-                              <span className={getPriorityBadge(athlete.priority)}>
-                                {athlete.priority}
-                              </span>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                            {athlete.priority && athlete.pipeline_stage ? (
+                              <div className="relative">
+                                <button
+                                  onClick={() => setOpenPriorityMenu(openPriorityMenu === athlete.id ? null : athlete.id)}
+                                  className={`${getPriorityBadge(athlete.priority)} cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300`}
+                                >
+                                  {athlete.priority}
+                                </button>
+                                {openPriorityMenu === athlete.id && (
+                                  <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setOpenPriorityMenu(null)} />
+                                    <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 py-1 min-w-[100px]">
+                                      {(['high', 'medium', 'low'] as const).map((p) => (
+                                        <button
+                                          key={p}
+                                          onClick={() => handlePriorityChange(athlete.id, p)}
+                                          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2 ${
+                                            p === athlete.priority ? 'bg-gray-50' : ''
+                                          }`}
+                                        >
+                                          <span className={`w-2 h-2 rounded-full ${
+                                            p === 'high' ? 'bg-red-500' :
+                                            p === 'medium' ? 'bg-yellow-500' :
+                                            'bg-gray-400'
+                                          }`} />
+                                          {p.charAt(0).toUpperCase() + p.slice(1)}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-sm text-gray-400">-</span>
                             )}

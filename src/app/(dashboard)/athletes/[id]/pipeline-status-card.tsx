@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import type { RecruitingPipeline } from '@/lib/database.types'
+import { useState, useEffect } from 'react'
+import { usePipelineStore } from '@/stores/pipeline-store'
+import type { RecruitingPipeline, PipelineStage } from '@/lib/database.types'
 
 interface PipelineStatusCardProps {
   pipeline: RecruitingPipeline | null
@@ -12,6 +12,33 @@ export function PipelineStatusCard({ pipeline: initialPipeline }: PipelineStatus
   const [pipeline, setPipeline] = useState(initialPipeline)
   const [showPriorityMenu, setShowPriorityMenu] = useState(false)
   const [showStageMenu, setShowStageMenu] = useState(false)
+  const { updatePriority, updateStage, pipelines, setPipelines } = usePipelineStore()
+
+  // Initialize store if this is the first page loaded
+  useEffect(() => {
+    if (initialPipeline && pipelines.size === 0) {
+      setPipelines([{
+        id: initialPipeline.id,
+        athlete_id: initialPipeline.athlete_id,
+        priority: initialPipeline.priority,
+        pipeline_stage: initialPipeline.pipeline_stage,
+      }])
+    }
+  }, [initialPipeline, pipelines.size, setPipelines])
+
+  // Sync with store changes
+  useEffect(() => {
+    if (initialPipeline) {
+      const storeData = pipelines.get(initialPipeline.athlete_id)
+      if (storeData) {
+        setPipeline(prev => prev ? {
+          ...prev,
+          priority: storeData.priority,
+          pipeline_stage: storeData.pipeline_stage,
+        } : null)
+      }
+    }
+  }, [pipelines, initialPipeline])
 
   const priorities: { value: 'high' | 'medium' | 'low'; label: string; badgeClass: string }[] = [
     { value: 'high', label: 'High', badgeClass: 'badge-red' },
@@ -34,21 +61,8 @@ export function PipelineStatusCard({ pipeline: initialPipeline }: PipelineStatus
       setShowPriorityMenu(false)
       return
     }
-
-    const oldPriority = pipeline.priority
-    setPipeline({ ...pipeline, priority: newPriority })
     setShowPriorityMenu(false)
-
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('recruiting_pipeline')
-      .update({ priority: newPriority } as never)
-      .eq('id', pipeline.id)
-
-    if (error) {
-      setPipeline({ ...pipeline, priority: oldPriority })
-      console.error('Failed to update priority:', error)
-    }
+    await updatePriority(pipeline.athlete_id, newPriority)
   }
 
   const handleStageChange = async (newStage: string) => {
@@ -56,21 +70,8 @@ export function PipelineStatusCard({ pipeline: initialPipeline }: PipelineStatus
       setShowStageMenu(false)
       return
     }
-
-    const oldStage = pipeline.pipeline_stage
-    setPipeline({ ...pipeline, pipeline_stage: newStage as typeof pipeline.pipeline_stage })
     setShowStageMenu(false)
-
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('recruiting_pipeline')
-      .update({ pipeline_stage: newStage } as never)
-      .eq('id', pipeline.id)
-
-    if (error) {
-      setPipeline({ ...pipeline, pipeline_stage: oldStage })
-      console.error('Failed to update stage:', error)
-    }
+    await updateStage(pipeline.athlete_id, newStage as PipelineStage)
   }
 
   const currentPriority = priorities.find(p => p.value === pipeline?.priority) || priorities[1]

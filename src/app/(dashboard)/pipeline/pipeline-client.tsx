@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   DndContext,
@@ -20,8 +20,8 @@ import {
 } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { createClient } from '@/lib/supabase/client'
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
+import { usePipelineStore } from '@/stores/pipeline-store'
 import type { RecruitingPipeline, PipelineStage } from '@/lib/database.types'
 
 interface PipelineWithAthlete extends RecruitingPipeline {
@@ -57,7 +57,7 @@ function PipelineCard({
   item: PipelineWithAthlete
   isDragging?: boolean
   onEditClick?: (athleteId: string) => void
-  onPriorityChange?: (pipelineId: string, newPriority: 'high' | 'medium' | 'low') => void
+  onPriorityChange?: (athleteId: string, newPriority: 'high' | 'medium' | 'low') => void
 }) {
   const [showPriorityMenu, setShowPriorityMenu] = useState(false)
 
@@ -119,7 +119,7 @@ function PipelineCard({
                     onClick={(e) => {
                       e.stopPropagation()
                       if (onPriorityChange && p.value !== item.priority) {
-                        onPriorityChange(item.id, p.value)
+                        onPriorityChange(item.athlete_id, p.value)
                       }
                       setShowPriorityMenu(false)
                     }}
@@ -254,8 +254,36 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
   const [pipelineData, setPipelineData] = useState<PipelineWithAthlete[]>(initialData)
   const [activeItem, setActiveItem] = useState<PipelineWithAthlete | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
-  const supabase = createClient()
   const { openAthletePanel } = useAthletePanel()
+  const { setPipelines, updatePriority, updateStage } = usePipelineStore()
+
+  // Initialize store with pipeline data
+  useEffect(() => {
+    setPipelines(initialData.map(p => ({
+      id: p.id,
+      athlete_id: p.athlete_id,
+      priority: p.priority,
+      pipeline_stage: p.pipeline_stage,
+    })))
+  }, [initialData, setPipelines])
+
+  // Subscribe to store changes
+  const pipelines = usePipelineStore(state => state.pipelines)
+
+  // Update local state when store changes
+  useEffect(() => {
+    setPipelineData(prev => prev.map(item => {
+      const storeData = pipelines.get(item.athlete_id)
+      if (storeData) {
+        return {
+          ...item,
+          priority: storeData.priority,
+          pipeline_stage: storeData.pipeline_stage,
+        }
+      }
+      return item
+    }))
+  }, [pipelines])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -276,33 +304,8 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
     if (item) setActiveItem(item)
   }
 
-  const handlePriorityChange = async (pipelineId: string, newPriority: 'high' | 'medium' | 'low') => {
-    // Optimistic update
-    setPipelineData((prev) =>
-      prev.map((item) =>
-        item.id === pipelineId ? { ...item, priority: newPriority } : item
-      )
-    )
-
-    // Update in database
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('recruiting_pipeline')
-      .update({ priority: newPriority } as never)
-      .eq('id', pipelineId)
-
-    if (error) {
-      // Revert on error
-      const originalItem = pipelineData.find(p => p.id === pipelineId)
-      if (originalItem) {
-        setPipelineData((prev) =>
-          prev.map((item) =>
-            item.id === pipelineId ? { ...item, priority: originalItem.priority } : item
-          )
-        )
-      }
-      console.error('Failed to update priority:', error)
-    }
+  const handlePriorityChange = async (athleteId: string, newPriority: 'high' | 'medium' | 'low') => {
+    await updatePriority(athleteId, newPriority)
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -331,29 +334,8 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
     // If dropped in the same stage, no need to update
     if (!newStage || newStage === activeItem.pipeline_stage) return
 
-    // Optimistic update
-    setPipelineData((prev) =>
-      prev.map((item) =>
-        item.id === active.id ? { ...item, pipeline_stage: newStage! } : item
-      )
-    )
-
-    // Update in database
     setIsUpdating(true)
-    const { error } = await supabase
-      .from('recruiting_pipeline')
-      .update({ pipeline_stage: newStage } as never)
-      .eq('id', active.id)
-
-    if (error) {
-      // Revert on error
-      setPipelineData((prev) =>
-        prev.map((item) =>
-          item.id === active.id ? { ...item, pipeline_stage: activeItem.pipeline_stage } : item
-        )
-      )
-      console.error('Failed to update pipeline stage:', error)
-    }
+    await updateStage(activeItem.athlete_id, newStage)
     setIsUpdating(false)
   }
 

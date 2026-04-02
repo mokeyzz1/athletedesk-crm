@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { RosterClient } from './roster-client'
+import type { DealType } from '@/lib/database.types'
 
-interface RosterAthlete {
+export interface RosterAthlete {
   id: string
   name: string
   sport: string
@@ -16,6 +17,11 @@ interface RosterAthlete {
   } | null
   assigned_agent_id: string | null
   agent_name: string | null
+  // Two deal tracks
+  revenue_share_total: number
+  revenue_share_count: number
+  marketing_brand_total: number
+  marketing_brand_count: number
   total_deal_value: number
   deal_count: number
 }
@@ -56,41 +62,61 @@ export default async function RosterPage() {
   }
   const athletes = (pipelineData?.map(p => p.athletes).filter(Boolean) || []) as AthleteFromQuery[]
 
-  // Get deal summaries for signed athletes
+  // Get deal summaries for signed athletes with deal_type
   const { data: deals } = await supabase
     .from('financial_tracking')
-    .select('athlete_id, deal_value')
+    .select('athlete_id, deal_value, deal_type')
 
-  // Get brand outreach with closed deals
+  // Get brand outreach with closed deals (these are marketing_brand deals)
   const { data: brandDeals } = await supabase
     .from('brand_outreach')
     .select('athlete_id, deal_value')
     .eq('response_status', 'deal_closed')
 
-  // Calculate totals per athlete
-  const dealSummary = new Map<string, { total: number; count: number }>()
+  // Calculate totals per athlete by deal type
+  type DealSummary = {
+    revenue_share: { total: number; count: number }
+    marketing_brand: { total: number; count: number }
+  }
+  const dealSummary = new Map<string, DealSummary>()
+
+  const getOrCreate = (athleteId: string): DealSummary => {
+    if (!dealSummary.has(athleteId)) {
+      dealSummary.set(athleteId, {
+        revenue_share: { total: 0, count: 0 },
+        marketing_brand: { total: 0, count: 0 },
+      })
+    }
+    return dealSummary.get(athleteId)!
+  }
 
   // Add financial tracking deals
   deals?.forEach(deal => {
-    const existing = dealSummary.get(deal.athlete_id) || { total: 0, count: 0 }
-    existing.total += deal.deal_value || 0
-    existing.count += 1
-    dealSummary.set(deal.athlete_id, existing)
+    const summary = getOrCreate(deal.athlete_id)
+    const dealType: DealType = deal.deal_type || 'marketing_brand'
+    summary[dealType].total += deal.deal_value || 0
+    summary[dealType].count += 1
   })
 
-  // Add brand outreach deals (avoid double counting if already in financial tracking)
+  // Add brand outreach deals (these are always marketing_brand type)
   brandDeals?.forEach(deal => {
-    if (!deals?.some(d => d.athlete_id === deal.athlete_id)) {
-      const existing = dealSummary.get(deal.athlete_id) || { total: 0, count: 0 }
-      existing.total += deal.deal_value || 0
-      existing.count += 1
-      dealSummary.set(deal.athlete_id, existing)
+    // Check if this deal is already tracked in financial_tracking to avoid double counting
+    const existingInFinancial = deals?.some(d =>
+      d.athlete_id === deal.athlete_id && d.deal_value === deal.deal_value
+    )
+    if (!existingInFinancial) {
+      const summary = getOrCreate(deal.athlete_id)
+      summary.marketing_brand.total += deal.deal_value || 0
+      summary.marketing_brand.count += 1
     }
   })
 
   // Transform data for client
   const rosterData: RosterAthlete[] = athletes.map(athlete => {
-    const summary = dealSummary.get(athlete.id) || { total: 0, count: 0 }
+    const summary = dealSummary.get(athlete.id) || {
+      revenue_share: { total: 0, count: 0 },
+      marketing_brand: { total: 0, count: 0 },
+    }
     return {
       id: athlete.id,
       name: athlete.name,
@@ -100,8 +126,12 @@ export default async function RosterPage() {
       social_media: athlete.social_media,
       assigned_agent_id: athlete.assigned_agent_id,
       agent_name: athlete.users?.name || null,
-      total_deal_value: summary.total,
-      deal_count: summary.count,
+      revenue_share_total: summary.revenue_share.total,
+      revenue_share_count: summary.revenue_share.count,
+      marketing_brand_total: summary.marketing_brand.total,
+      marketing_brand_count: summary.marketing_brand.count,
+      total_deal_value: summary.revenue_share.total + summary.marketing_brand.total,
+      deal_count: summary.revenue_share.count + summary.marketing_brand.count,
     }
   })
 

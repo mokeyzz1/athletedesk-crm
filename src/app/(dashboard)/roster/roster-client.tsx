@@ -2,38 +2,29 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ExportButtons } from '@/components/export/export-buttons'
+import { AthleteImportModal } from '@/components/import/athlete-import-modal'
 
-interface RosterAthlete {
-  id: string
-  name: string
-  sport: string
-  school: string | null
-  position: string | null
-  social_media: {
-    instagram_followers?: number
-    twitter_followers?: number
-    tiktok_followers?: number
-    youtube_subscribers?: number
-    nil_valuation?: number
-  } | null
-  assigned_agent_id: string | null
-  agent_name: string | null
-  total_deal_value: number
-  deal_count: number
-}
+import type { RosterAthlete } from './page'
 
 interface RosterClientProps {
   athletes: RosterAthlete[]
 }
 
-type SortColumn = 'name' | 'sport' | 'school' | 'agent' | 'deals' | 'reach'
+type SortColumn = 'name' | 'sport' | 'school' | 'agent' | 'deals' | 'revenue_share' | 'marketing_brand' | 'reach'
 type SortDirection = 'asc' | 'desc'
 
 export function RosterClient({ athletes }: RosterClientProps) {
   const [sortColumn, setSortColumn] = useState<SortColumn>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [sportFilter, setSportFilter] = useState<string>('')
+  const [showImportModal, setShowImportModal] = useState(false)
+  const router = useRouter()
+
+  const handleImportSuccess = () => {
+    router.refresh()
+  }
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -106,6 +97,14 @@ export function RosterClient({ athletes }: RosterClientProps) {
           aVal = a.total_deal_value
           bVal = b.total_deal_value
           break
+        case 'revenue_share':
+          aVal = a.revenue_share_total
+          bVal = b.revenue_share_total
+          break
+        case 'marketing_brand':
+          aVal = a.marketing_brand_total
+          bVal = b.marketing_brand_total
+          break
         case 'reach':
           aVal = calculateSocialReach(a.social_media)
           bVal = calculateSocialReach(b.social_media)
@@ -128,6 +127,8 @@ export function RosterClient({ athletes }: RosterClientProps) {
 
   // Calculate totals
   const totalDealValue = athletes.reduce((sum, a) => sum + a.total_deal_value, 0)
+  const totalRevenueShare = athletes.reduce((sum, a) => sum + a.revenue_share_total, 0)
+  const totalMarketingBrand = athletes.reduce((sum, a) => sum + a.marketing_brand_total, 0)
   const totalReach = athletes.reduce((sum, a) => sum + calculateSocialReach(a.social_media), 0)
 
   // Export data
@@ -137,6 +138,10 @@ export function RosterClient({ athletes }: RosterClientProps) {
     school: a.school || '',
     position: a.position || '',
     agent: a.agent_name || '',
+    revenue_share: formatCurrency(a.revenue_share_total),
+    revenue_share_count: a.revenue_share_count,
+    marketing_brand: formatCurrency(a.marketing_brand_total),
+    marketing_brand_count: a.marketing_brand_count,
     total_deals: formatCurrency(a.total_deal_value),
     deal_count: a.deal_count,
     social_reach: calculateSocialReach(a.social_media),
@@ -149,8 +154,12 @@ export function RosterClient({ athletes }: RosterClientProps) {
     { key: 'school' as const, header: 'School' },
     { key: 'position' as const, header: 'Position' },
     { key: 'agent' as const, header: 'Agent' },
+    { key: 'revenue_share' as const, header: 'Revenue Share Value' },
+    { key: 'revenue_share_count' as const, header: 'Revenue Share Deals' },
+    { key: 'marketing_brand' as const, header: 'Marketing/Brand Value' },
+    { key: 'marketing_brand_count' as const, header: 'Marketing/Brand Deals' },
     { key: 'total_deals' as const, header: 'Total Deal Value' },
-    { key: 'deal_count' as const, header: 'Deal Count' },
+    { key: 'deal_count' as const, header: 'Total Deal Count' },
     { key: 'social_reach' as const, header: 'Social Reach' },
     { key: 'nil_valuation' as const, header: 'NIL Valuation' },
   ]
@@ -172,6 +181,15 @@ export function RosterClient({ athletes }: RosterClientProps) {
               sheetName="Roster"
             />
           )}
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn-secondary text-sm"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Import Roster
+          </button>
         </div>
       </div>
 
@@ -180,18 +198,22 @@ export function RosterClient({ athletes }: RosterClientProps) {
         {athletes.length > 0 ? (
           <>
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <div className="card text-center">
                 <p className="text-3xl font-bold text-gray-900">{athletes.length}</p>
                 <p className="text-sm text-gray-500">Signed Athletes</p>
               </div>
               <div className="card text-center">
-                <p className="text-3xl font-bold text-green-600">{formatCurrency(totalDealValue)}</p>
-                <p className="text-sm text-gray-500">Total Deal Value</p>
+                <p className="text-3xl font-bold text-purple-600">{formatCurrency(totalRevenueShare)}</p>
+                <p className="text-sm text-gray-500">Revenue Share / Scholarship</p>
+              </div>
+              <div className="card text-center">
+                <p className="text-3xl font-bold text-green-600">{formatCurrency(totalMarketingBrand)}</p>
+                <p className="text-sm text-gray-500">Marketing / Brand Deals</p>
               </div>
               <div className="card text-center">
                 <p className="text-3xl font-bold text-blue-600">{formatNumber(totalReach)}</p>
-                <p className="text-sm text-gray-500">Combined Social Reach</p>
+                <p className="text-sm text-gray-500">Social Reach</p>
               </div>
             </div>
 
@@ -234,8 +256,11 @@ export function RosterClient({ athletes }: RosterClientProps) {
                     <th onClick={() => handleSort('agent')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
                       <div className="flex items-center gap-1">Agent <SortIcon column="agent" /></div>
                     </th>
-                    <th onClick={() => handleSort('deals')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
-                      <div className="flex items-center gap-1">Deals <SortIcon column="deals" /></div>
+                    <th onClick={() => handleSort('revenue_share')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
+                      <div className="flex items-center gap-1">Revenue Share <SortIcon column="revenue_share" /></div>
+                    </th>
+                    <th onClick={() => handleSort('marketing_brand')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
+                      <div className="flex items-center gap-1">Marketing/Brand <SortIcon column="marketing_brand" /></div>
                     </th>
                     <th onClick={() => handleSort('reach')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
                       <div className="flex items-center gap-1">Social Reach <SortIcon column="reach" /></div>
@@ -268,12 +293,22 @@ export function RosterClient({ athletes }: RosterClientProps) {
                           {athlete.agent_name || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formatCurrency(athlete.total_deal_value)}
+                          <div className="text-sm font-medium text-purple-700">
+                            {athlete.revenue_share_total > 0 ? formatCurrency(athlete.revenue_share_total) : '-'}
                           </div>
-                          {athlete.deal_count > 0 && (
+                          {athlete.revenue_share_count > 0 && (
                             <div className="text-xs text-gray-500">
-                              {athlete.deal_count} deal{athlete.deal_count > 1 ? 's' : ''}
+                              {athlete.revenue_share_count} deal{athlete.revenue_share_count > 1 ? 's' : ''}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-green-700">
+                            {athlete.marketing_brand_total > 0 ? formatCurrency(athlete.marketing_brand_total) : '-'}
+                          </div>
+                          {athlete.marketing_brand_count > 0 && (
+                            <div className="text-xs text-gray-500">
+                              {athlete.marketing_brand_count} deal{athlete.marketing_brand_count > 1 ? 's' : ''}
                             </div>
                           )}
                         </td>
@@ -314,6 +349,14 @@ export function RosterClient({ athletes }: RosterClientProps) {
           </div>
         )}
       </div>
+
+      <AthleteImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={handleImportSuccess}
+        pipelineStage="signed_client"
+        title="Import Roster"
+      />
     </div>
   )
 }

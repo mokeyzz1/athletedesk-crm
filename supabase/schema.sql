@@ -28,6 +28,11 @@ CREATE TYPE response_status AS ENUM ('no_response', 'interested', 'not_intereste
 CREATE TYPE payment_status AS ENUM ('pending', 'invoiced', 'paid');
 CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'done');
 
+-- Recruiting database enums
+CREATE TYPE class_year AS ENUM ('2025', '2026', '2027', '2028', '2029', '2030', 'pro', 'n_a');
+CREATE TYPE outreach_status AS ENUM ('not_contacted', 'contacted', 'in_conversation', 'interested', 'committed', 'dead_lead', 'circling_back', 'signed');
+CREATE TYPE deal_type AS ENUM ('revenue_share', 'marketing_brand');
+
 -- ============================================
 -- USERS TABLE
 -- ============================================
@@ -40,7 +45,8 @@ CREATE TABLE users (
   google_sso_id TEXT UNIQUE,
   avatar_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  assigned_regions TEXT[] DEFAULT '{}'
 );
 
 -- Index for faster lookups
@@ -73,7 +79,12 @@ CREATE TABLE athletes (
   social_media JSONB DEFAULT '{}',
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Recruiting database fields
+  class_year class_year DEFAULT 'n_a',
+  region TEXT,
+  outreach_status outreach_status DEFAULT 'not_contacted',
+  last_contacted_date DATE
 );
 
 -- Indexes for athletes
@@ -181,7 +192,8 @@ CREATE TABLE financial_tracking (
   payment_date DATE,
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deal_type deal_type DEFAULT 'marketing_brand'
 );
 
 -- Indexes for financial tracking

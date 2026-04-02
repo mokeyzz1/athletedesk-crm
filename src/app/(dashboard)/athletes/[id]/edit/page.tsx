@@ -3,7 +3,8 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, Athlete, Json } from '@/lib/database.types'
+import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, Athlete, Json, ClassYear, OutreachStatus } from '@/lib/database.types'
+import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
@@ -101,6 +102,10 @@ export default function EditAthletePage() {
       notes: (formData.get('notes') as string) || null,
       sport_specific_stats: Object.keys(filteredStats).length > 0 ? filteredStats as Json : null,
       social_media: Object.keys(filteredSocialMedia).length > 0 ? filteredSocialMedia as Json : null,
+      // Recruiting fields
+      class_year: formData.get('class_year') as ClassYear,
+      region: (formData.get('region') as string) || null,
+      outreach_status: formData.get('outreach_status') as OutreachStatus,
     }
 
     const { error: updateError } = await supabase
@@ -295,6 +300,55 @@ export default function EditAthletePage() {
           values={socialMedia}
           onChange={setSocialMedia}
         />
+
+        {/* Recruiting Information */}
+        <div className="border-t border-gray-200 pt-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recruiting Information</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="class_year" className="label">Class Year *</label>
+              <select
+                name="class_year"
+                id="class_year"
+                required
+                defaultValue={athlete.class_year || 'n_a'}
+                className="mt-1 input"
+              >
+                {CLASS_YEARS.map(cy => (
+                  <option key={cy.value} value={cy.value}>{cy.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="region" className="label">Region</label>
+              <select
+                name="region"
+                id="region"
+                defaultValue={athlete.region || ''}
+                className="mt-1 input"
+              >
+                <option value="">Select Region</option>
+                {REGIONS.map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="outreach_status" className="label">Outreach Status *</label>
+              <select
+                name="outreach_status"
+                id="outreach_status"
+                required
+                defaultValue={athlete.outreach_status || 'not_contacted'}
+                className="mt-1 input"
+              >
+                {OUTREACH_STATUSES.map(os => (
+                  <option key={os.value} value={os.value}>{os.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
 
         {/* Status */}
         <div className="border-t border-gray-200 pt-6">

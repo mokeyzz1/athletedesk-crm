@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { User, UserRole } from '@/lib/database.types'
+import { REGIONS } from '@/lib/database.types'
 
 export default function TeamManagementPage() {
   const router = useRouter()
@@ -19,6 +20,9 @@ export default function TeamManagementPage() {
   const [inviteSuccess, setInviteSuccess] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [deletingUser, setDeletingUser] = useState<string | null>(null)
+  const [editingRegionsUser, setEditingRegionsUser] = useState<User | null>(null)
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([])
+  const [savingRegions, setSavingRegions] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -125,6 +129,39 @@ export default function TeamManagementPage() {
     }
   }
 
+  const openRegionsModal = (user: User) => {
+    setEditingRegionsUser(user)
+    setSelectedRegions(user.assigned_regions || [])
+  }
+
+  const toggleRegion = (region: string) => {
+    setSelectedRegions(prev =>
+      prev.includes(region)
+        ? prev.filter(r => r !== region)
+        : [...prev, region]
+    )
+  }
+
+  const saveRegions = async () => {
+    if (!editingRegionsUser) return
+
+    setSavingRegions(true)
+    const { error } = await supabase
+      .from('users')
+      .update({ assigned_regions: selectedRegions } as never)
+      .eq('id', editingRegionsUser.id)
+
+    if (!error) {
+      setUsers(users.map(u =>
+        u.id === editingRegionsUser.id
+          ? { ...u, assigned_regions: selectedRegions }
+          : u
+      ))
+      setEditingRegionsUser(null)
+    }
+    setSavingRegions(false)
+  }
+
   const getRoleBadge = (role: string) => {
     const roleClasses: Record<string, string> = {
       admin: 'badge-red',
@@ -204,6 +241,9 @@ export default function TeamManagementPage() {
                 Role
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Regions
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Joined
               </th>
               <th className="relative px-6 py-3">
@@ -253,6 +293,19 @@ export default function TeamManagementPage() {
                     </span>
                   )}
                 </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-wrap gap-1">
+                    {user.assigned_regions && user.assigned_regions.length > 0 ? (
+                      user.assigned_regions.map(region => (
+                        <span key={region} className="badge-blue text-xs">
+                          {region}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-400">None</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(user.created_at).toLocaleDateString()}
                 </td>
@@ -264,6 +317,12 @@ export default function TeamManagementPage() {
                         className="text-brand-600 hover:text-brand-900"
                       >
                         Edit Role
+                      </button>
+                      <button
+                        onClick={() => openRegionsModal(user)}
+                        className="text-brand-600 hover:text-brand-900"
+                      >
+                        Edit Regions
                       </button>
                       <button
                         onClick={() => deleteUser(user.id)}
@@ -366,6 +425,65 @@ export default function TeamManagementPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Regions Modal */}
+      {editingRegionsUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Assign Regions
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Select the regions {editingRegionsUser.name} will be responsible for.
+            </p>
+
+            <div className="space-y-2 mb-6">
+              {REGIONS.map(region => (
+                <label
+                  key={region}
+                  className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                    selectedRegions.includes(region)
+                      ? 'border-brand-500 bg-brand-50'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedRegions.includes(region)}
+                    onChange={() => toggleRegion(region)}
+                    className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+                  />
+                  <span className="ml-3 text-sm font-medium text-gray-900">{region}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setEditingRegionsUser(null)}
+                className="btn-secondary"
+                disabled={savingRegions}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveRegions}
+                disabled={savingRegions}
+                className="btn-primary"
+              >
+                {savingRegions ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  'Save Regions'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

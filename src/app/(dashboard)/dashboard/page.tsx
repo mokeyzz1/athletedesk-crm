@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import type { DashboardSummary, PendingFollowUp, Athlete, FinancialTracking, BrandOutreach, Task } from '@/lib/database.types'
+import type { DashboardSummary, PendingFollowUp, Athlete, FinancialTracking, BrandOutreach, Task, OutreachStatus } from '@/lib/database.types'
 import { Greeting } from '@/components/greeting'
+import { REGIONS } from '@/lib/database.types'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -232,6 +233,42 @@ export default async function DashboardPage() {
 
   const userTasks = userTasksData as (Task & { athletes: { name: string } | null })[] | null
 
+  // Fetch recruiting database stats
+  const { data: recruitingData } = await supabase
+    .from('athletes')
+    .select('id, region, outreach_status')
+    .neq('outreach_status', 'signed')
+
+  type RecruitingRow = { id: string; region: string | null; outreach_status: OutreachStatus }
+  const recruits = (recruitingData as RecruitingRow[] | null) || []
+
+  // Calculate recruiting stats
+  const totalRecruits = recruits.length
+  const contactedRecruits = recruits.filter(r => r.outreach_status !== 'not_contacted').length
+  const contactedPercentage = totalRecruits > 0 ? Math.round((contactedRecruits / totalRecruits) * 100) : 0
+
+  // Calculate region stats
+  const regionStatsMap = new Map<string, { total: number; contacted: number }>()
+  recruits.forEach(r => {
+    const region = r.region || 'Unassigned'
+    const current = regionStatsMap.get(region) || { total: 0, contacted: 0 }
+    current.total++
+    if (r.outreach_status !== 'not_contacted') {
+      current.contacted++
+    }
+    regionStatsMap.set(region, current)
+  })
+
+  const regionStats = Array.from(regionStatsMap.entries())
+    .map(([region, stats]) => ({
+      region,
+      total: stats.total,
+      contacted: stats.contacted,
+      percentage: stats.total > 0 ? Math.round((stats.contacted / stats.total) * 100) : 0,
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5) // Top 5 regions
+
   const stats = [
     {
       name: 'Total Athletes',
@@ -314,6 +351,61 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Recruiting Progress Widget */}
+      {totalRecruits > 0 && (
+        <div className="bg-white rounded border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Recruiting Progress</h3>
+              <p className="text-xs text-gray-500">
+                {contactedRecruits} of {totalRecruits} prospects contacted ({contactedPercentage}%)
+              </p>
+            </div>
+            <Link href="/recruiting" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+              View All
+            </Link>
+          </div>
+
+          {/* Overall Progress Bar */}
+          <div className="mb-4">
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all ${
+                  contactedPercentage >= 80 ? 'bg-green-500' :
+                  contactedPercentage >= 50 ? 'bg-yellow-500' :
+                  contactedPercentage >= 25 ? 'bg-orange-500' :
+                  'bg-red-500'
+                }`}
+                style={{ width: `${contactedPercentage}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Region Breakdown */}
+          <div className="space-y-2">
+            {regionStats.map((stat) => (
+              <div key={stat.region} className="flex items-center gap-3">
+                <div className="w-20 text-xs text-gray-600 truncate">{stat.region}</div>
+                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${
+                      stat.percentage >= 80 ? 'bg-green-400' :
+                      stat.percentage >= 50 ? 'bg-yellow-400' :
+                      stat.percentage >= 25 ? 'bg-orange-400' :
+                      'bg-red-400'
+                    }`}
+                    style={{ width: `${stat.percentage}%` }}
+                  />
+                </div>
+                <div className="w-16 text-xs text-gray-500 text-right">
+                  {stat.contacted}/{stat.total}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Revenue Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

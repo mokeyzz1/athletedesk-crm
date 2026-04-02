@@ -25,6 +25,22 @@ export type ResponseStatus = 'no_response' | 'interested' | 'not_interested' | '
 export type PaymentStatus = 'pending' | 'invoiced' | 'paid'
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
 
+// New types for recruiting database
+export type ClassYear = '2025' | '2026' | '2027' | '2028' | '2029' | '2030' | 'pro' | 'n_a'
+export type OutreachStatus = 'not_contacted' | 'contacted' | 'in_conversation' | 'interested' | 'committed' | 'dead_lead' | 'circling_back' | 'signed'
+export type DealType = 'revenue_share' | 'marketing_brand'
+
+// Region constants (not an enum in DB, just common values)
+export const REGIONS = [
+  'Northeast',
+  'Southeast',
+  'Midwest',
+  'Southwest',
+  'West',
+  'International',
+] as const
+export type Region = typeof REGIONS[number] | string
+
 export interface Database {
   public: {
     Tables: {
@@ -38,6 +54,7 @@ export interface Database {
           avatar_url: string | null
           created_at: string
           updated_at: string
+          assigned_regions: string[]
         }
         Insert: {
           id?: string
@@ -48,6 +65,7 @@ export interface Database {
           avatar_url?: string | null
           created_at?: string
           updated_at?: string
+          assigned_regions?: string[]
         }
         Update: {
           id?: string
@@ -58,6 +76,7 @@ export interface Database {
           avatar_url?: string | null
           created_at?: string
           updated_at?: string
+          assigned_regions?: string[]
         }
       }
       athletes: {
@@ -83,6 +102,11 @@ export interface Database {
           notes: string | null
           created_at: string
           updated_at: string
+          // New recruiting fields
+          class_year: ClassYear
+          region: string | null
+          outreach_status: OutreachStatus
+          last_contacted_date: string | null
         }
         Insert: {
           id?: string
@@ -106,6 +130,11 @@ export interface Database {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          // New recruiting fields
+          class_year?: ClassYear
+          region?: string | null
+          outreach_status?: OutreachStatus
+          last_contacted_date?: string | null
         }
         Update: {
           id?: string
@@ -129,6 +158,11 @@ export interface Database {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          // New recruiting fields
+          class_year?: ClassYear
+          region?: string | null
+          outreach_status?: OutreachStatus
+          last_contacted_date?: string | null
         }
       }
       communications_log: {
@@ -280,6 +314,7 @@ export interface Database {
           notes: string | null
           created_at: string
           updated_at: string
+          deal_type: DealType
         }
         Insert: {
           id?: string
@@ -295,6 +330,7 @@ export interface Database {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          deal_type?: DealType
         }
         Update: {
           id?: string
@@ -310,6 +346,7 @@ export interface Database {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          deal_type?: DealType
         }
       }
       documents: {
@@ -446,6 +483,10 @@ export interface Database {
           active_brand_discussions: number
           total_revenue: number
           pending_revenue: number
+          // New recruiting stats
+          total_recruits: number
+          not_contacted: number
+          contacted: number
         }
       }
       athletes_with_pipeline: {
@@ -477,6 +518,22 @@ export interface Database {
           scout_name: string | null
           agent_name: string | null
           marketing_lead_name: string | null
+          // New recruiting fields
+          class_year: ClassYear
+          region: string | null
+          outreach_status: OutreachStatus
+          last_contacted_date: string | null
+        }
+      }
+      recruiting_summary: {
+        Row: {
+          region: string | null
+          class_year: ClassYear | null
+          total_athletes: number
+          not_contacted: number
+          contacted: number
+          signed: number
+          contact_percentage: number | null
         }
       }
       pending_follow_ups: {
@@ -514,6 +571,10 @@ export interface Database {
       response_status: ResponseStatus
       payment_status: PaymentStatus
       task_status: TaskStatus
+      // New recruiting enums
+      class_year: ClassYear
+      outreach_status: OutreachStatus
+      deal_type: DealType
     }
   }
 }
@@ -548,3 +609,32 @@ export type CommentMentionInsert = Database['public']['Tables']['comment_mention
 export type AthleteWithPipeline = Database['public']['Views']['athletes_with_pipeline']['Row']
 export type DashboardSummary = Database['public']['Views']['dashboard_summary']['Row']
 export type PendingFollowUp = Database['public']['Views']['pending_follow_ups']['Row']
+export type RecruitingSummary = Database['public']['Views']['recruiting_summary']['Row']
+
+// Constants for dropdowns
+export const CLASS_YEARS: { value: ClassYear; label: string }[] = [
+  { value: '2025', label: '2025' },
+  { value: '2026', label: '2026' },
+  { value: '2027', label: '2027' },
+  { value: '2028', label: '2028' },
+  { value: '2029', label: '2029' },
+  { value: '2030', label: '2030' },
+  { value: 'pro', label: 'Pro' },
+  { value: 'n_a', label: 'N/A' },
+]
+
+export const OUTREACH_STATUSES: { value: OutreachStatus; label: string }[] = [
+  { value: 'not_contacted', label: 'Not Contacted' },
+  { value: 'contacted', label: 'Contacted' },
+  { value: 'in_conversation', label: 'In Conversation' },
+  { value: 'interested', label: 'Interested' },
+  { value: 'committed', label: 'Committed' },
+  { value: 'dead_lead', label: 'Dead Lead' },
+  { value: 'circling_back', label: 'Circling Back' },
+  { value: 'signed', label: 'Signed' },
+]
+
+export const DEAL_TYPES: { value: DealType; label: string }[] = [
+  { value: 'revenue_share', label: 'Revenue Share / Scholarship' },
+  { value: 'marketing_brand', label: 'Marketing / Brand Deal' },
+]

@@ -179,6 +179,33 @@ export const athleteColumnMappings: Record<string, string> = {
   'recruiting status': 'recruiting_status',
   'status': 'recruiting_status',
   'recruit status': 'recruiting_status',
+  'availability': 'recruiting_status',
+  'availability status': 'recruiting_status',
+
+  // New recruiting fields - class_year
+  'class_year': 'class_year',
+  'class year': 'class_year',
+  'classyear': 'class_year',
+  'class': 'class_year',
+  'graduation class': 'class_year',
+  'grad class': 'class_year',
+  'recruiting class': 'class_year',
+
+  // New recruiting fields - region
+  'region': 'region',
+  'geographic region': 'region',
+  'geo region': 'region',
+  'area': 'region',
+  'territory': 'region',
+  'state region': 'region',
+
+  // New recruiting fields - outreach_status
+  'outreach_status': 'outreach_status',
+  'outreach status': 'outreach_status',
+  'outreach': 'outreach_status',
+  'contact status': 'outreach_status',
+  'contact_status': 'outreach_status',
+  'contacted': 'outreach_status',
 
   // transfer_portal_status
   'transfer_portal_status': 'transfer_portal_status',
@@ -499,6 +526,74 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Record<st
       }
     }
 
+    // Normalize class_year
+    if (normalized.class_year) {
+      const year = String(normalized.class_year).toLowerCase().trim()
+      if (year === '2025' || year.includes('2025')) {
+        normalized.class_year = '2025'
+      } else if (year === '2026' || year.includes('2026')) {
+        normalized.class_year = '2026'
+      } else if (year === '2027' || year.includes('2027')) {
+        normalized.class_year = '2027'
+      } else if (year === '2028' || year.includes('2028')) {
+        normalized.class_year = '2028'
+      } else if (year === '2029' || year.includes('2029')) {
+        normalized.class_year = '2029'
+      } else if (year === '2030' || year.includes('2030')) {
+        normalized.class_year = '2030'
+      } else if (year.includes('pro') || year.includes('professional')) {
+        normalized.class_year = 'pro'
+      } else {
+        normalized.class_year = 'n_a' // default
+      }
+    }
+
+    // Normalize region - match to standard regions or keep custom
+    if (normalized.region) {
+      const region = String(normalized.region).trim()
+      const regionLower = region.toLowerCase()
+      if (regionLower.includes('northeast') || regionLower.includes('north east') || regionLower.includes('ne ') || regionLower === 'ne') {
+        normalized.region = 'Northeast'
+      } else if (regionLower.includes('southeast') || regionLower.includes('south east') || regionLower.includes('se ') || regionLower === 'se') {
+        normalized.region = 'Southeast'
+      } else if (regionLower.includes('midwest') || regionLower.includes('mid west') || regionLower.includes('mw ') || regionLower === 'mw') {
+        normalized.region = 'Midwest'
+      } else if (regionLower.includes('southwest') || regionLower.includes('south west') || regionLower.includes('sw ') || regionLower === 'sw') {
+        normalized.region = 'Southwest'
+      } else if (regionLower === 'west' || regionLower.includes('pacific') || regionLower.includes('western')) {
+        normalized.region = 'West'
+      } else if (regionLower.includes('international') || regionLower.includes('intl') || regionLower.includes('foreign')) {
+        normalized.region = 'International'
+      } else {
+        // Keep original value with proper capitalization
+        normalized.region = region
+      }
+    }
+
+    // Normalize outreach_status
+    if (normalized.outreach_status) {
+      const status = String(normalized.outreach_status).toLowerCase().trim()
+      if (status.includes('not contacted') || status === 'no' || status === 'new' || status === '') {
+        normalized.outreach_status = 'not_contacted'
+      } else if (status.includes('contacted') || status === 'yes' || status === 'reached') {
+        normalized.outreach_status = 'contacted'
+      } else if (status.includes('conversation') || status.includes('talking') || status.includes('in touch')) {
+        normalized.outreach_status = 'in_conversation'
+      } else if (status.includes('interested') || status.includes('warm')) {
+        normalized.outreach_status = 'interested'
+      } else if (status.includes('committed') || status.includes('verbal')) {
+        normalized.outreach_status = 'committed'
+      } else if (status.includes('dead') || status.includes('cold') || status.includes('lost') || status.includes('declined')) {
+        normalized.outreach_status = 'dead_lead'
+      } else if (status.includes('circling') || status.includes('revisit') || status.includes('follow up')) {
+        normalized.outreach_status = 'circling_back'
+      } else if (status.includes('signed') || status.includes('closed')) {
+        normalized.outreach_status = 'signed'
+      } else {
+        normalized.outreach_status = 'not_contacted' // default
+      }
+    }
+
     // Normalize marketability_score to number
     if (normalized.marketability_score !== undefined && normalized.marketability_score !== null && normalized.marketability_score !== '') {
       const score = Number(normalized.marketability_score)
@@ -519,6 +614,8 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Record<st
     if (!normalized.league_level) normalized.league_level = 'college'
     if (!normalized.recruiting_status) normalized.recruiting_status = 'not_recruiting'
     if (!normalized.transfer_portal_status) normalized.transfer_portal_status = 'not_in_portal'
+    if (!normalized.class_year) normalized.class_year = 'n_a'
+    if (!normalized.outreach_status) normalized.outreach_status = 'not_contacted'
 
     // Extract social media fields into social_media JSON
     const socialMedia: Record<string, unknown> = {}

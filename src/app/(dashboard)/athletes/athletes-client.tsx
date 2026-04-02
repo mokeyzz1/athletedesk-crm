@@ -667,6 +667,8 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={handleImportSuccess}
+        pipelineStage="prospect_identified"
+        title="Import Prospects"
       />
     </>
   )

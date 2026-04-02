@@ -14,11 +14,13 @@ interface AthleteImportModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  pipelineStage?: 'prospect_identified' | 'signed_client'
+  title?: string
 }
 
 type ImportStep = 'upload' | 'preview' | 'importing' | 'complete'
 
-export function AthleteImportModal({ isOpen, onClose, onSuccess }: AthleteImportModalProps) {
+export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, title }: AthleteImportModalProps) {
   const [step, setStep] = useState<ImportStep>('upload')
   const [file, setFile] = useState<File | null>(null)
   const [rawData, setRawData] = useState<Record<string, unknown>[]>([])
@@ -81,18 +83,40 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess }: AthleteImport
           notes: row.notes ? String(row.notes) : null,
           social_media: row.social_media ? (row.social_media as Json) : null,
           sport_specific_stats: row.sport_specific_stats ? (row.sport_specific_stats as Json) : null,
+          // New recruiting fields
+          class_year: (row.class_year as AthleteInsert['class_year']) || 'n_a',
+          region: row.region ? String(row.region) : null,
+          outreach_status: (row.outreach_status as AthleteInsert['outreach_status']) || 'not_contacted',
         }))
 
       if (athletesToInsert.length > 0) {
-        const { error } = await supabase
+        const { data: insertedAthletes, error } = await supabase
           .from('athletes')
           .insert(athletesToInsert as never[])
+          .select('id')
 
         if (error) {
           failedCount += athletesToInsert.length
           console.error('Import error:', error)
         } else {
           successCount += athletesToInsert.length
+
+          // If pipelineStage is specified, create pipeline entries for imported athletes
+          if (pipelineStage && insertedAthletes && insertedAthletes.length > 0) {
+            const pipelineEntries = insertedAthletes.map(athlete => ({
+              athlete_id: athlete.id,
+              pipeline_stage: pipelineStage,
+              priority: 'medium' as const,
+            }))
+
+            const { error: pipelineError } = await supabase
+              .from('recruiting_pipeline')
+              .insert(pipelineEntries as never[])
+
+            if (pipelineError) {
+              console.error('Pipeline entry error:', pipelineError)
+            }
+          }
         }
       }
 
@@ -140,7 +164,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess }: AthleteImport
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Import Athletes</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{title || 'Import Athletes'}</h2>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-500">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -192,6 +216,14 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess }: AthleteImport
                   <div className="mt-2 flex flex-wrap gap-2">
                     {['Name', 'Email', 'Phone', 'School', 'Sport', 'Position', 'Level', 'Eligibility Year', 'Status'].map(col => (
                       <span key={col} className="badge-gray">{col}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Recruiting columns:</h4>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {['Class Year', 'Region', 'Outreach Status', 'Contact Status'].map(col => (
+                      <span key={col} className="badge-purple">{col}</span>
                     ))}
                   </div>
                 </div>
@@ -278,16 +310,13 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess }: AthleteImport
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sport</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">School</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Social</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Stats</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Outreach</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {previewData.slice(0, 10).map((row, idx) => {
-                        const hasSocial = row.social_media && Object.keys(row.social_media as object).length > 0
-                        const hasStats = row.sport_specific_stats && Object.keys(row.sport_specific_stats as object).length > 0
-
                         return (
                           <tr key={idx} className={!row.name || !row.sport ? 'bg-red-50' : ''}>
                             <td className="px-3 py-2 text-gray-500">{idx + 1}</td>
@@ -301,22 +330,16 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess }: AthleteImport
                             </td>
                             <td className="px-3 py-2 text-gray-700">{String(row.school || '-')}</td>
                             <td className="px-3 py-2">
-                              {hasSocial ? (
-                                <span className="badge-blue text-xs">Yes</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
+                              <span className="badge-gray text-xs">
+                                {String(row.class_year || 'n_a').replace(/_/g, ' ').toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-gray-700 text-xs">
+                              {String(row.region || '-')}
                             </td>
                             <td className="px-3 py-2">
-                              {hasStats ? (
-                                <span className="badge-green text-xs">Yes</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2">
-                              <span className="badge-gray capitalize text-xs">
-                                {String(row.recruiting_status || 'not_recruiting').replace(/_/g, ' ')}
+                              <span className="badge-purple text-xs capitalize">
+                                {String(row.outreach_status || 'not_contacted').replace(/_/g, ' ')}
                               </span>
                             </td>
                           </tr>

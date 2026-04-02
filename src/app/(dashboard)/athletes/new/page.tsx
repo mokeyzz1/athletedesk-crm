@@ -324,11 +324,11 @@ export default function NewAthletePage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Status</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="recruiting_status" className="label">Recruiting Status *</label>
+              <label htmlFor="recruiting_status" className="label">Availability *</label>
               <select name="recruiting_status" id="recruiting_status" required className="mt-1 input">
-                <option value="not_recruiting">Not Recruiting</option>
+                <option value="not_recruiting">Not Available</option>
                 <option value="open_to_contact">Open to Contact</option>
-                <option value="actively_recruiting">Actively Recruiting</option>
+                <option value="actively_recruiting">Actively Looking</option>
                 <option value="committed">Committed</option>
                 <option value="signed">Signed</option>
               </select>

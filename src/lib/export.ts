@@ -82,50 +82,88 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 // Column name variations for import mapping
+// Keys are lowercase and trimmed for matching
 export const athleteColumnMappings: Record<string, string> = {
-  // name
+  // name - common variations
   'name': 'name',
   'athlete name': 'name',
+  'athletename': 'name',
+  'athlete_name': 'name',
   'full name': 'name',
+  'fullname': 'name',
+  'full_name': 'name',
   'athlete': 'name',
   'player': 'name',
   'player name': 'name',
+  'playername': 'name',
+  'player_name': 'name',
+  'first name': 'first_name',
+  'firstname': 'first_name',
+  'first_name': 'first_name',
+  'last name': 'last_name',
+  'lastname': 'last_name',
+  'last_name': 'last_name',
 
   // email
   'email': 'email',
   'email address': 'email',
+  'emailaddress': 'email',
+  'email_address': 'email',
   'e-mail': 'email',
+  'e mail': 'email',
+  'athlete email': 'email',
+  'player email': 'email',
 
   // phone
   'phone': 'phone',
   'phone number': 'phone',
+  'phonenumber': 'phone',
+  'phone_number': 'phone',
   'telephone': 'phone',
   'mobile': 'phone',
   'cell': 'phone',
   'cell phone': 'phone',
+  'cellphone': 'phone',
+  'cell_phone': 'phone',
+  'contact number': 'phone',
+  'contact phone': 'phone',
 
-  // school
+  // school - common variations
   'school': 'school',
+  'school name': 'school',
+  'schoolname': 'school',
+  'school_name': 'school',
   'university': 'school',
+  'university name': 'school',
   'college': 'school',
+  'college name': 'school',
   'institution': 'school',
   'team': 'school',
+  'team name': 'school',
+  'program': 'school',
 
   // sport
   'sport': 'sport',
   'sports': 'sport',
+  'sport name': 'sport',
+  'primary sport': 'sport',
 
   // position
   'position': 'position',
   'pos': 'position',
+  'pos.': 'position',
   'role': 'position',
+  'playing position': 'position',
 
   // league_level
   'league_level': 'league_level',
   'league level': 'league_level',
+  'leaguelevel': 'league_level',
   'level': 'league_level',
   'league': 'league_level',
   'division': 'league_level',
+  'div': 'league_level',
+  'classification': 'league_level',
 
   // eligibility_year
   'eligibility_year': 'eligibility_year',
@@ -213,21 +251,55 @@ export const athleteColumnMappings: Record<string, string> = {
   'social reach': 'total_following',
   'followers': 'total_following',
 
-  // Football-specific
+  // Height and Weight - many common variations
   'height': 'height',
+  'ht': 'height',
+  'ht.': 'height',
+  'height (ft)': 'height',
+  'height (in)': 'height',
+  'height/weight': 'height_weight',
+  'ht/wt': 'height_weight',
+  'ht / wt': 'height_weight',
+  'ht./wt.': 'height_weight',
+  'height / weight': 'height_weight',
+  'height-weight': 'height_weight',
   'weight': 'weight',
+  'wt': 'weight',
+  'wt.': 'weight',
+  'weight (lbs)': 'weight',
+  'weight (kg)': 'weight',
+
+  // Football-specific
   '40 yard dash': 'forty_yard_dash',
+  '40yard dash': 'forty_yard_dash',
+  '40-yard dash': 'forty_yard_dash',
   '40 yard': 'forty_yard_dash',
   '40 time': 'forty_yard_dash',
+  '40time': 'forty_yard_dash',
   'forty yard dash': 'forty_yard_dash',
+  'forty_yard_dash': 'forty_yard_dash',
+  '40': 'forty_yard_dash',
   'position group': 'position_group',
+  'positiongroup': 'position_group',
+  'position_group': 'position_group',
+  'pos group': 'position_group',
   'school offers': 'school_offers',
+  'schooloffers': 'school_offers',
+  'school_offers': 'school_offers',
   'offers': 'offers',
+  'offer count': 'offers',
+  'offer list': 'offers',
   'hudl': 'hudl_link',
   'hudl link': 'hudl_link',
   'hudl_link': 'hudl_link',
+  'hudllink': 'hudl_link',
   'film': 'hudl_link',
   'film link': 'hudl_link',
+  'filmlink': 'hudl_link',
+  'film_link': 'hudl_link',
+  'game film': 'hudl_link',
+  'highlight film': 'hudl_link',
+  'highlights': 'hudl_link',
 
   // Basketball-specific
   'ppg': 'ppg',
@@ -283,6 +355,7 @@ export const socialMediaFields = [
 export const sportSpecificFields = [
   'height',
   'weight',
+  'height_weight',
   'forty_yard_dash',
   'position_group',
   'school_offers',
@@ -354,6 +427,27 @@ export function mapColumns(
 export function normalizeAthleteData(data: Record<string, unknown>[]): Record<string, unknown>[] {
   return data.map(row => {
     const normalized: Record<string, unknown> = { ...row }
+
+    // Combine first_name and last_name into name if name is missing
+    if (!normalized.name && (normalized.first_name || normalized.last_name)) {
+      const firstName = String(normalized.first_name || '').trim()
+      const lastName = String(normalized.last_name || '').trim()
+      normalized.name = `${firstName} ${lastName}`.trim()
+      delete normalized.first_name
+      delete normalized.last_name
+    }
+
+    // Split combined height/weight field (e.g., "6'2\" / 195 lbs" or "6-2/195")
+    if (normalized.height_weight && !normalized.height && !normalized.weight) {
+      const hw = String(normalized.height_weight)
+      // Try to parse common formats
+      const match = hw.match(/(\d+['\-]?\d*"?)\s*[\/,\s]+\s*(\d+)/)
+      if (match) {
+        normalized.height = match[1]
+        normalized.weight = match[2]
+      }
+      delete normalized.height_weight
+    }
 
     // Normalize league_level
     if (normalized.league_level) {

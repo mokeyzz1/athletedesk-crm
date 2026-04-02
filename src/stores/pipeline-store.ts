@@ -93,6 +93,19 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
         return { pipelines: newPipelines }
       })
       console.error('Failed to update stage:', error)
+      return
+    }
+
+    // Auto-sync: When moved to signed_client, also update recruiting_status to 'signed'
+    if (newStage === 'signed_client') {
+      const { error: statusError } = await supabase
+        .from('athletes')
+        .update({ recruiting_status: 'signed' } as never)
+        .eq('id', athleteId)
+
+      if (statusError) {
+        console.error('Failed to update recruiting status:', statusError)
+      }
     }
   },
 

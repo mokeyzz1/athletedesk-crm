@@ -23,7 +23,7 @@ const athleteExportColumns = [
   { key: 'position' as const, header: 'Position' },
   { key: 'league_level' as const, header: 'League Level' },
   { key: 'eligibility_year' as const, header: 'Eligibility Year' },
-  { key: 'recruiting_status' as const, header: 'Recruiting Status' },
+  { key: 'recruiting_status' as const, header: 'Availability' },
   { key: 'transfer_portal_status' as const, header: 'Transfer Portal Status' },
   { key: 'marketability_score' as const, header: 'Marketability Score' },
   { key: 'pipeline_stage' as const, header: 'Pipeline Stage' },
@@ -51,7 +51,6 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
   const [showImportModal, setShowImportModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sportFilter, setSportFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
   const [pipelineFilter, setPipelineFilter] = useState('')
   const [portalFilter, setPortalFilter] = useState('')
   const [sortColumn, setSortColumn] = useState<SortColumn>('name')
@@ -85,13 +84,6 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
     return Array.from(uniqueSports).sort()
   }, [athletes])
 
-  const statuses = [
-    { value: 'not_recruiting', label: 'Not Recruiting' },
-    { value: 'open_to_contact', label: 'Open to Contact' },
-    { value: 'actively_recruiting', label: 'Actively Recruiting' },
-    { value: 'committed', label: 'Committed' },
-    { value: 'signed', label: 'Signed' },
-  ]
 
   const pipelineStages = [
     { value: 'prospect_identified', label: 'Prospect Identified' },
@@ -122,9 +114,6 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
 
       // Sport filter
       if (sportFilter && athlete.sport !== sportFilter) return false
-
-      // Status filter
-      if (statusFilter && athlete.recruiting_status !== statusFilter) return false
 
       // Pipeline filter
       if (pipelineFilter) {
@@ -189,7 +178,7 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
       return 0
     })
-  }, [athletes, searchQuery, sportFilter, statusFilter, pipelineFilter, portalFilter, sortColumn, sortDirection])
+  }, [athletes, searchQuery, sportFilter, pipelineFilter, portalFilter, sortColumn, sortDirection])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -203,12 +192,11 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
   const clearFilters = () => {
     setSearchQuery('')
     setSportFilter('')
-    setStatusFilter('')
     setPipelineFilter('')
     setPortalFilter('')
   }
 
-  const hasActiveFilters = searchQuery || sportFilter || statusFilter || pipelineFilter || portalFilter
+  const hasActiveFilters = searchQuery || sportFilter || pipelineFilter || portalFilter
 
   const getStatusBadge = (status: string) => {
     const statusClasses: Record<string, string> = {
@@ -322,17 +310,6 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
                 <option value="">Sport</option>
                 {sports.map(sport => (
                   <option key={sport} value={sport}>{sport}</option>
-                ))}
-              </select>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="input py-1.5 text-sm min-w-[100px]"
-              >
-                <option value="">Status</option>
-                {statuses.map(status => (
-                  <option key={status.value} value={status.value}>{status.label}</option>
                 ))}
               </select>
 

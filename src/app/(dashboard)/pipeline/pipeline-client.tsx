@@ -22,6 +22,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import { usePipelineStore } from '@/stores/pipeline-store'
+import { createClient } from '@/lib/supabase/client'
 import type { RecruitingPipeline, PipelineStage } from '@/lib/database.types'
 
 interface PipelineWithAthlete extends RecruitingPipeline {
@@ -31,6 +32,7 @@ interface PipelineWithAthlete extends RecruitingPipeline {
     sport: string
     school: string | null
     marketability_score: number | null
+    recruiting_status: string
   } | null
 }
 
@@ -48,18 +50,22 @@ const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string; borde
   { key: 'signed_client', label: 'Signed', color: 'bg-green-50', borderColor: 'border-green-300' },
 ]
 
+
 function PipelineCard({
   item,
   isDragging,
   onEditClick,
-  onPriorityChange
+  onPriorityChange,
+  onStageChange,
 }: {
   item: PipelineWithAthlete
   isDragging?: boolean
   onEditClick?: (athleteId: string) => void
   onPriorityChange?: (athleteId: string, newPriority: 'high' | 'medium' | 'low') => void
+  onStageChange?: (athleteId: string, newStage: PipelineStage) => void
 }) {
   const [showPriorityMenu, setShowPriorityMenu] = useState(false)
+  const [showStageMenu, setShowStageMenu] = useState(false)
 
   const priorities: { value: 'high' | 'medium' | 'low'; label: string; bgColor: string; textColor: string }[] = [
     { value: 'high', label: 'High', bgColor: 'bg-red-50', textColor: 'text-red-700' },
@@ -68,6 +74,7 @@ function PipelineCard({
   ]
 
   const currentPriority = priorities.find(p => p.value === item.priority) || priorities[1]
+  const currentStage = PIPELINE_STAGES.find(s => s.key === item.pipeline_stage)
 
   return (
     <div
@@ -82,6 +89,48 @@ function PipelineCard({
         {item.athletes?.sport}
         {item.athletes?.school && ` · ${item.athletes.school}`}
       </div>
+
+      {/* Stage dropdown */}
+      <div className="mt-2 relative" onPointerDown={(e) => e.stopPropagation()}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setShowStageMenu(!showStageMenu)
+          }}
+          className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1"
+        >
+          <span className="font-medium">Stage:</span> {currentStage?.label}
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {showStageMenu && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setShowStageMenu(false)} />
+            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 py-1 min-w-[160px]">
+              {PIPELINE_STAGES.map((s) => (
+                <button
+                  key={s.key}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (onStageChange && s.key !== item.pipeline_stage) {
+                      onStageChange(item.athlete_id, s.key)
+                    }
+                    setShowStageMenu(false)
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${
+                    s.key === item.pipeline_stage ? 'bg-gray-50 font-medium' : ''
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+
       {item.last_contact_date && (
         <div className="text-xs text-gray-400 mt-2">
           Last contact: {new Date(item.last_contact_date).toLocaleDateString()}
@@ -167,11 +216,13 @@ function PipelineCard({
 function SortableCard({
   item,
   onEditClick,
-  onPriorityChange
+  onPriorityChange,
+  onStageChange,
 }: {
   item: PipelineWithAthlete
   onEditClick?: (athleteId: string) => void
-  onPriorityChange?: (pipelineId: string, newPriority: 'high' | 'medium' | 'low') => void
+  onPriorityChange?: (athleteId: string, newPriority: 'high' | 'medium' | 'low') => void
+  onStageChange?: (athleteId: string, newStage: PipelineStage) => void
 }) {
   const {
     attributes,
@@ -196,7 +247,12 @@ function SortableCard({
       {...listeners}
       className="cursor-grab active:cursor-grabbing"
     >
-      <PipelineCard item={item} onEditClick={onEditClick} onPriorityChange={onPriorityChange} />
+      <PipelineCard
+        item={item}
+        onEditClick={onEditClick}
+        onPriorityChange={onPriorityChange}
+        onStageChange={onStageChange}
+      />
     </div>
   )
 }
@@ -206,11 +262,13 @@ function StageColumn({
   items,
   onEditClick,
   onPriorityChange,
+  onStageChange,
 }: {
   stage: typeof PIPELINE_STAGES[number]
   items: PipelineWithAthlete[]
   onEditClick?: (athleteId: string) => void
-  onPriorityChange?: (pipelineId: string, newPriority: 'high' | 'medium' | 'low') => void
+  onPriorityChange?: (athleteId: string, newPriority: 'high' | 'medium' | 'low') => void
+  onStageChange?: (athleteId: string, newStage: PipelineStage) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `stage-${stage.key}`,
@@ -236,7 +294,13 @@ function StageColumn({
         <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {items.map((item) => (
-              <SortableCard key={item.id} item={item} onEditClick={onEditClick} onPriorityChange={onPriorityChange} />
+              <SortableCard
+                key={item.id}
+                item={item}
+                onEditClick={onEditClick}
+                onPriorityChange={onPriorityChange}
+                onStageChange={onStageChange}
+              />
             ))}
           </div>
         </SortableContext>
@@ -308,6 +372,23 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
     await updatePriority(athleteId, newPriority)
   }
 
+  const handleStageChange = async (athleteId: string, newStage: PipelineStage) => {
+    setIsUpdating(true)
+
+    // If moving to signed_client, also update local recruiting_status for optimistic UI
+    if (newStage === 'signed_client') {
+      setPipelineData(prev => prev.map(item =>
+        item.athlete_id === athleteId && item.athletes
+          ? { ...item, athletes: { ...item.athletes, recruiting_status: 'signed' } }
+          : item
+      ))
+    }
+
+    await updateStage(athleteId, newStage)
+    setIsUpdating(false)
+  }
+
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveItem(null)
@@ -335,6 +416,16 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
     if (!newStage || newStage === activeItem.pipeline_stage) return
 
     setIsUpdating(true)
+
+    // If moving to signed_client, also update local recruiting_status for optimistic UI
+    if (newStage === 'signed_client') {
+      setPipelineData(prev => prev.map(item =>
+        item.athlete_id === activeItem.athlete_id && item.athletes
+          ? { ...item, athletes: { ...item.athletes, recruiting_status: 'signed' } }
+          : item
+      ))
+    }
+
     await updateStage(activeItem.athlete_id, newStage)
     setIsUpdating(false)
   }
@@ -371,7 +462,14 @@ export function PipelineClient({ initialData }: PipelineClientProps) {
           >
             <div className="flex gap-4 overflow-x-auto pb-4">
               {stageGroups.map((stage) => (
-                <StageColumn key={stage.key} stage={stage} items={stage.items} onEditClick={openAthletePanel} onPriorityChange={handlePriorityChange} />
+                <StageColumn
+                  key={stage.key}
+                  stage={stage}
+                  items={stage.items}
+                  onEditClick={openAthletePanel}
+                  onPriorityChange={handlePriorityChange}
+                  onStageChange={handleStageChange}
+                />
               ))}
             </div>
             <DragOverlay>

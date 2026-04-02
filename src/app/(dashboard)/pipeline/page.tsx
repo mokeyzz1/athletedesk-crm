@@ -9,6 +9,7 @@ interface PipelineWithAthlete extends RecruitingPipeline {
     sport: string
     school: string | null
     marketability_score: number | null
+    recruiting_status: string
   } | null
 }
 
@@ -24,7 +25,8 @@ export default async function PipelinePage() {
         name,
         sport,
         school,
-        marketability_score
+        marketability_score,
+        recruiting_status
       )
     `)
     .order('priority', { ascending: true })

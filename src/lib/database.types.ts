@@ -29,6 +29,7 @@ export type TaskStatus = 'todo' | 'in_progress' | 'done'
 export type ClassYear = '2025' | '2026' | '2027' | '2028' | '2029' | '2030' | 'pro' | 'n_a'
 export type OutreachStatus = 'not_contacted' | 'contacted' | 'in_conversation' | 'interested' | 'committed' | 'dead_lead' | 'circling_back' | 'signed'
 export type DealType = 'revenue_share' | 'marketing_brand'
+export type DealStage = 'prospective' | 'active'
 
 // Region constants (not an enum in DB, just common values)
 export const REGIONS = [
@@ -257,6 +258,7 @@ export interface Database {
           product_value: number | null
           campaign_details: string | null
           notes: string | null
+          deal_stage: DealStage
           created_at: string
           updated_at: string
         }
@@ -275,6 +277,7 @@ export interface Database {
           product_value?: number | null
           campaign_details?: string | null
           notes?: string | null
+          deal_stage?: DealStage
           created_at?: string
           updated_at?: string
         }
@@ -293,6 +296,7 @@ export interface Database {
           product_value?: number | null
           campaign_details?: string | null
           notes?: string | null
+          deal_stage?: DealStage
           created_at?: string
           updated_at?: string
         }
@@ -312,9 +316,10 @@ export interface Database {
           invoice_date: string | null
           payment_date: string | null
           notes: string | null
+          deal_type: DealType
+          deal_stage: DealStage
           created_at: string
           updated_at: string
-          deal_type: DealType
         }
         Insert: {
           id?: string
@@ -328,9 +333,10 @@ export interface Database {
           invoice_date?: string | null
           payment_date?: string | null
           notes?: string | null
+          deal_type?: DealType
+          deal_stage?: DealStage
           created_at?: string
           updated_at?: string
-          deal_type?: DealType
         }
         Update: {
           id?: string
@@ -344,9 +350,10 @@ export interface Database {
           invoice_date?: string | null
           payment_date?: string | null
           notes?: string | null
+          deal_type?: DealType
+          deal_stage?: DealStage
           created_at?: string
           updated_at?: string
-          deal_type?: DealType
         }
       }
       documents: {
@@ -575,6 +582,7 @@ export interface Database {
       class_year: ClassYear
       outreach_status: OutreachStatus
       deal_type: DealType
+      deal_stage: DealStage
     }
   }
 }
@@ -637,4 +645,9 @@ export const OUTREACH_STATUSES: { value: OutreachStatus; label: string }[] = [
 export const DEAL_TYPES: { value: DealType; label: string }[] = [
   { value: 'revenue_share', label: 'Revenue Share / Scholarship' },
   { value: 'marketing_brand', label: 'Marketing / Brand Deal' },
+]
+
+export const DEAL_STAGES: { value: DealStage; label: string; description: string }[] = [
+  { value: 'prospective', label: 'Prospective', description: 'Potential deal shown to prospect during recruiting' },
+  { value: 'active', label: 'Active', description: 'Real executed deal for a signed athlete' },
 ]

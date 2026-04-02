@@ -425,32 +425,92 @@ export default async function AthletePage({ params }: AthletePageProps) {
             </div>
           </div>
 
-          {/* Financial Summary */}
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Financial Summary</h2>
-            {financials.length > 0 ? (
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm text-gray-500">Total Deals</span>
-                  <p className="text-lg font-semibold text-gray-900">{financials.length}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-500">Total Value</span>
-                  <p className="text-lg font-semibold text-green-600">
-                    {formatCurrency(financials.reduce((sum, f) => sum + Number(f.deal_value), 0))}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-500">Agency Revenue</span>
-                  <p className="text-lg font-semibold text-brand-600">
-                    {formatCurrency(financials.reduce((sum, f) => sum + Number(f.agency_fee), 0))}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500 text-sm">No deals recorded</p>
-            )}
-          </div>
+          {/* Deals Section - Prospective for recruits, Active for signed athletes */}
+          {athlete.outreach_status === 'signed' ? (
+            // ROSTER ATHLETE - Show Active Deals
+            <div className="card">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Active Deals</h2>
+              {(() => {
+                const activeDeals = financials.filter(f => f.deal_stage === 'active')
+                const activeBrands = brands.filter(b => b.deal_stage === 'active')
+                if (activeDeals.length > 0 || activeBrands.length > 0) {
+                  return (
+                    <div className="space-y-4">
+                      {activeDeals.length > 0 && (
+                        <div className="space-y-2">
+                          {activeDeals.slice(0, 3).map(deal => (
+                            <div key={deal.id} className="p-3 bg-green-50 rounded-lg border border-green-100">
+                              <p className="text-sm font-medium text-gray-900">{deal.deal_name}</p>
+                              <p className="text-lg font-semibold text-green-600">{formatCurrency(Number(deal.deal_value))}</p>
+                              <p className="text-xs text-gray-500">{deal.payment_status}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="pt-3 border-t border-gray-200">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Total Value</span>
+                          <span className="font-semibold text-green-600">
+                            {formatCurrency(activeDeals.reduce((sum, f) => sum + Number(f.deal_value), 0))}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm mt-1">
+                          <span className="text-gray-500">Agency Revenue</span>
+                          <span className="font-semibold text-brand-600">
+                            {formatCurrency(activeDeals.reduce((sum, f) => sum + Number(f.agency_fee), 0))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                return <p className="text-gray-500 text-sm">No active deals yet</p>
+              })()}
+            </div>
+          ) : (
+            // RECRUITING PROSPECT - Show Potential Deals
+            <div className="card">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Potential Deals</h2>
+              <p className="text-xs text-gray-500 mb-3">Deals we can offer this prospect</p>
+              {(() => {
+                const prospectiveDeals = financials.filter(f => f.deal_stage === 'prospective')
+                const prospectiveBrands = brands.filter(b => b.deal_stage === 'prospective')
+                if (prospectiveDeals.length > 0 || prospectiveBrands.length > 0) {
+                  return (
+                    <div className="space-y-2">
+                      {prospectiveDeals.map(deal => (
+                        <div key={deal.id} className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                          <p className="text-sm font-medium text-gray-900">{deal.deal_name}</p>
+                          <p className="text-lg font-semibold text-amber-600">{formatCurrency(Number(deal.deal_value))}</p>
+                          <p className="text-xs text-gray-500">Prospective</p>
+                        </div>
+                      ))}
+                      {prospectiveBrands.map(brand => (
+                        <div key={brand.id} className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                          <p className="text-sm font-medium text-gray-900">{brand.brand_name}</p>
+                          {brand.deal_value && (
+                            <p className="text-lg font-semibold text-amber-600">{formatCurrency(Number(brand.deal_value))}</p>
+                          )}
+                          <p className="text-xs text-gray-500">{brand.response_status.replace(/_/g, ' ')}</p>
+                        </div>
+                      ))}
+                      {prospectiveDeals.length > 0 && (
+                        <div className="pt-3 border-t border-gray-200">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Potential Value</span>
+                            <span className="font-semibold text-amber-600">
+                              {formatCurrency(prospectiveDeals.reduce((sum, f) => sum + Number(f.deal_value), 0))}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+                return <p className="text-gray-500 text-sm">No potential deals added yet</p>
+              })()}
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="card">

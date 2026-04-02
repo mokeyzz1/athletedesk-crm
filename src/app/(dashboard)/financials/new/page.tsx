@@ -3,7 +3,8 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import type { Athlete, FinancialTrackingInsert } from '@/lib/database.types'
+import type { Athlete, FinancialTrackingInsert, DealType, DealStage } from '@/lib/database.types'
+import { DEAL_TYPES, DEAL_STAGES } from '@/lib/database.types'
 
 export default function NewFinancialPage() {
   const router = useRouter()
@@ -16,9 +17,11 @@ export default function NewFinancialPage() {
 
   useEffect(() => {
     async function fetchAthletes() {
+      // Get all athletes - deals can be prospective (for recruiting) or active (for signed)
       const { data } = await supabase
         .from('athletes')
         .select('*')
+        .order('outreach_status', { ascending: false })
         .order('name')
       if (data) setAthletes(data as Athlete[])
     }
@@ -63,6 +66,8 @@ export default function NewFinancialPage() {
       deal_name: formData.get('deal_name') as string,
       deal_value: dealValueNum,
       agency_percentage: agencyPctNum,
+      deal_type: formData.get('deal_type') as DealType,
+      deal_stage: formData.get('deal_stage') as DealStage,
       deal_date: formData.get('deal_date') as string,
       payment_status: 'pending',
       invoice_date: (formData.get('invoice_date') as string) || null,
@@ -114,11 +119,39 @@ export default function NewFinancialPage() {
               />
             </div>
             <div>
+              <label htmlFor="deal_stage" className="label">Deal Stage *</label>
+              <select name="deal_stage" id="deal_stage" required className="mt-1 input">
+                {DEAL_STAGES.map(stage => (
+                  <option key={stage.value} value={stage.value}>{stage.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">Prospective = pitch to recruit | Active = real deal for signed athlete</p>
+            </div>
+            <div>
               <label htmlFor="athlete_id" className="label">Athlete *</label>
               <select name="athlete_id" id="athlete_id" required className="mt-1 input">
                 <option value="">Select an athlete</option>
-                {athletes.map(athlete => (
-                  <option key={athlete.id} value={athlete.id}>{athlete.name}</option>
+                {athletes.filter(a => a.outreach_status === 'signed').length > 0 && (
+                  <optgroup label="Roster (Signed Athletes)">
+                    {athletes.filter(a => a.outreach_status === 'signed').map(athlete => (
+                      <option key={athlete.id} value={athlete.id}>{athlete.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {athletes.filter(a => a.outreach_status !== 'signed').length > 0 && (
+                  <optgroup label="Recruiting Database (Prospects)">
+                    {athletes.filter(a => a.outreach_status !== 'signed').map(athlete => (
+                      <option key={athlete.id} value={athlete.id}>{athlete.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="deal_type" className="label">Deal Type *</label>
+              <select name="deal_type" id="deal_type" required className="mt-1 input">
+                {DEAL_TYPES.map(dt => (
+                  <option key={dt.value} value={dt.value}>{dt.label}</option>
                 ))}
               </select>
             </div>

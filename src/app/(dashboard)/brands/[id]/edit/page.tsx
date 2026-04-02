@@ -3,7 +3,8 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import type { User, Athlete, OutreachMethod, BrandOutreach, ResponseStatus } from '@/lib/database.types'
+import type { User, Athlete, OutreachMethod, BrandOutreach, ResponseStatus, DealStage } from '@/lib/database.types'
+import { DEAL_STAGES } from '@/lib/database.types'
 
 export default function EditBrandOutreachPage() {
   const router = useRouter()
@@ -30,10 +31,11 @@ export default function EditBrandOutreachPage() {
         if (userData) setCurrentUser(userData as User)
       }
 
-      // Get athletes
+      // Get all athletes - deals can be prospective (for recruiting) or active (for signed)
       const { data: athletesData } = await supabase
         .from('athletes')
         .select('*')
+        .order('outreach_status', { ascending: false })
         .order('name')
       if (athletesData) setAthletes(athletesData as Athlete[])
 
@@ -75,6 +77,7 @@ export default function EditBrandOutreachPage() {
       campaign_details: (formData.get('campaign_details') as string) || null,
       notes: (formData.get('notes') as string) || null,
       follow_up_date: (formData.get('follow_up_date') as string) || null,
+      deal_stage: formData.get('deal_stage') as DealStage,
     }
 
     const { error: updateError } = await supabase
@@ -188,6 +191,21 @@ export default function EditBrandOutreachPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Outreach Details</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
+                  <label htmlFor="deal_stage" className="label">Deal Stage *</label>
+                  <select
+                    name="deal_stage"
+                    id="deal_stage"
+                    required
+                    defaultValue={outreach.deal_stage}
+                    className="mt-1 input"
+                  >
+                    {DEAL_STAGES.map(stage => (
+                      <option key={stage.value} value={stage.value}>{stage.label}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">Prospective = pitch to recruit | Active = real deal for signed athlete</p>
+                </div>
+                <div>
                   <label htmlFor="athlete_id" className="label">Athlete *</label>
                   <select
                     name="athlete_id"
@@ -197,9 +215,20 @@ export default function EditBrandOutreachPage() {
                     className="mt-1 input"
                   >
                     <option value="">Select an athlete</option>
-                    {athletes.map(athlete => (
-                      <option key={athlete.id} value={athlete.id}>{athlete.name}</option>
-                    ))}
+                    {athletes.filter(a => a.outreach_status === 'signed').length > 0 && (
+                      <optgroup label="Roster (Signed Athletes)">
+                        {athletes.filter(a => a.outreach_status === 'signed').map(athlete => (
+                          <option key={athlete.id} value={athlete.id}>{athlete.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {athletes.filter(a => a.outreach_status !== 'signed').length > 0 && (
+                      <optgroup label="Recruiting Database (Prospects)">
+                        {athletes.filter(a => a.outreach_status !== 'signed').map(athlete => (
+                          <option key={athlete.id} value={athlete.id}>{athlete.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
                 <div>

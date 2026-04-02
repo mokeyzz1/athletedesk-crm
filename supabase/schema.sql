@@ -32,6 +32,7 @@ CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'done');
 CREATE TYPE class_year AS ENUM ('2025', '2026', '2027', '2028', '2029', '2030', 'pro', 'n_a');
 CREATE TYPE outreach_status AS ENUM ('not_contacted', 'contacted', 'in_conversation', 'interested', 'committed', 'dead_lead', 'circling_back', 'signed');
 CREATE TYPE deal_type AS ENUM ('revenue_share', 'marketing_brand');
+CREATE TYPE deal_stage AS ENUM ('prospective', 'active');
 
 -- ============================================
 -- USERS TABLE
@@ -162,6 +163,7 @@ CREATE TABLE brand_outreach (
   product_value DECIMAL(12, 2),
   campaign_details TEXT,
   notes TEXT,
+  deal_stage deal_stage NOT NULL DEFAULT 'prospective',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -191,9 +193,10 @@ CREATE TABLE financial_tracking (
   invoice_date DATE,
   payment_date DATE,
   notes TEXT,
+  deal_type deal_type DEFAULT 'marketing_brand',
+  deal_stage deal_stage NOT NULL DEFAULT 'prospective',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  deal_type deal_type DEFAULT 'marketing_brand'
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Indexes for financial tracking

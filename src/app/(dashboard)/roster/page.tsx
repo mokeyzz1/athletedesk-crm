@@ -8,6 +8,7 @@ export interface RosterAthlete {
   sport: string
   school: string | null
   position: string | null
+  region: string | null
   social_media: {
     instagram_followers?: number
     twitter_followers?: number
@@ -29,49 +30,53 @@ export interface RosterAthlete {
 export default async function RosterPage() {
   const supabase = await createClient()
 
-  // Get athletes who are signed clients (pipeline_stage = 'signed_client')
-  const { data: pipelineData } = await supabase
-    .from('recruiting_pipeline')
+  // Get athletes who are signed (outreach_status = 'signed')
+  const { data: athletesData } = await supabase
+    .from('athletes')
     .select(`
-      athlete_id,
-      athletes (
-        id,
-        name,
-        sport,
-        school,
-        position,
-        social_media,
-        assigned_agent_id,
-        users!athletes_assigned_agent_id_fkey (
-          name
-        )
+      id,
+      name,
+      sport,
+      school,
+      position,
+      region,
+      social_media,
+      assigned_agent_id,
+      users!athletes_assigned_agent_id_fkey (
+        name
       )
     `)
-    .eq('pipeline_stage', 'signed_client')
+    .eq('outreach_status', 'signed')
+    .order('name')
 
-  // Flatten the data to get athletes array
   type AthleteFromQuery = {
     id: string
     name: string
     sport: string
     school: string | null
     position: string | null
+    region: string | null
     social_media: RosterAthlete['social_media']
     assigned_agent_id: string | null
     users: { name: string } | null
   }
-  const athletes = (pipelineData?.map(p => p.athletes).filter(Boolean) || []) as AthleteFromQuery[]
+
+  const athletes = (athletesData || []) as AthleteFromQuery[]
 
   // Get deal summaries for signed athletes with deal_type
+  const athleteIds = athletes.map(a => a.id)
+
   const { data: deals } = await supabase
     .from('financial_tracking')
     .select('athlete_id, deal_value, deal_type')
+    .in('athlete_id', athleteIds.length > 0 ? athleteIds : ['00000000-0000-0000-0000-000000000000'])
 
   // Get brand outreach with closed deals (these are marketing_brand deals)
   const { data: brandDeals } = await supabase
     .from('brand_outreach')
     .select('athlete_id, deal_value')
     .eq('response_status', 'deal_closed')
+    .in('athlete_id', athleteIds.length > 0 ? athleteIds : ['00000000-0000-0000-0000-000000000000'])
 
   // Calculate totals per athlete by deal type
   type DealSummary = {
@@ -123,6 +128,7 @@ export default async function RosterPage() {
       sport: athlete.sport,
       school: athlete.school,
       position: athlete.position,
+      region: athlete.region,
       social_media: athlete.social_media,
       assigned_agent_id: athlete.assigned_agent_id,
       agent_name: athlete.users?.name || null,

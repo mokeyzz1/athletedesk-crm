@@ -13,6 +13,8 @@ interface RecruitingClientProps {
   regionStats: RegionStats[]
 }
 
+type ViewMode = 'kanban' | 'table'
+
 const OUTREACH_COLUMNS: { key: OutreachStatus; label: string; color: string; bgColor: string }[] = [
   { key: 'not_contacted', label: 'Not Contacted', color: 'border-gray-300', bgColor: 'bg-gray-50' },
   { key: 'contacted', label: 'Contacted', color: 'border-blue-300', bgColor: 'bg-blue-50' },
@@ -22,6 +24,17 @@ const OUTREACH_COLUMNS: { key: OutreachStatus; label: string; color: string; bgC
   { key: 'circling_back', label: 'Circling Back', color: 'border-orange-300', bgColor: 'bg-orange-50' },
   { key: 'dead_lead', label: 'Dead Lead', color: 'border-red-300', bgColor: 'bg-red-50' },
 ]
+
+const STATUS_COLORS: Record<OutreachStatus, string> = {
+  'not_contacted': 'bg-gray-100 text-gray-700',
+  'contacted': 'bg-blue-100 text-blue-700',
+  'in_conversation': 'bg-indigo-100 text-indigo-700',
+  'interested': 'bg-yellow-100 text-yellow-700',
+  'committed': 'bg-green-100 text-green-700',
+  'circling_back': 'bg-orange-100 text-orange-700',
+  'dead_lead': 'bg-red-100 text-red-700',
+  'signed': 'bg-emerald-100 text-emerald-700',
+}
 
 function AthleteCard({
   athlete,
@@ -33,8 +46,6 @@ function AthleteCard({
   onEditClick: (athleteId: string) => void
 }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
-
-  const currentStatus = OUTREACH_STATUSES.find(s => s.value === athlete.outreach_status)
 
   return (
     <div className="bg-white rounded border border-gray-200 p-3 hover:border-gray-300 transition-colors">
@@ -183,11 +194,136 @@ function RegionProgressBar({ stat }: { stat: RegionStats }) {
   )
 }
 
+function TableView({
+  athletes,
+  onStatusChange,
+  onEditClick,
+}: {
+  athletes: RecruitingAthlete[]
+  onStatusChange: (athleteId: string, newStatus: OutreachStatus) => void
+  onEditClick: (athleteId: string) => void
+}) {
+  const [sortField, setSortField] = useState<'name' | 'sport' | 'class_year' | 'region' | 'outreach_status'>('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  const sortedAthletes = [...athletes].sort((a, b) => {
+    let aVal = a[sortField] || ''
+    let bVal = b[sortField] || ''
+    if (sortDirection === 'asc') {
+      return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+    } else {
+      return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+    }
+  })
+
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const SortHeader = ({ field, label }: { field: typeof sortField; label: string }) => (
+    <th
+      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {sortField === field && (
+          <svg className={`w-3 h-3 ${sortDirection === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+        )}
+      </div>
+    </th>
+  )
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <SortHeader field="name" label="Name" />
+              <SortHeader field="sport" label="Sport" />
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
+              <SortHeader field="class_year" label="Class" />
+              <SortHeader field="region" label="Region" />
+              <SortHeader field="outreach_status" label="Status" />
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Contact</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {sortedAthletes.map((athlete) => (
+              <tr key={athlete.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <Link href={`/athletes/${athlete.id}`} className="text-sm font-medium text-gray-900 hover:text-brand-600">
+                    {athlete.name}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                  {athlete.sport}
+                  {athlete.position && <span className="text-gray-400"> - {athlete.position}</span>}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                  {athlete.school || '-'}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 font-medium">
+                    {CLASS_YEARS.find(c => c.value === athlete.class_year)?.label || 'N/A'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                  {athlete.region || <span className="text-gray-400">Unassigned</span>}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <select
+                    value={athlete.outreach_status}
+                    onChange={(e) => onStatusChange(athlete.id, e.target.value as OutreachStatus)}
+                    className={`text-xs px-2 py-1 rounded font-medium border-0 cursor-pointer ${STATUS_COLORS[athlete.outreach_status]}`}
+                  >
+                    {OUTREACH_STATUSES.filter(s => s.value !== 'signed').map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                  {athlete.last_contacted_date
+                    ? new Date(athlete.last_contacted_date).toLocaleDateString()
+                    : '-'}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-right">
+                  <button
+                    onClick={() => onEditClick(athlete.id)}
+                    className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                  >
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {sortedAthletes.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          No prospects match your filters
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function RecruitingClient({ athletes: initialAthletes, regionStats: initialRegionStats }: RecruitingClientProps) {
   const [athletes, setAthletes] = useState(initialAthletes)
   const [regionStats, setRegionStats] = useState(initialRegionStats)
   const [selectedRegion, setSelectedRegion] = useState<string>('all')
   const [selectedClassYear, setSelectedClassYear] = useState<string>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [isUpdating, setIsUpdating] = useState(false)
   const { openAthletePanel } = useAthletePanel()
   const supabase = createClient()
@@ -199,17 +335,17 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
     return regionMatch && classYearMatch
   })
 
-  // Group filtered athletes by status
+  // Group filtered athletes by status for Kanban
   const columnGroups = OUTREACH_COLUMNS.map(column => ({
     ...column,
     athletes: filteredAthletes.filter(a => a.outreach_status === column.key),
   }))
 
-  // Get unique regions from athletes
-  const allRegions = ['all', ...REGIONS, 'Unassigned']
-
   const handleStatusChange = async (athleteId: string, newStatus: OutreachStatus) => {
     setIsUpdating(true)
+
+    const athlete = athletes.find(a => a.id === athleteId)
+    const oldStatus = athlete?.outreach_status
 
     // Optimistic update
     setAthletes(prev => prev.map(a =>
@@ -219,19 +355,15 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
     ))
 
     // Update region stats
-    const athlete = athletes.find(a => a.id === athleteId)
     if (athlete) {
-      const oldStatus = athlete.outreach_status
       const region = athlete.region || 'Unassigned'
 
       setRegionStats(prev => prev.map(stat => {
         if (stat.region === region) {
           let newContacted = stat.contacted
-          // If moving from not_contacted to something else, increment
           if (oldStatus === 'not_contacted' && newStatus !== 'not_contacted') {
             newContacted++
           }
-          // If moving to not_contacted from something else, decrement
           if (oldStatus !== 'not_contacted' && newStatus === 'not_contacted') {
             newContacted--
           }
@@ -250,8 +382,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
       outreach_status: newStatus,
     }
 
-    // Set last_contacted_date when moving away from not_contacted
-    if (newStatus !== 'not_contacted' && athlete?.outreach_status === 'not_contacted') {
+    if (newStatus !== 'not_contacted' && oldStatus === 'not_contacted') {
       updateData.last_contacted_date = new Date().toISOString().split('T')[0]
     }
 
@@ -277,12 +408,37 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
             {isUpdating && <span className="ml-2 text-brand-600">Saving...</span>}
           </p>
         </div>
-        <Link href="/athletes/new" className="btn-primary text-sm">
-          <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <span className="hidden md:inline">Add Prospect</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className="hidden md:flex items-center bg-gray-200 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                viewMode === 'table' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                viewMode === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+            </button>
+          </div>
+          <Link href="/athletes/new" className="btn-primary text-sm">
+            <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span className="hidden md:inline">Add Prospect</span>
+          </Link>
+        </div>
       </div>
 
       {/* Content */}
@@ -300,7 +456,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-3 mb-4">
+            <div className="flex flex-wrap gap-3 mb-4 items-end">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Region</label>
                 <select
@@ -328,25 +484,45 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                   ))}
                 </select>
               </div>
-              <div className="flex items-end">
+              {/* Mobile view toggle */}
+              <div className="md:hidden">
+                <label className="block text-xs font-medium text-gray-500 mb-1">View</label>
+                <select
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                  className="input text-sm py-1.5"
+                >
+                  <option value="table">Table</option>
+                  <option value="kanban">Kanban</option>
+                </select>
+              </div>
+              <div className="flex-1 flex items-end justify-end">
                 <p className="text-sm text-gray-500">
                   Showing {filteredAthletes.length} of {totalProspects} prospects
                 </p>
               </div>
             </div>
 
-            {/* Kanban Board */}
-            <div className="flex gap-3 overflow-x-auto pb-4">
-              {columnGroups.map((column) => (
-                <StatusColumn
-                  key={column.key}
-                  column={column}
-                  athletes={column.athletes}
-                  onStatusChange={handleStatusChange}
-                  onEditClick={openAthletePanel}
-                />
-              ))}
-            </div>
+            {/* View Content */}
+            {viewMode === 'table' ? (
+              <TableView
+                athletes={filteredAthletes}
+                onStatusChange={handleStatusChange}
+                onEditClick={openAthletePanel}
+              />
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-4">
+                {columnGroups.map((column) => (
+                  <StatusColumn
+                    key={column.key}
+                    column={column}
+                    athletes={column.athletes}
+                    onStatusChange={handleStatusChange}
+                    onEditClick={openAthletePanel}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="px-4 md:px-6 py-4">

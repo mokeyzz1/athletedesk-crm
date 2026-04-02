@@ -101,13 +101,13 @@ export function ProductivityClient({ staffProductivity }: ProductivityClientProp
 
   const getRoleBadge = (role: string) => {
     const badges: Record<string, string> = {
-      admin: 'bg-purple-100 text-purple-700',
-      agent: 'bg-blue-100 text-blue-700',
-      scout: 'bg-green-100 text-green-700',
-      marketing: 'bg-orange-100 text-orange-700',
-      intern: 'bg-gray-100 text-gray-700',
+      admin: 'badge-red',
+      agent: 'badge-blue',
+      scout: 'badge-green',
+      marketing: 'badge-yellow',
+      intern: 'badge-gray',
     }
-    return badges[role] || 'bg-gray-100 text-gray-700'
+    return badges[role] || 'badge-gray'
   }
 
   const SortIcon = ({ column }: { column: SortColumn }) => (
@@ -278,7 +278,7 @@ export function ProductivityClient({ staffProductivity }: ProductivityClientProp
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-xs px-2 py-1 rounded font-medium capitalize ${getRoleBadge(staff.role)}`}>
+                      <span className={`badge capitalize ${getRoleBadge(staff.role)}`}>
                         {staff.role}
                       </span>
                     </td>
@@ -310,13 +310,23 @@ export function ProductivityClient({ staffProductivity }: ProductivityClientProp
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div className="w-16 bg-gray-100 rounded-full h-2 overflow-hidden">
                           <div
-                            className={`h-2 rounded-full ${score > 0 ? 'bg-green-500' : 'bg-gray-400'}`}
+                            className={`h-2 rounded-full transition-all ${
+                              score >= 200 ? 'bg-green-500' :
+                              score >= 160 ? 'bg-green-400' :
+                              score >= 100 ? 'bg-yellow-400' :
+                              score >= 50 ? 'bg-orange-400' :
+                              score > 0 ? 'bg-red-400' : 'bg-gray-300'
+                            }`}
                             style={{ width: `${Math.min(100, Math.max(0, score / 2))}%` }}
                           />
                         </div>
-                        <span className={`font-medium ${score > 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                        <span className={`font-medium ${
+                          score >= 160 ? 'text-green-600' :
+                          score >= 100 ? 'text-yellow-600' :
+                          score > 0 ? 'text-red-600' : 'text-gray-500'
+                        }`}>
                           {score}
                         </span>
                       </div>

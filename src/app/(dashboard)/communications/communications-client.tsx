@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import type { CommunicationLog, Athlete, CommunicationType } from '@/lib/database.types'
 import { ExportButtons } from '@/components/export/export-buttons'
 import { createClient } from '@/lib/supabase/client'
+import type { EmailStatsOverview } from '@/lib/queries/email-stats'
 
 interface CommunicationWithRelations extends CommunicationLog {
   athletes: { id: string; name: string } | null
@@ -16,6 +17,7 @@ interface CommunicationWithRelations extends CommunicationLog {
 interface CommunicationsClientProps {
   communications: CommunicationWithRelations[] | null
   athletes: Athlete[]
+  emailStats: EmailStatsOverview
 }
 
 type SortColumn = 'date' | 'athlete' | 'type' | 'subject' | 'staff' | 'followup'
@@ -28,7 +30,7 @@ const COMMUNICATION_TYPES = [
   { value: 'zoom', label: 'Zoom', badge: 'badge-blue', icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' },
 ]
 
-export function CommunicationsClient({ communications: initialCommunications, athletes }: CommunicationsClientProps) {
+export function CommunicationsClient({ communications: initialCommunications, athletes, emailStats }: CommunicationsClientProps) {
   const [communications, setCommunications] = useState(initialCommunications)
   const [sortColumn, setSortColumn] = useState<SortColumn>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
@@ -296,6 +298,77 @@ export function CommunicationsClient({ communications: initialCommunications, at
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+        {/* Email Stats Section */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Email Activity</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="card">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">This Week</p>
+                  <p className="text-2xl font-bold text-gray-900">{emailStats.thisWeek}</p>
+                </div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">This Month</p>
+                  <p className="text-2xl font-bold text-gray-900">{emailStats.thisMonth}</p>
+                </div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">All Time</p>
+                  <p className="text-2xl font-bold text-gray-900">{emailStats.allTime}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Staff Breakdown */}
+          {emailStats.byStaff.length > 0 && (
+            <div className="card">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Emails by Staff Member</h3>
+              <div className="space-y-3">
+                {emailStats.byStaff.map((staff) => (
+                  <div key={staff.staffId} className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900">{staff.staffName}</span>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">
+                        <span className="font-medium text-gray-700">{staff.thisWeek}</span> this week
+                      </span>
+                      <span className="text-gray-500">
+                        <span className="font-medium text-gray-700">{staff.thisMonth}</span> this month
+                      </span>
+                      <span className="text-gray-500">
+                        <span className="font-medium text-gray-700">{staff.allTime}</span> total
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {communications && communications.length > 0 ? (
           <>
             {/* Pending Follow-ups Section */}

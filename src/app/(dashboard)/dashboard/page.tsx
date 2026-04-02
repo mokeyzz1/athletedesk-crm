@@ -1,22 +1,29 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import type { DashboardSummary, PendingFollowUp, Athlete, FinancialTracking, BrandOutreach, Task, OutreachStatus } from '@/lib/database.types'
+import type { DashboardSummary, PendingFollowUp, Athlete, FinancialTracking, BrandOutreach, Task, OutreachStatus, User } from '@/lib/database.types'
 import { Greeting } from '@/components/greeting'
 import { REGIONS } from '@/lib/database.types'
+import { getGoalProgressForUser, getTeamGoalsSummary } from '@/lib/queries/goal-progress'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  // Get current user's name and ID
+  // Get current user's name, ID, and role
   const { data: { user } } = await supabase.auth.getUser()
   const { data: userData } = await supabase
     .from('users')
-    .select('id, name')
+    .select('id, name, role')
     .eq('google_sso_id', user?.id || '')
-    .single() as { data: { id: string; name: string } | null }
+    .single() as { data: { id: string; name: string; role: string } | null }
 
   const userName = userData?.name || 'there'
   const currentUserId = userData?.id || ''
+  const userRole = userData?.role || ''
+  const isAdmin = userRole === 'admin'
+
+  // Fetch goal progress
+  const userGoalProgress = currentUserId ? await getGoalProgressForUser(currentUserId) : []
+  const teamGoalsSummary = isAdmin ? await getTeamGoalsSummary() : null
 
   // Fetch dashboard summary
   const { data: summaryData } = await supabase
@@ -351,6 +358,92 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Goal Progress Widget */}
+      {userGoalProgress.length > 0 && (
+        <div className="bg-white rounded border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">My Outreach Goals</h3>
+              <p className="text-xs text-gray-500">
+                Track your communication targets
+              </p>
+            </div>
+            {isAdmin && (
+              <Link href="/settings/outreach-goals" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+                Manage Goals
+              </Link>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {userGoalProgress.map((goal) => (
+              <div key={goal.goalId}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm text-gray-700">{goal.goalName}</span>
+                  <span className="text-xs text-gray-500">
+                    {goal.currentCount} / {goal.targetCount} {goal.metric.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      goal.progress >= 100 ? 'bg-green-500' :
+                      goal.progress >= 80 ? 'bg-green-400' :
+                      goal.progress >= 50 ? 'bg-yellow-400' :
+                      goal.progress >= 25 ? 'bg-orange-400' :
+                      'bg-red-400'
+                    }`}
+                    style={{ width: `${goal.progress}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-xs text-gray-400 capitalize">{goal.period}</span>
+                  <span className={`text-xs font-medium ${
+                    goal.progress >= 100 ? 'text-green-600' :
+                    goal.progress >= 80 ? 'text-green-500' :
+                    goal.progress >= 50 ? 'text-yellow-600' :
+                    'text-red-500'
+                  }`}>
+                    {goal.progress}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Team Summary for Admins */}
+          {isAdmin && teamGoalsSummary && teamGoalsSummary.totalGoals > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Team Average Progress</span>
+                <span className={`font-medium ${
+                  teamGoalsSummary.averageProgress >= 80 ? 'text-green-600' :
+                  teamGoalsSummary.averageProgress >= 50 ? 'text-yellow-600' :
+                  'text-red-600'
+                }`}>
+                  {teamGoalsSummary.averageProgress}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm mt-1">
+                <span className="text-gray-600">Team Members On Track</span>
+                <span className="text-gray-900">
+                  {teamGoalsSummary.usersOnTrack} / {teamGoalsSummary.totalUsers}
+                </span>
+              </div>
+              <Link
+                href="/team/productivity"
+                className="mt-3 text-xs text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1"
+              >
+                View Team Productivity
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Recruiting Progress Widget */}
       {totalRecruits > 0 && (

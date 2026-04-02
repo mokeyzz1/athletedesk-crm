@@ -72,24 +72,45 @@ export default async function SettingsPage() {
       <GmailSettings />
 
       {profile?.role === 'admin' && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Team Management</h2>
-              <p className="text-sm text-gray-500">Invite team members and manage roles</p>
+        <>
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Team Management</h2>
+                <p className="text-sm text-gray-500">Invite team members and manage roles</p>
+              </div>
+              <Link href="/settings/team" className="btn-primary">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Invite Member
+              </Link>
             </div>
-            <Link href="/settings/team" className="btn-primary">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Invite Member
-            </Link>
+            <p className="text-gray-600 text-sm">
+              As an admin, you can invite new team members and assign them roles (Agent, Scout, Marketing, or Intern).
+              Each role has different permissions for managing athletes, deals, and communications.
+            </p>
           </div>
-          <p className="text-gray-600 text-sm">
-            As an admin, you can invite new team members and assign them roles (Agent, Scout, Marketing, or Intern).
-            Each role has different permissions for managing athletes, deals, and communications.
-          </p>
-        </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Outreach Goals</h2>
+                <p className="text-sm text-gray-500">Set communication targets for your team</p>
+              </div>
+              <Link href="/settings/outreach-goals" className="btn-primary">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Manage Goals
+              </Link>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Create goals to track how many emails, calls, or communications each staff member should complete.
+              Progress is shown on the Dashboard and Recruiting pages.
+            </p>
+          </div>
+        </>
       )}
       </div>
     </div>

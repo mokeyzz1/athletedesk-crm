@@ -7,6 +7,7 @@ import { AthleteDocuments } from './athlete-documents'
 import { SendEmailButton } from './send-email-button'
 import { EditAthleteButton } from '@/components/athletes/edit-athlete-button'
 import { PipelineStatusCard } from './pipeline-status-card'
+import { getAthleteEmailCount } from '@/lib/queries/email-stats'
 
 interface AthletePageProps {
   params: Promise<{ id: string }>
@@ -62,12 +63,13 @@ export default async function AthletePage({ params }: AthletePageProps) {
   }
 
   // Fetch all related data
-  const [pipelineRes, communicationsRes, brandsRes, financialsRes, documentsRes] = await Promise.all([
+  const [pipelineRes, communicationsRes, brandsRes, financialsRes, documentsRes, emailCount] = await Promise.all([
     supabase.from('recruiting_pipeline').select('*').eq('athlete_id', id).single(),
     supabase.from('communications_log').select('*, users:staff_member_id (name)').eq('athlete_id', id).order('communication_date', { ascending: false }),
     supabase.from('brand_outreach').select('*, users:staff_member_id (name)').eq('athlete_id', id).order('date_contacted', { ascending: false }),
     supabase.from('financial_tracking').select('*').eq('athlete_id', id).order('deal_date', { ascending: false }),
     supabase.from('documents').select('*, users:uploaded_by (name)').eq('athlete_id', id).order('created_at', { ascending: false }),
+    getAthleteEmailCount(id),
   ])
 
   const pipeline = pipelineRes.data as RecruitingPipeline | null
@@ -217,6 +219,17 @@ export default async function AthletePage({ params }: AthletePageProps) {
               <div>
                 <dt className="text-sm font-medium text-gray-500">Phone</dt>
                 <dd className="mt-1 text-sm text-gray-900">{athlete.phone || '-'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Emails Sent</dt>
+                <dd className="mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-blue-600">{emailCount}</span>
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </dd>
               </div>
             </dl>
           </div>

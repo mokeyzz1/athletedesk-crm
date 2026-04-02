@@ -8,8 +8,8 @@ import { TaskPanel } from '@/components/tasks/task-panel'
 import { TaskKanban } from '@/components/tasks/task-kanban'
 
 interface TaskWithRelations extends Task {
-  assigned_user: { id: string; name: string; avatar_url: string | null } | null
-  creator: { id: string; name: string } | null
+  assigned_user: { id: string; name: string; avatar_url: string | null; role: string } | null
+  creator: { id: string; name: string; role: string } | null
   athletes: { id: string; name: string } | null
 }
 
@@ -22,8 +22,124 @@ interface TasksClientProps {
 
 type SortColumn = 'title' | 'assigned' | 'athlete' | 'due_date' | 'priority' | 'status'
 type SortDirection = 'asc' | 'desc'
-type FilterTab = 'all' | 'my_tasks' | 'overdue'
-type ViewMode = 'table' | 'kanban'
+type FilterTab = 'all' | 'my_tasks' | 'overdue' | 'marketing'
+type ViewMode = 'table' | 'kanban' | 'athlete_board'
+
+// Athlete Board View Component
+function AthleteBoardView({
+  tasks,
+  athletes,
+  onTaskClick,
+  getPriorityBadge,
+  getStatusBadge,
+  formatStatus,
+  isOverdue,
+}: {
+  tasks: TaskWithRelations[]
+  athletes: Athlete[]
+  onTaskClick: (taskId: string) => void
+  getPriorityBadge: (priority: string) => string
+  getStatusBadge: (status: string) => string
+  formatStatus: (status: string) => string
+  isOverdue: (task: TaskWithRelations) => boolean
+}) {
+  // Group tasks by athlete
+  const tasksByAthlete = useMemo(() => {
+    const groups: { athlete: { id: string; name: string } | null; tasks: TaskWithRelations[] }[] = []
+
+    // Group tasks with athletes
+    const athleteMap = new Map<string, TaskWithRelations[]>()
+    const unassignedTasks: TaskWithRelations[] = []
+
+    tasks.forEach(task => {
+      if (task.athlete_id && task.athletes) {
+        const existing = athleteMap.get(task.athlete_id) || []
+        existing.push(task)
+        athleteMap.set(task.athlete_id, existing)
+      } else {
+        unassignedTasks.push(task)
+      }
+    })
+
+    // Convert to array and sort by athlete name
+    athleteMap.forEach((tasks, athleteId) => {
+      const athlete = tasks[0].athletes
+      groups.push({ athlete, tasks })
+    })
+    groups.sort((a, b) => (a.athlete?.name || '').localeCompare(b.athlete?.name || ''))
+
+    // Add unassigned at the end
+    if (unassignedTasks.length > 0) {
+      groups.push({ athlete: null, tasks: unassignedTasks })
+    }
+
+    return groups
+  }, [tasks])
+
+  return (
+    <div className="space-y-6">
+      {tasksByAthlete.map(({ athlete, tasks }) => (
+        <div key={athlete?.id || 'unassigned'} className="card">
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200">
+            <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center">
+              <span className="text-brand-600 font-bold text-sm">
+                {athlete?.name.split(' ').map(n => n[0]).join('') || '?'}
+              </span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">
+                {athlete?.name || 'Unassigned Tasks'}
+              </h3>
+              <p className="text-sm text-gray-500">
+                {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+                {' - '}
+                {tasks.filter(t => t.status !== 'done').length} open
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {tasks.map(task => (
+              <div
+                key={task.id}
+                onClick={() => onTaskClick(task.id)}
+                className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-medium ${task.status === 'done' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                      {task.title}
+                    </span>
+                    {isOverdue(task) && (
+                      <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
+                        Overdue
+                      </span>
+                    )}
+                  </div>
+                  {task.description && (
+                    <p className="text-sm text-gray-500 truncate mt-0.5">{task.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 ml-4">
+                  {task.due_date && (
+                    <span className={`text-xs ${isOverdue(task) ? 'text-red-600' : 'text-gray-500'}`}>
+                      {new Date(task.due_date).toLocaleDateString()}
+                    </span>
+                  )}
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium capitalize ${getPriorityBadge(task.priority)}`}>
+                    {task.priority}
+                  </span>
+                  <span className={`${getStatusBadge(task.status)} capitalize text-xs`}>
+                    {formatStatus(task.status)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export function TasksClient({ tasks, currentUser, users, athletes }: TasksClientProps) {
   const router = useRouter()
@@ -47,6 +163,11 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
+  // Helper to check if a task is marketing-related
+  const isMarketingTask = (task: TaskWithRelations) => {
+    return task.assigned_user?.role === 'marketing' || task.creator?.role === 'marketing'
+  }
+
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       if (activeFilter === 'my_tasks') {
@@ -55,6 +176,9 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
       if (activeFilter === 'overdue') {
         if (!task.due_date || task.status === 'done') return false
         return new Date(task.due_date) < today
+      }
+      if (activeFilter === 'marketing') {
+        return isMarketingTask(task)
       }
       return true
     })
@@ -145,6 +269,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
   // Counts for tabs
   const myTasksCount = tasks.filter(t => t.assigned_to === currentUser.id && t.status !== 'done').length
   const overdueCount = tasks.filter(t => isOverdue(t)).length
+  const marketingCount = tasks.filter(t => isMarketingTask(t) && t.status !== 'done').length
 
   const handleTaskUpdated = () => {
     router.refresh()
@@ -221,6 +346,23 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => setActiveFilter('marketing')}
+                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-2 ${
+                  activeFilter === 'marketing'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Marketing
+                {marketingCount > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    activeFilter === 'marketing' ? 'bg-white/20' : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    {marketingCount}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* View Toggle */}
@@ -251,6 +393,19 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                 </svg>
               </button>
+              <button
+                onClick={() => setViewMode('athlete_board')}
+                className={`p-1.5 rounded transition-colors ${
+                  viewMode === 'athlete_board'
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                title="Athlete Board view"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -262,6 +417,16 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                 currentUser={currentUser}
                 onTaskClick={(taskId) => setSelectedTaskId(taskId)}
                 onTaskUpdated={handleTaskUpdated}
+              />
+            ) : viewMode === 'athlete_board' ? (
+              <AthleteBoardView
+                tasks={sortedTasks}
+                athletes={athletes}
+                onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+                getPriorityBadge={getPriorityBadge}
+                getStatusBadge={getStatusBadge}
+                formatStatus={formatStatus}
+                isOverdue={isOverdue}
               />
             ) : (
               <div className="card overflow-hidden p-0">
@@ -376,6 +541,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                 <p className="empty-state-title">
                   {activeFilter === 'all' ? 'No tasks yet' :
                    activeFilter === 'my_tasks' ? 'No tasks assigned to you' :
+                   activeFilter === 'marketing' ? 'No marketing tasks' :
                    'No overdue tasks'}
                 </p>
                 <p className="empty-state-description">
@@ -383,7 +549,9 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                     ? 'Create tasks to track work for your team.'
                     : activeFilter === 'my_tasks'
                       ? 'Tasks assigned to you will appear here.'
-                      : 'Great job! You have no overdue tasks.'}
+                      : activeFilter === 'marketing'
+                        ? 'Tasks assigned to or created by marketing users will appear here.'
+                        : 'Great job! You have no overdue tasks.'}
                 </p>
                 {canCreateTasks && activeFilter === 'all' && (
                   <Link href="/tasks/new" className="btn-primary mt-4 inline-flex">

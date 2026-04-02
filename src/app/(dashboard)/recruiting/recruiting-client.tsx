@@ -253,6 +253,7 @@ function TableView({
               <SortHeader field="class_year" label="Class" />
               <SortHeader field="region" label="Region" />
               <SortHeader field="outreach_status" label="Status" />
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emails</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Contact</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -290,6 +291,14 @@ function TableView({
                       <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
                   </select>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-1">
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-700">{athlete.emailCount}</span>
+                  </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                   {athlete.last_contacted_date
@@ -388,7 +397,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
 
     await supabase
       .from('athletes')
-      .update(updateData)
+      .update(updateData as never)
       .eq('id', athleteId)
 
     setIsUpdating(false)

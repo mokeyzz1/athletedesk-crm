@@ -177,9 +177,9 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
             {athletes && athletes.length > 0 && (
               <div className="hidden sm:block">
                 <ExportButtons
-                  data={athletes}
+                  data={athletes as unknown as Record<string, unknown>[]}
                   filename="all-athletes"
-                  columns={athleteExportColumns}
+                  columns={athleteExportColumns as { key: string; header: string }[]}
                   sheetName="Athletes"
                 />
               </div>

@@ -182,12 +182,11 @@ export const athleteColumnMappings: Record<string, string> = {
   'availability': 'recruiting_status',
   'availability status': 'recruiting_status',
 
-  // New recruiting fields - class_year
+  // New recruiting fields - class_year (Freshman/Sophomore/Junior/Senior)
   'class_year': 'class_year',
-  'class year': 'class_year',
   'classyear': 'class_year',
   'class': 'class_year',
-  'graduation class': 'class_year',
+  'classification year': 'class_year',
   'grad class': 'class_year',
   'recruiting class': 'class_year',
 

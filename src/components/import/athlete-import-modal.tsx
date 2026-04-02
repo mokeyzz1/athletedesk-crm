@@ -103,7 +103,8 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
           // If pipelineStage is specified, create pipeline entries for imported athletes
           if (pipelineStage && insertedAthletes && insertedAthletes.length > 0) {
-            const pipelineEntries = insertedAthletes.map(athlete => ({
+            const typedInsertedAthletes = insertedAthletes as { id: string }[]
+            const pipelineEntries = typedInsertedAthletes.map(athlete => ({
               athlete_id: athlete.id,
               pipeline_stage: pipelineStage,
               priority: 'medium' as const,

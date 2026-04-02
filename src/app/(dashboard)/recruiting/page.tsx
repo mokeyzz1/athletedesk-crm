@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { RecruitingClient } from './recruiting-client'
 import type { Athlete, OutreachStatus, ClassYear } from '@/lib/database.types'
+import { getAthleteEmailCounts } from '@/lib/queries/email-stats'
 
 export interface RecruitingAthlete {
   id: string
@@ -15,6 +16,7 @@ export interface RecruitingAthlete {
   email: string | null
   phone: string | null
   marketability_score: number | null
+  emailCount: number
 }
 
 export interface RegionStats {
@@ -34,7 +36,11 @@ export default async function RecruitingPage() {
     .neq('outreach_status', 'signed')
     .order('name')
 
-  const athletes: RecruitingAthlete[] = (athletesData as Athlete[] || []).map(a => ({
+  const typedAthletesData = (athletesData || []) as Athlete[]
+  const athleteIds = typedAthletesData.map(a => a.id)
+  const emailCounts = athleteIds.length > 0 ? await getAthleteEmailCounts(athleteIds) : {}
+
+  const athletes: RecruitingAthlete[] = typedAthletesData.map(a => ({
     id: a.id,
     name: a.name,
     sport: a.sport,
@@ -47,6 +53,7 @@ export default async function RecruitingPage() {
     email: a.email,
     phone: a.phone,
     marketability_score: a.marketability_score,
+    emailCount: emailCounts[a.id] || 0,
   }))
 
   // Calculate region stats

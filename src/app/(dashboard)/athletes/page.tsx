@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { AthletesClient } from './athletes-client'
-import type { OutreachStatus, ClassYear } from '@/lib/database.types'
+import type { OutreachStatus, ClassYear, Athlete } from '@/lib/database.types'
 
 export interface AllAthlete {
   id: string
@@ -27,7 +27,7 @@ export default async function AthletesPage() {
     .select('id, name, email, phone, sport, school, position, class_year, region, outreach_status, last_contacted_date, marketability_score, created_at')
     .order('created_at', { ascending: false })
 
-  const athletes: AllAthlete[] = (data || []).map(a => ({
+  const athletes: AllAthlete[] = ((data as Athlete[]) || []).map(a => ({
     id: a.id,
     name: a.name,
     email: a.email,

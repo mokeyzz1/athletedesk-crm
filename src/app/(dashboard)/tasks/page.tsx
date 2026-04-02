@@ -3,8 +3,8 @@ import type { Task, User, Athlete } from '@/lib/database.types'
 import { TasksClient } from './tasks-client'
 
 interface TaskWithRelations extends Task {
-  assigned_user: { id: string; name: string; avatar_url: string | null } | null
-  creator: { id: string; name: string } | null
+  assigned_user: { id: string; name: string; avatar_url: string | null; role: string } | null
+  creator: { id: string; name: string; role: string } | null
   athletes: { id: string; name: string } | null
 }
 
@@ -24,8 +24,8 @@ export default async function TasksPage() {
     .from('tasks')
     .select(`
       *,
-      assigned_user:assigned_to(id, name, avatar_url),
-      creator:created_by(id, name),
+      assigned_user:assigned_to(id, name, avatar_url, role),
+      creator:created_by(id, name, role),
       athletes:athlete_id(id, name)
     `)
     .order('due_date', { ascending: true, nullsFirst: false })

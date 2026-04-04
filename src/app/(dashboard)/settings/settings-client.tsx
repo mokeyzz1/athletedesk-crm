@@ -60,6 +60,10 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
   const [teamForm, setTeamForm] = useState({ name: '', areas: '' })
   const [savingTeam, setSavingTeam] = useState(false)
 
+  // Cleanup state
+  const [cleaningUp, setCleaningUp] = useState(false)
+  const [cleanupResult, setCleanupResult] = useState<{ deleted: number; remaining: number } | null>(null)
+
   const isAdmin = profile?.role === 'admin'
   const router = useRouter()
   const supabase = createClient()
@@ -106,7 +110,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
         notify_task_reminders: notifications.emailTaskReminders,
         notify_new_assignments: notifications.emailNewAssignments,
         notify_weekly_summary: notifications.emailWeeklySummary,
-      })
+      } as never)
       .eq('id', profile.id)
 
     setSavingNotifications(false)
@@ -146,13 +150,13 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
           subject: templateForm.subject,
           body: templateForm.body,
           is_shared: templateForm.is_shared,
-        })
+        } as never)
         .eq('id', editingTemplate.id)
         .select()
         .single()
 
       if (!error && data) {
-        setTemplates(prev => prev.map(t => t.id === editingTemplate.id ? data : t))
+        setTemplates(prev => prev.map(t => t.id === editingTemplate.id ? data as EmailTemplate : t))
       }
     } else {
       const { data, error } = await supabase
@@ -163,12 +167,12 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
           body: templateForm.body,
           is_shared: templateForm.is_shared,
           created_by: profile?.id,
-        })
+        } as never)
         .select()
         .single()
 
       if (!error && data) {
-        setTemplates(prev => [...prev, data])
+        setTemplates(prev => [...prev, data as EmailTemplate])
       }
     }
 
@@ -222,13 +226,13 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
         .update({
           name: regionForm.name,
           states: regionForm.states,
-        })
+        } as never)
         .eq('id', editingRegion.id)
         .select()
         .single()
 
       if (!error && data) {
-        setRecruitingRegions(prev => prev.map(r => r.id === editingRegion.id ? data : r))
+        setRecruitingRegions(prev => prev.map(r => r.id === editingRegion.id ? data as RecruitingRegion : r))
       }
     } else {
       const { data, error } = await supabase
@@ -236,12 +240,12 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
         .insert({
           name: regionForm.name,
           states: regionForm.states,
-        })
+        } as never)
         .select()
         .single()
 
       if (!error && data) {
-        setRecruitingRegions(prev => [...prev, data])
+        setRecruitingRegions(prev => [...prev, data as RecruitingRegion])
       }
     }
 
@@ -292,13 +296,13 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
         .update({
           name: teamForm.name,
           regions: areasArray,
-        })
+        } as never)
         .eq('id', editingTeam.id)
         .select()
         .single()
 
       if (!error && data) {
-        setRosterTeams(prev => prev.map(t => t.id === editingTeam.id ? data : t))
+        setRosterTeams(prev => prev.map(t => t.id === editingTeam.id ? data as RosterTeam : t))
       }
     } else {
       const { data, error } = await supabase
@@ -306,12 +310,12 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
         .insert({
           name: teamForm.name,
           regions: areasArray,
-        })
+        } as never)
         .select()
         .single()
 
       if (!error && data) {
-        setRosterTeams(prev => [...prev, data])
+        setRosterTeams(prev => [...prev, data as RosterTeam])
       }
     }
 
@@ -328,6 +332,23 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
     if (!error) {
       setRosterTeams(prev => prev.filter(t => t.id !== id))
     }
+  }
+
+  // Cleanup bad imports
+  const runCleanup = async () => {
+    setCleaningUp(true)
+    setCleanupResult(null)
+    try {
+      const response = await fetch('/api/cleanup-imports', { method: 'DELETE' })
+      const data = await response.json()
+      if (data.deleted !== undefined) {
+        setCleanupResult({ deleted: data.deleted, remaining: data.remaining })
+        router.refresh()
+      }
+    } catch (error) {
+      console.error('Cleanup failed:', error)
+    }
+    setCleaningUp(false)
   }
 
   return (
@@ -640,6 +661,37 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </div>
                   </div>
                 </div>
+
+                {/* Data Cleanup Section */}
+                {isAdmin && (
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">Data Cleanup</h3>
+                        <p className="text-sm text-gray-500">Remove athletes with invalid region data (city names instead of regions)</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={runCleanup}
+                        disabled={cleaningUp}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
+                      >
+                        {cleaningUp ? 'Cleaning...' : 'Run Cleanup'}
+                      </button>
+                      {cleanupResult && (
+                        <span className="text-sm text-gray-600">
+                          Deleted {cleanupResult.deleted} athletes. {cleanupResult.remaining} remaining.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -901,7 +953,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </svg>
                     <div>
                       <p className="text-sm font-medium text-amber-800">Roster Teams</p>
-                      <p className="text-sm text-amber-700">Roster teams organize signed athletes by school location. Enter states or areas (e.g., "California, Oregon" or "DMV, Northeast").</p>
+                      <p className="text-sm text-amber-700">Roster teams organize signed athletes by school location. Enter states or areas (e.g., &quot;California, Oregon&quot; or &quot;DMV, Northeast&quot;).</p>
                     </div>
                   </div>
                 </div>
@@ -1070,7 +1122,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                   placeholder="e.g., California, Oregon, Kansas"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
-                <p className="mt-1 text-xs text-gray-500">Enter states or areas separated by commas (e.g., "California, Oregon" or "DMV, Midwest")</p>
+                <p className="mt-1 text-xs text-gray-500">Enter states or areas separated by commas (e.g., &quot;California, Oregon&quot; or &quot;DMV, Midwest&quot;)</p>
               </div>
             </div>
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">

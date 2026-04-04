@@ -19,7 +19,7 @@ export async function GET() {
     .from('users')
     .select('id, email, gmail_email, gmail_access_token, google_sso_id')
     .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
-    .single()
+    .single() as { data: { id: string; email: string; gmail_email: string | null; gmail_access_token: string | null; google_sso_id: string | null } | null; error: { message: string } | null }
 
   // Debug logging
   console.log('Gmail status check:', {

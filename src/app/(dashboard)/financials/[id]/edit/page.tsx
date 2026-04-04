@@ -44,9 +44,10 @@ export default function EditFinancialPage() {
         return
       }
 
-      setDeal(dealData as FinancialTracking)
-      setDealValue(Number(dealData.deal_value))
-      setAgencyPercentage(dealData.agency_percentage)
+      const deal = dealData as FinancialTracking
+      setDeal(deal)
+      setDealValue(Number(deal.deal_value))
+      setAgencyPercentage(deal.agency_percentage)
 
       // Fetch athletes
       const { data: athletesData } = await supabase

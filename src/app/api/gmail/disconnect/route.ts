@@ -14,7 +14,7 @@ export async function POST() {
     .from('users')
     .select('id')
     .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
-    .single()
+    .single() as { data: { id: string } | null }
 
   if (!userData) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -28,7 +28,7 @@ export async function POST() {
       gmail_refresh_token: null,
       gmail_token_expiry: null,
       gmail_email: null,
-    })
+    } as never)
     .eq('id', userData.id)
 
   if (error) {

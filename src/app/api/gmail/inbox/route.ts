@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       .update({
         gmail_access_token: newTokens.access_token,
         gmail_token_expiry: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
-      })
+      } as never)
       .eq('id', userData.id)
   }
 

@@ -68,7 +68,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   const supabase = createClient()
 
   // Get all unique regions across staff
-  const allRegions = [...new Set(staffProductivity.flatMap(s => s.assigned_regions || []))]
+  const allRegions = Array.from(new Set(staffProductivity.flatMap(s => s.assigned_regions || [])))
 
   const getEmails = (staff: StaffProductivity) =>
     timeRange === 'week' ? staff.emailsThisWeek :
@@ -78,7 +78,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
     timeRange === 'week' ? staff.commsThisWeek :
     timeRange === 'month' ? staff.commsThisMonth : staff.commsAllTime
 
-  const roles = ['all', ...new Set(staffProductivity.map(s => s.role))]
+  const roles = ['all', ...Array.from(new Set(staffProductivity.map(s => s.role)))]
 
   const filteredStaff = staffProductivity.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase())
@@ -144,7 +144,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
 
     const { error } = await supabase
       .from('athletes')
-      .update({ [updateField]: selectedStaff.id })
+      .update({ [updateField]: selectedStaff.id } as never)
       .eq('id', athleteId)
 
     if (!error) {
@@ -162,7 +162,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
 
     const { error } = await supabase
       .from('athletes')
-      .update({ [updateField]: null })
+      .update({ [updateField]: null } as never)
       .eq('id', athleteId)
 
     if (!error) {
@@ -191,7 +191,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
 
     const { error } = await supabase
       .from('users')
-      .update({ assigned_regions: selectedRegions })
+      .update({ assigned_regions: selectedRegions } as never)
       .eq('id', selectedStaff.id)
 
     if (!error) {

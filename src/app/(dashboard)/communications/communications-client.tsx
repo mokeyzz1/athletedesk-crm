@@ -588,7 +588,7 @@ export function CommunicationsClient({ communications: initialCommunications, at
                         name="athlete_id"
                         id="athlete_id"
                         required
-                        defaultValue={editingItem.athlete_id}
+                        defaultValue={editingItem.athlete_id || ''}
                         className="mt-1 input"
                       >
                         {athletes.map(athlete => (

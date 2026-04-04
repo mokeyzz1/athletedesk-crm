@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       .from('users')
       .select('id, email, google_sso_id')
       .or(`email.eq.${authUser.email},google_sso_id.eq.${authUser.id}`)
-      .single()
+      .single() as { data: { id: string; email: string; google_sso_id: string | null } | null; error: { message: string } | null }
 
     console.log('Found user:', {
       existingUser,
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         gmail_refresh_token: tokens.refresh_token,
         gmail_token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
         gmail_email: userInfo.email,
-      })
+      } as never)
       .eq('id', existingUser.id)
       .select()
 

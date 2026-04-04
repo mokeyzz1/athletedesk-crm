@@ -47,7 +47,7 @@ export function FinancialsClient({ financials: initialFinancials }: FinancialsCl
   // Fetch athletes when panel opens
   useEffect(() => {
     if (isPanelOpen && athletes.length === 0) {
-      async function fetchAthletes() {
+      const fetchAthletes = async () => {
         const { data } = await supabase
           .from('athletes')
           .select('*')

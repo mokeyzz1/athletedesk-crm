@@ -70,8 +70,18 @@ export function EmailComposeModal({
 
   const handleConnectGmail = async () => {
     try {
-      const res = await fetch('/api/gmail/auth')
+      // Pass current URL so we return here after connecting
+      const returnUrl = encodeURIComponent(window.location.pathname)
+      const res = await fetch(`/api/gmail/auth?returnUrl=${returnUrl}`)
       const data = await res.json()
+
+      // If already connected, just update the state
+      if (data.already_connected) {
+        setGmailConnected(true)
+        setGmailEmail(data.email)
+        return
+      }
+
       if (data.url) {
         window.location.href = data.url
       }

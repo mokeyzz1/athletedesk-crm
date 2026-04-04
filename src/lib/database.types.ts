@@ -61,6 +61,11 @@ export interface Database {
           notify_task_reminders: boolean
           notify_new_assignments: boolean
           notify_weekly_summary: boolean
+          // Gmail integration
+          gmail_access_token: string | null
+          gmail_refresh_token: string | null
+          gmail_token_expiry: string | null
+          gmail_email: string | null
         }
         Insert: {
           id?: string
@@ -77,6 +82,11 @@ export interface Database {
           notify_task_reminders?: boolean
           notify_new_assignments?: boolean
           notify_weekly_summary?: boolean
+          // Gmail integration
+          gmail_access_token?: string | null
+          gmail_refresh_token?: string | null
+          gmail_token_expiry?: string | null
+          gmail_email?: string | null
         }
         Update: {
           id?: string
@@ -93,6 +103,11 @@ export interface Database {
           notify_task_reminders?: boolean
           notify_new_assignments?: boolean
           notify_weekly_summary?: boolean
+          // Gmail integration
+          gmail_access_token?: string | null
+          gmail_refresh_token?: string | null
+          gmail_token_expiry?: string | null
+          gmail_email?: string | null
         }
       }
       athletes: {
@@ -193,7 +208,7 @@ export interface Database {
       communications_log: {
         Row: {
           id: string
-          athlete_id: string
+          athlete_id: string | null
           staff_member_id: string
           communication_date: string
           type: CommunicationType
@@ -203,10 +218,12 @@ export interface Database {
           follow_up_completed: boolean
           created_at: string
           updated_at: string
+          recipient_email: string | null
+          recipient_name: string | null
         }
         Insert: {
           id?: string
-          athlete_id: string
+          athlete_id?: string | null
           staff_member_id: string
           communication_date?: string
           type: CommunicationType
@@ -216,10 +233,12 @@ export interface Database {
           follow_up_completed?: boolean
           created_at?: string
           updated_at?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
         }
         Update: {
           id?: string
-          athlete_id?: string
+          athlete_id?: string | null
           staff_member_id?: string
           communication_date?: string
           type?: CommunicationType
@@ -229,6 +248,8 @@ export interface Database {
           follow_up_completed?: boolean
           created_at?: string
           updated_at?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
         }
       }
       recruiting_pipeline: {

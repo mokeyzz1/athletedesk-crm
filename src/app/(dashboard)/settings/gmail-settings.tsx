@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 export function GmailSettings() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null)
@@ -38,6 +39,15 @@ export function GmailSettings() {
     try {
       const res = await fetch('/api/gmail/auth')
       const data = await res.json()
+
+      // If already connected, just update the state
+      if (data.already_connected) {
+        setIsConnected(true)
+        setGmailEmail(data.email)
+        setMessage({ type: 'success', text: 'Gmail is already connected!' })
+        return
+      }
+
       if (data.url) {
         window.location.href = data.url
       }
@@ -140,32 +150,56 @@ export function GmailSettings() {
         <div className={`mt-4 p-3 rounded-md text-sm ${
           message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
         }`}>
-          {message.text}
+          <p>{message.text}</p>
+          {message.type === 'success' && isConnected && (
+            <div className="mt-2 flex gap-3">
+              <Link href="/recruiting" className="font-medium text-green-800 hover:text-green-900 underline">
+                Go to Recruiting →
+              </Link>
+              <Link href="/athletes" className="font-medium text-green-800 hover:text-green-900 underline">
+                Go to Roster →
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
       <div className="mt-4 pt-4 border-t border-gray-200">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">What you can do with Gmail integration:</h3>
-        <ul className="text-sm text-gray-500 space-y-1">
-          <li className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Send emails to athletes directly from their profile
-          </li>
-          <li className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Use pre-built email templates for common messages
-          </li>
-          <li className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Automatically log sent emails as communications
-          </li>
-        </ul>
+        {isConnected ? (
+          <>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">You&apos;re all set! Here&apos;s how to send emails:</h3>
+            <ol className="text-sm text-gray-500 space-y-2 list-decimal list-inside">
+              <li>Go to <Link href="/recruiting" className="text-brand-600 hover:underline">Recruiting</Link> or <Link href="/athletes" className="text-brand-600 hover:underline">Roster</Link></li>
+              <li>Click on an athlete&apos;s name to view their profile</li>
+              <li>Click the <span className="font-medium text-gray-700">Send Email</span> button</li>
+              <li>Choose a template or write your own message</li>
+            </ol>
+          </>
+        ) : (
+          <>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">What you can do with Gmail integration:</h3>
+            <ul className="text-sm text-gray-500 space-y-1">
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Send emails to athletes directly from their profile
+              </li>
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Use pre-built email templates for common messages
+              </li>
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Automatically log sent emails as communications
+              </li>
+            </ul>
+          </>
+        )}
       </div>
     </div>
   )

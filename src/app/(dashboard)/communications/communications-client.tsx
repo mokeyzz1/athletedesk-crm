@@ -346,24 +346,49 @@ export function CommunicationsClient({ communications: initialCommunications, at
           {/* Staff Breakdown */}
           {emailStats.byStaff.length > 0 && (
             <div className="card">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Emails by Staff Member</h3>
-              <div className="space-y-3">
-                {emailStats.byStaff.map((staff) => (
-                  <div key={staff.staffId} className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">{staff.staffName}</span>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-500">
-                        <span className="font-medium text-gray-700">{staff.thisWeek}</span> this week
-                      </span>
-                      <span className="text-gray-500">
-                        <span className="font-medium text-gray-700">{staff.thisMonth}</span> this month
-                      </span>
-                      <span className="text-gray-500">
-                        <span className="font-medium text-gray-700">{staff.allTime}</span> total
-                      </span>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Emails by Staff Member</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {emailStats.byStaff.map((staff) => {
+                  const maxEmails = Math.max(...emailStats.byStaff.map(s => s.allTime))
+                  const percentage = maxEmails > 0 ? (staff.allTime / maxEmails) * 100 : 0
+                  return (
+                    <div key={staff.staffId} className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center text-sm font-medium text-white">
+                          {staff.staffName.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{staff.staffName}</p>
+                          <p className="text-xs text-gray-500">{staff.allTime} total emails</p>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mb-3">
+                        <div
+                          className="bg-brand-500 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+
+                      {/* Stats row */}
+                      <div className="flex justify-between text-xs">
+                        <div className="text-center">
+                          <p className="font-semibold text-gray-900">{staff.thisWeek}</p>
+                          <p className="text-gray-500">Week</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-gray-900">{staff.thisMonth}</p>
+                          <p className="text-gray-500">Month</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-brand-600">{staff.allTime}</p>
+                          <p className="text-gray-500">Total</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

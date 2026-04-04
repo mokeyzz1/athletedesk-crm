@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { User, EmailTemplate, RosterTeam, RecruitingRegion } from '@/lib/database.types'
 import { US_STATES } from '@/lib/database.types'
 import { GmailSettings } from './gmail-settings'
@@ -18,7 +18,16 @@ interface SettingsClientProps {
 type SettingsSection = 'profile' | 'notifications' | 'templates' | 'integrations' | 'team' | 'goals' | 'regions' | 'roster-teams'
 
 export function SettingsClient({ profile, initialTemplates, initialRosterTeams, initialRecruitingRegions }: SettingsClientProps) {
+  const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
+
+  // Switch to integrations tab if gmail param is present (after OAuth callback)
+  useEffect(() => {
+    const gmailParam = searchParams.get('gmail')
+    if (gmailParam) {
+      setActiveSection('integrations')
+    }
+  }, [searchParams])
 
   // Notification state - initialized from profile
   const [notifications, setNotifications] = useState({

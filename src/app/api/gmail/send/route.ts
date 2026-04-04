@@ -8,7 +8,8 @@ interface SendEmailRequest {
   to: string
   subject: string
   body: string
-  athleteId: string
+  athleteId: string | null
+  recipientName?: string
 }
 
 interface UserWithGmail {
@@ -63,11 +64,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user's Gmail tokens
+  // Get user's Gmail tokens - look up by email or google_sso_id
   const { data: userDataRaw } = await supabase
     .from('users')
     .select('id, gmail_access_token, gmail_refresh_token, gmail_token_expiry, gmail_email')
-    .eq('google_sso_id', user.id)
+    .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
     .single()
 
   const userData = userDataRaw as UserWithGmail | null
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body: SendEmailRequest = await request.json()
-  const { to, subject, body: emailBody, athleteId } = body
+  const { to, subject, body: emailBody, athleteId, recipientName } = body
 
   if (!to || !subject || !emailBody) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -128,20 +129,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
     }
 
-    // Create communication log entry
-    if (athleteId) {
-      await supabase
-        .from('communications_log')
-        .insert({
-          athlete_id: athleteId,
-          staff_member_id: userData.id,
-          type: 'email',
-          subject: subject,
-          notes: `Sent via AthleteDesk Gmail integration.\n\n${emailBody}`,
-          communication_date: new Date().toISOString(),
-          follow_up_completed: false,
-        } as never)
-    }
+    // Always create communication log entry (counts toward email stats)
+    await supabase
+      .from('communications_log')
+      .insert({
+        athlete_id: athleteId || null,
+        staff_member_id: userData.id,
+        type: 'email',
+        subject: subject,
+        notes: `Sent via AthleteDesk Gmail integration.\n\n${emailBody}`,
+        communication_date: new Date().toISOString(),
+        follow_up_completed: false,
+        recipient_email: athleteId ? null : to,
+        recipient_name: athleteId ? null : (recipientName || null),
+      } as never)
 
     return NextResponse.json({ success: true })
   } catch (err) {

@@ -174,13 +174,13 @@ export const athleteColumnMappings: Record<string, string> = {
   'grad year': 'eligibility_year',
   'year': 'eligibility_year',
 
-  // recruiting_status
-  'recruiting_status': 'recruiting_status',
-  'recruiting status': 'recruiting_status',
-  'status': 'recruiting_status',
-  'recruit status': 'recruiting_status',
-  'availability': 'recruiting_status',
-  'availability status': 'recruiting_status',
+  // recruiting_status - now maps to status_text for intelligent parsing
+  'recruiting_status': 'status_text',
+  'recruiting status': 'status_text',
+  'status': 'status_text',
+  'recruit status': 'status_text',
+  'availability': 'status_text',
+  'availability status': 'status_text',
 
   // New recruiting fields - class_year (Freshman/Sophomore/Junior/Senior)
   'class_year': 'class_year',
@@ -277,6 +277,25 @@ export const athleteColumnMappings: Record<string, string> = {
   'social reach': 'total_following',
   'followers': 'total_following',
 
+  // Location - keep as location, not region
+  'location': 'location',
+  'loc': 'location',
+  'city': 'location',
+  'city, state': 'location',
+
+  // Description/Notes (description already mapped above)
+  'bio': 'notes',
+  'scouting report': 'notes',
+
+  // Assignment/Groupchat - extract staff name
+  'groupchat': 'assignment_text',
+  'assignment': 'assignment_text',
+  'assigned to': 'assignment_text',
+  'assigned': 'assignment_text',
+
+  // Internal field - preserve sheet name for region
+  '_sourcesheet': '_sourceSheet',
+
   // Height and Weight - many common variations
   'height': 'height',
   'ht': 'height',
@@ -315,6 +334,9 @@ export const athleteColumnMappings: Record<string, string> = {
   'offers': 'offers',
   'offer count': 'offers',
   'offer list': 'offers',
+  '# offers': 'offers',
+  '#offers': 'offers',
+  'number of offers': 'offers',
   'hudl': 'hudl_link',
   'hudl link': 'hudl_link',
   'hudl_link': 'hudl_link',
@@ -379,6 +401,7 @@ export const socialMediaFields = [
 
 // Fields that go into sport_specific_stats JSON
 export const sportSpecificFields = [
+  'location',
   'height',
   'weight',
   'height_weight',
@@ -405,7 +428,12 @@ export const sportSpecificFields = [
   'velocity',
 ]
 
-export function parseImportFile(file: File): Promise<Record<string, unknown>[]> {
+export interface ParsedWorkbook {
+  sheetNames: string[]
+  sheets: Record<string, Record<string, unknown>[]>
+}
+
+export function parseImportFile(file: File): Promise<ParsedWorkbook> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
@@ -413,10 +441,18 @@ export function parseImportFile(file: File): Promise<Record<string, unknown>[]> 
       try {
         const data = e.target?.result
         const workbook = XLSX.read(data, { type: 'array' })
-        const sheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[sheetName]
-        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[]
-        resolve(jsonData)
+
+        // Parse all sheets
+        const sheets: Record<string, Record<string, unknown>[]> = {}
+        workbook.SheetNames.forEach(sheetName => {
+          const worksheet = workbook.Sheets[sheetName]
+          sheets[sheetName] = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[]
+        })
+
+        resolve({
+          sheetNames: workbook.SheetNames,
+          sheets
+        })
       } catch (error) {
         reject(error)
       }
@@ -450,8 +486,60 @@ export function mapColumns(
   })
 }
 
-export function normalizeAthleteData(data: Record<string, unknown>[]): Record<string, unknown>[] {
-  return data.map(row => {
+export interface NormalizeResult {
+  data: Record<string, unknown>[]
+  skippedRows: { row: number; reason: string; value: string }[]
+}
+
+// US States for header detection
+const US_STATE_NAMES = [
+  'ALABAMA', 'ALASKA', 'ARIZONA', 'ARKANSAS', 'CALIFORNIA', 'COLORADO', 'CONNECTICUT',
+  'DELAWARE', 'FLORIDA', 'GEORGIA', 'HAWAII', 'IDAHO', 'ILLINOIS', 'INDIANA', 'IOWA',
+  'KANSAS', 'KENTUCKY', 'LOUISIANA', 'MAINE', 'MARYLAND', 'MASSACHUSETTS', 'MICHIGAN',
+  'MINNESOTA', 'MISSISSIPPI', 'MISSOURI', 'MONTANA', 'NEBRASKA', 'NEVADA', 'NEW HAMPSHIRE',
+  'NEW JERSEY', 'NEW MEXICO', 'NEW YORK', 'NORTH CAROLINA', 'NORTH DAKOTA', 'OHIO',
+  'OKLAHOMA', 'OREGON', 'PENNSYLVANIA', 'RHODE ISLAND', 'SOUTH CAROLINA', 'SOUTH DAKOTA',
+  'TENNESSEE', 'TEXAS', 'UTAH', 'VERMONT', 'VIRGINIA', 'WASHINGTON', 'WEST VIRGINIA',
+  'WISCONSIN', 'WYOMING'
+]
+
+export function normalizeAthleteData(data: Record<string, unknown>[]): NormalizeResult {
+  const skippedRows: { row: number; reason: string; value: string }[] = []
+
+  // Filter out state/section header rows
+  const filteredData = data.filter((row, index) => {
+    // Check if "name" field is a US state (these are section headers)
+    const name = row.name || row.Name || row.NAME
+    if (name) {
+      const nameStr = String(name).trim().toUpperCase()
+      if (US_STATE_NAMES.includes(nameStr)) {
+        skippedRows.push({ row: index + 1, reason: 'State header', value: nameStr })
+        return false
+      }
+    }
+
+    // Also check first field for ALL CAPS state-like values
+    const entries = Object.entries(row).filter(([key]) =>
+      !key.startsWith('_') // Ignore internal fields like _sourceSheet
+    )
+    const filledFields = entries.filter(([, value]) =>
+      value !== null && value !== undefined && String(value).trim() !== ''
+    )
+
+    // Skip if only first cell has value (state header like "ARIZONA")
+    if (filledFields.length === 1) {
+      const value = String(filledFields[0][1]).trim()
+      // Check if it's all caps or looks like a state/region header
+      if (value === value.toUpperCase() && value.length < 30 && !/\d/.test(value)) {
+        skippedRows.push({ row: index + 1, reason: 'Section header', value })
+        return false
+      }
+    }
+
+    return true
+  })
+
+  const normalizedData = filteredData.map(row => {
     const normalized: Record<string, unknown> = { ...row }
 
     // Combine first_name and last_name into name if name is missing
@@ -491,7 +579,59 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Record<st
       }
     }
 
-    // Normalize recruiting_status
+    // Parse status_text intelligently into outreach_status
+    // 'followed' → Contacted, 'phone number/call/expecting' → In Conversation,
+    // 'rejected/representation' → Dead Lead, empty → Not Contacted
+    if (normalized.status_text) {
+      const statusText = String(normalized.status_text).toLowerCase().trim()
+      const originalStatus = String(normalized.status_text).trim()
+
+      // Store original text in notes
+      const existingNotes = normalized.notes ? String(normalized.notes) : ''
+      if (originalStatus) {
+        normalized.notes = existingNotes
+          ? `${existingNotes}\n\nStatus: ${originalStatus}`
+          : `Status: ${originalStatus}`
+      }
+
+      // Map to outreach_status
+      if (statusText.includes('rejected') || statusText.includes('representation') || statusText.includes('not interested')) {
+        normalized.outreach_status = 'dead_lead'
+      } else if (statusText.includes('phone') || statusText.includes('call') || statusText.includes('expecting') || statusText.includes('talking')) {
+        normalized.outreach_status = 'in_conversation'
+      } else if (statusText.includes('followed') || statusText.includes('contacted') || statusText.includes('reached')) {
+        normalized.outreach_status = 'contacted'
+      } else if (statusText === '' || !statusText) {
+        normalized.outreach_status = 'not_contacted'
+      } else {
+        // Has some text but doesn't match patterns - mark as contacted
+        normalized.outreach_status = 'contacted'
+      }
+
+      delete normalized.status_text
+    }
+
+    // Parse assignment_text - extract staff name from "Followed by Kaleb" or "followed by BC"
+    if (normalized.assignment_text) {
+      const assignmentText = String(normalized.assignment_text).trim()
+      const match = assignmentText.match(/(?:followed|assigned|by)\s+(?:by\s+)?(\w+)/i)
+
+      if (match) {
+        normalized.assigned_staff_note = match[1]
+      }
+
+      // Also store full text in notes
+      const existingNotes = normalized.notes ? String(normalized.notes) : ''
+      if (assignmentText) {
+        normalized.notes = existingNotes
+          ? `${existingNotes}\n\nAssignment: ${assignmentText}`
+          : `Assignment: ${assignmentText}`
+      }
+
+      delete normalized.assignment_text
+    }
+
+    // Normalize recruiting_status (if explicitly set)
     if (normalized.recruiting_status) {
       const status = String(normalized.recruiting_status).toLowerCase().trim()
       if (status.includes('not') || status === 'inactive') {
@@ -525,49 +665,55 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Record<st
       }
     }
 
-    // Normalize class_year
-    if (normalized.class_year) {
-      const year = String(normalized.class_year).toLowerCase().trim()
-      if (year === '2025' || year.includes('2025')) {
-        normalized.class_year = '2025'
-      } else if (year === '2026' || year.includes('2026')) {
-        normalized.class_year = '2026'
-      } else if (year === '2027' || year.includes('2027')) {
-        normalized.class_year = '2027'
-      } else if (year === '2028' || year.includes('2028')) {
-        normalized.class_year = '2028'
-      } else if (year === '2029' || year.includes('2029')) {
-        normalized.class_year = '2029'
-      } else if (year === '2030' || year.includes('2030')) {
-        normalized.class_year = '2030'
-      } else if (year.includes('pro') || year.includes('professional')) {
-        normalized.class_year = 'pro'
+    // Normalize class_year - handle both number (27, 28) and text (2027, '27, Class of 2027)
+    if (normalized.class_year !== undefined && normalized.class_year !== null && normalized.class_year !== '') {
+      const yearRaw = String(normalized.class_year).trim()
+      const yearLower = yearRaw.toLowerCase()
+
+      // Extract year number
+      let yearNum: number | null = null
+
+      // Check for 4-digit year
+      const fourDigitMatch = yearRaw.match(/20(\d{2})/)
+      if (fourDigitMatch) {
+        yearNum = parseInt(fourDigitMatch[0])
       } else {
-        normalized.class_year = 'n_a' // default
+        // Check for 2-digit year (27, 28, '27, '28)
+        const twoDigitMatch = yearRaw.match(/'?(\d{2})/)
+        if (twoDigitMatch) {
+          const twoDigit = parseInt(twoDigitMatch[1])
+          if (twoDigit >= 24 && twoDigit <= 35) {
+            yearNum = 2000 + twoDigit
+          }
+        }
+      }
+
+      if (yearNum && yearNum >= 2024 && yearNum <= 2035) {
+        normalized.class_year = String(yearNum)
+      } else if (yearLower.includes('pro') || yearLower.includes('professional')) {
+        normalized.class_year = 'pro'
+      } else if (yearLower.includes('fresh')) {
+        normalized.class_year = '2028' // Approximate
+      } else if (yearLower.includes('soph')) {
+        normalized.class_year = '2027'
+      } else if (yearLower.includes('junior') || yearLower.includes('jr')) {
+        normalized.class_year = '2026'
+      } else if (yearLower.includes('senior') || yearLower.includes('sr')) {
+        normalized.class_year = '2025'
+      } else {
+        normalized.class_year = 'n_a'
       }
     }
 
-    // Normalize region - match to standard regions or keep custom
-    if (normalized.region) {
-      const region = String(normalized.region).trim()
-      const regionLower = region.toLowerCase()
-      if (regionLower.includes('northeast') || regionLower.includes('north east') || regionLower.includes('ne ') || regionLower === 'ne') {
-        normalized.region = 'Northeast'
-      } else if (regionLower.includes('southeast') || regionLower.includes('south east') || regionLower.includes('se ') || regionLower === 'se') {
-        normalized.region = 'Southeast'
-      } else if (regionLower.includes('midwest') || regionLower.includes('mid west') || regionLower.includes('mw ') || regionLower === 'mw') {
-        normalized.region = 'Midwest'
-      } else if (regionLower.includes('southwest') || regionLower.includes('south west') || regionLower.includes('sw ') || regionLower === 'sw') {
-        normalized.region = 'Southwest'
-      } else if (regionLower === 'west' || regionLower.includes('pacific') || regionLower.includes('western')) {
-        normalized.region = 'West'
-      } else if (regionLower.includes('international') || regionLower.includes('intl') || regionLower.includes('foreign')) {
-        normalized.region = 'International'
-      } else {
-        // Keep original value with proper capitalization
-        normalized.region = region
-      }
+    // Region - use sheet name directly, no mapping
+    // Sheet names ARE the regions (Northwest, Southwest, South, Great Lakes, etc.)
+    if (!normalized.region && normalized._sourceSheet) {
+      normalized.region = String(normalized._sourceSheet)
+    } else if (normalized.region) {
+      // Keep as-is, just trim
+      normalized.region = String(normalized.region).trim()
     }
+    delete normalized._sourceSheet
 
     // Normalize outreach_status
     if (normalized.outreach_status) {
@@ -609,8 +755,18 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Record<st
       normalized.eligibility_year = null
     }
 
+    // Merge notes_extra into notes
+    if (normalized.notes_extra) {
+      const existingNotes = normalized.notes ? String(normalized.notes) : ''
+      const extraNotes = String(normalized.notes_extra)
+      normalized.notes = existingNotes ? `${existingNotes}\n\n${extraNotes}` : extraNotes
+      delete normalized.notes_extra
+    }
+
+    // Sport is NOT auto-inferred - user will set manually after import
+
     // Ensure required fields have defaults
-    if (!normalized.league_level) normalized.league_level = 'college'
+    if (!normalized.league_level) normalized.league_level = 'high_school'
     if (!normalized.recruiting_status) normalized.recruiting_status = 'not_recruiting'
     if (!normalized.transfer_portal_status) normalized.transfer_portal_status = 'not_in_portal'
     if (!normalized.class_year) normalized.class_year = 'n_a'
@@ -625,6 +781,32 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Record<st
           const num = Number(normalized[field])
           if (!isNaN(num)) {
             socialMedia[field] = num
+          }
+        } else if (field === 'instagram_handle') {
+          // Instagram - extract URL or handle
+          let value = String(normalized[field]).trim()
+
+          // Check if it's a hyperlink object (from Excel)
+          if (typeof normalized[field] === 'object' && normalized[field] !== null) {
+            const obj = normalized[field] as Record<string, unknown>
+            if (obj.hyperlink) {
+              value = String(obj.hyperlink)
+            } else if (obj.text) {
+              value = String(obj.text)
+            }
+          }
+
+          // Extract handle from URL if it's a full URL
+          if (value.includes('instagram.com/')) {
+            const match = value.match(/instagram\.com\/([^/?]+)/)
+            if (match) {
+              socialMedia[field] = match[1]
+            } else {
+              socialMedia[field] = value
+            }
+          } else {
+            // Clean up handle (remove @ if present)
+            socialMedia[field] = value.startsWith('@') ? value.substring(1) : value
           }
         } else {
           // Clean up handles (remove @ if present)
@@ -652,4 +834,6 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Record<st
 
     return normalized
   })
+
+  return { data: normalizedData, skippedRows }
 }

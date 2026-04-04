@@ -6,6 +6,7 @@ import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } fr
 import { AthleteDocuments } from './athlete-documents'
 import { SendEmailButton } from './send-email-button'
 import { EditAthleteButton } from '@/components/athletes/edit-athlete-button'
+import { DeleteAthleteButton } from './delete-athlete-button'
 import { PipelineStatusCard } from './pipeline-status-card'
 import { getAthleteEmailCount } from '@/lib/queries/email-stats'
 
@@ -544,6 +545,9 @@ export default async function AthletePage({ params }: AthletePageProps) {
               <Link href={`/financials/new?athlete=${id}`} className="btn-secondary w-full justify-center">
                 Record Deal
               </Link>
+              <div className="pt-2 mt-2 border-t border-gray-200">
+                <DeleteAthleteButton athleteId={id} athleteName={athlete.name} />
+              </div>
             </div>
           </div>
         </div>

@@ -27,7 +27,7 @@ export type TaskStatus = 'todo' | 'in_progress' | 'done'
 
 // New types for recruiting database
 export type ClassYear = '2025' | '2026' | '2027' | '2028' | '2029' | '2030' | 'pro' | 'n_a'
-export type OutreachStatus = 'not_contacted' | 'contacted' | 'in_conversation' | 'interested' | 'committed' | 'dead_lead' | 'circling_back' | 'signed'
+export type OutreachStatus = 'not_contacted' | 'contacted' | 'in_conversation' | 'interested' | 'dead_lead' | 'circling_back' | 'signed'
 export type DealType = 'revenue_share' | 'marketing_brand'
 export type DealStage = 'prospective' | 'active'
 
@@ -56,6 +56,11 @@ export interface Database {
           created_at: string
           updated_at: string
           assigned_regions: string[]
+          // Notification preferences
+          notify_follow_ups: boolean
+          notify_task_reminders: boolean
+          notify_new_assignments: boolean
+          notify_weekly_summary: boolean
         }
         Insert: {
           id?: string
@@ -67,6 +72,11 @@ export interface Database {
           created_at?: string
           updated_at?: string
           assigned_regions?: string[]
+          // Notification preferences
+          notify_follow_ups?: boolean
+          notify_task_reminders?: boolean
+          notify_new_assignments?: boolean
+          notify_weekly_summary?: boolean
         }
         Update: {
           id?: string
@@ -78,6 +88,11 @@ export interface Database {
           created_at?: string
           updated_at?: string
           assigned_regions?: string[]
+          // Notification preferences
+          notify_follow_ups?: boolean
+          notify_task_reminders?: boolean
+          notify_new_assignments?: boolean
+          notify_weekly_summary?: boolean
         }
       }
       athletes: {
@@ -108,6 +123,9 @@ export interface Database {
           region: string | null
           outreach_status: OutreachStatus
           last_contacted_date: string | null
+          // Roster team fields
+          school_state: string | null
+          roster_team_id: string | null
         }
         Insert: {
           id?: string
@@ -136,6 +154,9 @@ export interface Database {
           region?: string | null
           outreach_status?: OutreachStatus
           last_contacted_date?: string | null
+          // Roster team fields
+          school_state?: string | null
+          roster_team_id?: string | null
         }
         Update: {
           id?: string
@@ -164,6 +185,9 @@ export interface Database {
           region?: string | null
           outreach_status?: OutreachStatus
           last_contacted_date?: string | null
+          // Roster team fields
+          school_state?: string | null
+          roster_team_id?: string | null
         }
       }
       communications_log: {
@@ -479,6 +503,84 @@ export interface Database {
           is_read?: boolean
         }
       }
+      email_templates: {
+        Row: {
+          id: string
+          name: string
+          subject: string
+          body: string
+          created_by: string | null
+          is_shared: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          subject: string
+          body: string
+          created_by?: string | null
+          is_shared?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          subject?: string
+          body?: string
+          created_by?: string | null
+          is_shared?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      roster_teams: {
+        Row: {
+          id: string
+          name: string
+          regions: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          regions?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          regions?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      recruiting_regions: {
+        Row: {
+          id: string
+          name: string
+          states: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          states?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          states?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       dashboard_summary: {
@@ -614,6 +716,30 @@ export type TaskCommentInsert = Database['public']['Tables']['task_comments']['I
 export type CommentMention = Database['public']['Tables']['comment_mentions']['Row']
 export type CommentMentionInsert = Database['public']['Tables']['comment_mentions']['Insert']
 
+export type EmailTemplate = Database['public']['Tables']['email_templates']['Row']
+export type EmailTemplateInsert = Database['public']['Tables']['email_templates']['Insert']
+export type EmailTemplateUpdate = Database['public']['Tables']['email_templates']['Update']
+
+export type RosterTeam = Database['public']['Tables']['roster_teams']['Row']
+export type RosterTeamInsert = Database['public']['Tables']['roster_teams']['Insert']
+export type RosterTeamUpdate = Database['public']['Tables']['roster_teams']['Update']
+
+export type RecruitingRegion = Database['public']['Tables']['recruiting_regions']['Row']
+export type RecruitingRegionInsert = Database['public']['Tables']['recruiting_regions']['Insert']
+export type RecruitingRegionUpdate = Database['public']['Tables']['recruiting_regions']['Update']
+
+// US States for selection
+export const US_STATES = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
+  'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
+  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan',
+  'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
+  'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
+  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+  'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'Washington DC',
+  'West Virginia', 'Wisconsin', 'Wyoming'
+] as const
+
 export type AthleteWithPipeline = Database['public']['Views']['athletes_with_pipeline']['Row']
 export type DashboardSummary = Database['public']['Views']['dashboard_summary']['Row']
 export type PendingFollowUp = Database['public']['Views']['pending_follow_ups']['Row']
@@ -636,7 +762,6 @@ export const OUTREACH_STATUSES: { value: OutreachStatus; label: string }[] = [
   { value: 'contacted', label: 'Contacted' },
   { value: 'in_conversation', label: 'In Conversation' },
   { value: 'interested', label: 'Interested' },
-  { value: 'committed', label: 'Committed' },
   { value: 'dead_lead', label: 'Dead Lead' },
   { value: 'circling_back', label: 'Circling Back' },
   { value: 'signed', label: 'Signed' },

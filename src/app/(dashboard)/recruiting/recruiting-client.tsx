@@ -1,16 +1,92 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
-import type { OutreachStatus, ClassYear } from '@/lib/database.types'
-import { OUTREACH_STATUSES, CLASS_YEARS, REGIONS } from '@/lib/database.types'
+import type { OutreachStatus, ClassYear, RosterTeam } from '@/lib/database.types'
+import { OUTREACH_STATUSES, CLASS_YEARS, REGIONS, US_STATES } from '@/lib/database.types'
 import type { RecruitingAthlete, RegionStats } from './page'
 
 interface RecruitingClientProps {
   athletes: RecruitingAthlete[]
   regionStats: RegionStats[]
+}
+
+interface SigningModalProps {
+  athlete: RecruitingAthlete
+  rosterTeams: RosterTeam[]
+  onConfirm: (schoolState: string | null, rosterTeamId: string | null) => void
+  onCancel: () => void
+}
+
+function SigningModal({ athlete, rosterTeams, onConfirm, onCancel }: SigningModalProps) {
+  const [schoolState, setSchoolState] = useState<string>('')
+  const [rosterTeamId, setRosterTeamId] = useState<string>('')
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/50" onClick={onCancel} />
+      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Sign {athlete.name}</h2>
+        <p className="text-sm text-gray-500 mb-4">Assign this athlete to a roster team before moving them to signed status.</p>
+
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="school_state" className="block text-sm font-medium text-gray-700 mb-1">
+              School State
+            </label>
+            <select
+              id="school_state"
+              value={schoolState}
+              onChange={(e) => setSchoolState(e.target.value)}
+              className="input w-full"
+            >
+              <option value="">Select State</option>
+              {US_STATES.map(state => (
+                <option key={state} value={state}>{state}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="roster_team" className="block text-sm font-medium text-gray-700 mb-1">
+              Roster Team
+            </label>
+            <select
+              id="roster_team"
+              value={rosterTeamId}
+              onChange={(e) => setRosterTeamId(e.target.value)}
+              className="input w-full"
+            >
+              <option value="">Select Team</option>
+              {rosterTeams.map(team => (
+                <option key={team.id} value={team.id}>{team.name}</option>
+              ))}
+            </select>
+            {rosterTeams.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">No roster teams configured. Add teams in Settings first.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={onCancel}
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(schoolState || null, rosterTeamId || null)}
+            className="btn-primary"
+          >
+            Confirm Signing
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 type ViewMode = 'kanban' | 'table'
@@ -20,7 +96,7 @@ const OUTREACH_COLUMNS: { key: OutreachStatus; label: string; color: string; bgC
   { key: 'contacted', label: 'Contacted', color: 'border-blue-300', bgColor: 'bg-blue-50' },
   { key: 'in_conversation', label: 'In Conversation', color: 'border-indigo-300', bgColor: 'bg-indigo-50' },
   { key: 'interested', label: 'Interested', color: 'border-yellow-300', bgColor: 'bg-yellow-50' },
-  { key: 'committed', label: 'Committed', color: 'border-green-300', bgColor: 'bg-green-50' },
+  { key: 'signed', label: 'Signed', color: 'border-green-300', bgColor: 'bg-green-50' },
   { key: 'circling_back', label: 'Circling Back', color: 'border-orange-300', bgColor: 'bg-orange-50' },
   { key: 'dead_lead', label: 'Dead Lead', color: 'border-red-300', bgColor: 'bg-red-50' },
 ]
@@ -30,10 +106,9 @@ const STATUS_COLORS: Record<OutreachStatus, string> = {
   'contacted': 'bg-blue-100 text-blue-700',
   'in_conversation': 'bg-indigo-100 text-indigo-700',
   'interested': 'bg-yellow-100 text-yellow-700',
-  'committed': 'bg-green-100 text-green-700',
   'circling_back': 'bg-orange-100 text-orange-700',
   'dead_lead': 'bg-red-100 text-red-700',
-  'signed': 'bg-emerald-100 text-emerald-700',
+  'signed': 'bg-green-100 text-green-700',
 }
 
 function AthleteCard({
@@ -83,7 +158,7 @@ function AthleteCard({
           <>
             <div className="fixed inset-0 z-10" onClick={() => setShowStatusMenu(false)} />
             <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 py-1 min-w-[160px]">
-              {OUTREACH_STATUSES.filter(s => s.value !== 'signed').map((s) => (
+              {OUTREACH_STATUSES.map((s) => (
                 <button
                   key={s.value}
                   onClick={() => {
@@ -287,7 +362,7 @@ function TableView({
                     onChange={(e) => onStatusChange(athlete.id, e.target.value as OutreachStatus)}
                     className={`text-xs px-2 py-1 rounded font-medium border-0 cursor-pointer ${STATUS_COLORS[athlete.outreach_status]}`}
                   >
-                    {OUTREACH_STATUSES.filter(s => s.value !== 'signed').map((s) => (
+                    {OUTREACH_STATUSES.map((s) => (
                       <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
                   </select>
@@ -334,8 +409,19 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
   const [selectedClassYear, setSelectedClassYear] = useState<string>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [isUpdating, setIsUpdating] = useState(false)
+  const [rosterTeams, setRosterTeams] = useState<RosterTeam[]>([])
+  const [signingAthlete, setSigningAthlete] = useState<RecruitingAthlete | null>(null)
   const { openAthletePanel } = useAthletePanel()
   const supabase = createClient()
+
+  // Fetch roster teams for the signing modal
+  useEffect(() => {
+    async function fetchRosterTeams() {
+      const { data } = await supabase.from('roster_teams').select('*').order('name')
+      if (data) setRosterTeams(data as RosterTeam[])
+    }
+    fetchRosterTeams()
+  }, [])
 
   // Filter athletes based on selected region and class year
   const filteredAthletes = athletes.filter(a => {
@@ -351,17 +437,46 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
   }))
 
   const handleStatusChange = async (athleteId: string, newStatus: OutreachStatus) => {
+    const athlete = athletes.find(a => a.id === athleteId)
+    if (!athlete) return
+
+    // If changing to signed, show the signing modal
+    if (newStatus === 'signed') {
+      setSigningAthlete(athlete)
+      return
+    }
+
+    // For other statuses, proceed normally
+    await updateAthleteStatus(athleteId, newStatus, null, null)
+  }
+
+  const handleSigningConfirm = async (schoolState: string | null, rosterTeamId: string | null) => {
+    if (!signingAthlete) return
+    await updateAthleteStatus(signingAthlete.id, 'signed', schoolState, rosterTeamId)
+    setSigningAthlete(null)
+  }
+
+  const updateAthleteStatus = async (
+    athleteId: string,
+    newStatus: OutreachStatus,
+    schoolState: string | null,
+    rosterTeamId: string | null
+  ) => {
     setIsUpdating(true)
 
     const athlete = athletes.find(a => a.id === athleteId)
     const oldStatus = athlete?.outreach_status
 
-    // Optimistic update
-    setAthletes(prev => prev.map(a =>
-      a.id === athleteId
-        ? { ...a, outreach_status: newStatus, last_contacted_date: newStatus !== 'not_contacted' ? new Date().toISOString().split('T')[0] : a.last_contacted_date }
-        : a
-    ))
+    // Optimistic update - remove from list if signed
+    if (newStatus === 'signed') {
+      setAthletes(prev => prev.filter(a => a.id !== athleteId))
+    } else {
+      setAthletes(prev => prev.map(a =>
+        a.id === athleteId
+          ? { ...a, outreach_status: newStatus, last_contacted_date: newStatus !== 'not_contacted' ? new Date().toISOString().split('T')[0] : a.last_contacted_date }
+          : a
+      ))
+    }
 
     // Update region stats
     if (athlete) {
@@ -370,16 +485,27 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
       setRegionStats(prev => prev.map(stat => {
         if (stat.region === region) {
           let newContacted = stat.contacted
-          if (oldStatus === 'not_contacted' && newStatus !== 'not_contacted') {
-            newContacted++
-          }
-          if (oldStatus !== 'not_contacted' && newStatus === 'not_contacted') {
-            newContacted--
+          let newTotal = stat.total
+
+          if (newStatus === 'signed') {
+            // Remove from total when signed
+            newTotal--
+            if (oldStatus !== 'not_contacted') {
+              newContacted--
+            }
+          } else {
+            if (oldStatus === 'not_contacted' && newStatus !== 'not_contacted') {
+              newContacted++
+            }
+            if (oldStatus !== 'not_contacted' && newStatus === 'not_contacted') {
+              newContacted--
+            }
           }
           return {
             ...stat,
+            total: newTotal,
             contacted: newContacted,
-            percentage: stat.total > 0 ? Math.round((newContacted / stat.total) * 100) : 0,
+            percentage: newTotal > 0 ? Math.round((newContacted / newTotal) * 100) : 0,
           }
         }
         return stat
@@ -387,12 +513,22 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
     }
 
     // Persist to database
-    const updateData: { outreach_status: OutreachStatus; last_contacted_date?: string } = {
+    const updateData: {
+      outreach_status: OutreachStatus
+      last_contacted_date?: string
+      school_state?: string | null
+      roster_team_id?: string | null
+    } = {
       outreach_status: newStatus,
     }
 
     if (newStatus !== 'not_contacted' && oldStatus === 'not_contacted') {
       updateData.last_contacted_date = new Date().toISOString().split('T')[0]
+    }
+
+    if (newStatus === 'signed') {
+      updateData.school_state = schoolState
+      updateData.roster_team_id = rosterTeamId
     }
 
     await supabase
@@ -553,6 +689,16 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
           </div>
         )}
       </div>
+
+      {/* Signing Modal */}
+      {signingAthlete && (
+        <SigningModal
+          athlete={signingAthlete}
+          rosterTeams={rosterTeams}
+          onConfirm={handleSigningConfirm}
+          onCancel={() => setSigningAthlete(null)}
+        />
+      )}
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { User } from '@/lib/database.types'
+import type { User, RosterTeam } from '@/lib/database.types'
 import { AthletePanel } from '@/components/athletes/athlete-panel'
 
 interface AthletePanelContextType {
@@ -30,15 +30,20 @@ export function AthletePanelProvider({ children }: AthletePanelProviderProps) {
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
+  const [rosterTeams, setRosterTeams] = useState<RosterTeam[]>([])
 
-  // Fetch users for the panel
+  // Fetch users and roster teams for the panel
   useEffect(() => {
-    async function fetchUsers() {
+    async function fetchData() {
       const supabase = createClient()
-      const { data } = await supabase.from('users').select('*')
-      if (data) setUsers(data as User[])
+      const [usersResult, teamsResult] = await Promise.all([
+        supabase.from('users').select('*'),
+        supabase.from('roster_teams').select('*').order('name')
+      ])
+      if (usersResult.data) setUsers(usersResult.data as User[])
+      if (teamsResult.data) setRosterTeams(teamsResult.data as RosterTeam[])
     }
-    fetchUsers()
+    fetchData()
   }, [])
 
   const openAthletePanel = useCallback((athleteId: string) => {
@@ -71,6 +76,7 @@ export function AthletePanelProvider({ children }: AthletePanelProviderProps) {
         isOpen={isOpen}
         onClose={closeAthletePanel}
         users={users}
+        rosterTeams={rosterTeams}
         onAthleteUpdated={handleAthleteUpdated}
       />
     </AthletePanelContext.Provider>

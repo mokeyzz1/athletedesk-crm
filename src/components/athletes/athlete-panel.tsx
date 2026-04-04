@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { User, Athlete, LeagueLevel, RecruitingStatus, TransferPortalStatus, Json, ClassYear, OutreachStatus } from '@/lib/database.types'
-import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
+import type { User, Athlete, LeagueLevel, RecruitingStatus, TransferPortalStatus, Json, ClassYear, OutreachStatus, RosterTeam } from '@/lib/database.types'
+import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS, US_STATES } from '@/lib/database.types'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
@@ -13,6 +13,7 @@ interface AthletePanelProps {
   isOpen: boolean
   onClose: () => void
   users: User[]
+  rosterTeams: RosterTeam[]
   onAthleteUpdated: () => void
 }
 
@@ -21,6 +22,7 @@ export function AthletePanel({
   isOpen,
   onClose,
   users,
+  rosterTeams,
   onAthleteUpdated
 }: AthletePanelProps) {
   const [athlete, setAthlete] = useState<Athlete | null>(null)
@@ -120,6 +122,9 @@ export function AthletePanel({
       class_year: formData.get('class_year') as ClassYear,
       region: (formData.get('region') as string) || null,
       outreach_status: formData.get('outreach_status') as OutreachStatus,
+      // Roster team fields
+      school_state: (formData.get('school_state') as string) || null,
+      roster_team_id: (formData.get('roster_team_id') as string) || null,
     }
 
     const supabase = createClient()
@@ -405,6 +410,47 @@ export function AthletePanel({
                   </div>
                 </div>
               </div>
+
+              {/* Roster Assignment - Only show for signed athletes */}
+              {athlete.outreach_status === 'signed' && (
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Roster Assignment</h3>
+                  <p className="text-xs text-gray-500 mb-3">Assign this signed client to a roster team</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="school_state" className="label">School State</label>
+                      <select
+                        name="school_state"
+                        id="school_state"
+                        defaultValue={athlete.school_state || ''}
+                        className="mt-1 input w-full"
+                      >
+                        <option value="">Select State</option>
+                        {US_STATES.map(state => (
+                          <option key={state} value={state}>{state}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="roster_team_id" className="label">Roster Team</label>
+                      <select
+                        name="roster_team_id"
+                        id="roster_team_id"
+                        defaultValue={athlete.roster_team_id || ''}
+                        className="mt-1 input w-full"
+                      >
+                        <option value="">No Team Assigned</option>
+                        {rosterTeams.map(team => (
+                          <option key={team.id} value={team.id}>{team.name}</option>
+                        ))}
+                      </select>
+                      {rosterTeams.length === 0 && (
+                        <p className="mt-1 text-xs text-gray-500">No teams configured. Add teams in Settings.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Status */}
               <div className="border-t border-gray-200 pt-4">

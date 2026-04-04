@@ -9,6 +9,7 @@ interface StaffProductivity {
   email: string
   role: string
   avatar_url: string | null
+  assigned_regions: string[]
   // Email metrics
   emailsThisWeek: number
   emailsThisMonth: number
@@ -23,6 +24,7 @@ interface StaffProductivity {
   tasksOverdue: number
   // Athlete counts
   athletesManaged: number
+  contactedThisWeek: number
 }
 
 export default async function ProductivityPage() {
@@ -60,10 +62,10 @@ export default async function ProductivityPage() {
   today.setHours(0, 0, 0, 0)
 
   // Get all communications
-  type CommRow = { staff_member_id: string; type: string; communication_date: string }
+  type CommRow = { staff_member_id: string; type: string; communication_date: string; athlete_id: string }
   const { data: commsData } = await supabase
     .from('communications_log')
-    .select('staff_member_id, type, communication_date')
+    .select('staff_member_id, type, communication_date, athlete_id')
     .in('staff_member_id', staffIds.length > 0 ? staffIds : ['00000000-0000-0000-0000-000000000000'])
 
   const comms = (commsData || []) as CommRow[]
@@ -77,13 +79,54 @@ export default async function ProductivityPage() {
 
   const tasks = (tasksData || []) as TaskRow[]
 
-  // Get athlete assignments
-  type AthleteAssignment = { assigned_scout_id: string | null; assigned_agent_id: string | null; assigned_marketing_lead_id: string | null }
+  // Get athlete assignments with details
+  type AthleteRow = {
+    id: string
+    name: string
+    sport: string
+    assigned_scout_id: string | null
+    assigned_agent_id: string | null
+    assigned_marketing_lead_id: string | null
+  }
   const { data: athletesData } = await supabase
     .from('athletes')
-    .select('assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id')
+    .select('id, name, sport, assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id')
 
-  const athleteAssignments = (athletesData || []) as AthleteAssignment[]
+  const allAthletes = (athletesData || []) as AthleteRow[]
+
+  // Build map of staff ID -> assigned athletes
+  const staffAthleteMap: Record<string, { id: string; name: string; sport: string; role: string }[]> = {}
+  staffIds.forEach(id => { staffAthleteMap[id] = [] })
+
+  allAthletes.forEach(athlete => {
+    if (athlete.assigned_scout_id && staffAthleteMap[athlete.assigned_scout_id]) {
+      staffAthleteMap[athlete.assigned_scout_id].push({
+        id: athlete.id,
+        name: athlete.name,
+        sport: athlete.sport,
+        role: 'Scout'
+      })
+    }
+    if (athlete.assigned_agent_id && staffAthleteMap[athlete.assigned_agent_id]) {
+      staffAthleteMap[athlete.assigned_agent_id].push({
+        id: athlete.id,
+        name: athlete.name,
+        sport: athlete.sport,
+        role: 'Agent'
+      })
+    }
+    if (athlete.assigned_marketing_lead_id && staffAthleteMap[athlete.assigned_marketing_lead_id]) {
+      staffAthleteMap[athlete.assigned_marketing_lead_id].push({
+        id: athlete.id,
+        name: athlete.name,
+        sport: athlete.sport,
+        role: 'Marketing'
+      })
+    }
+  })
+
+  // For counting, use the old method
+  const athleteAssignments = allAthletes
 
   // Calculate metrics per staff member
   const productivity: StaffProductivity[] = staffList.map(staff => {
@@ -96,6 +139,13 @@ export default async function ProductivityPage() {
 
     const commsThisWeek = staffComms.filter(c => new Date(c.communication_date) >= weekStart).length
     const commsThisMonth = staffComms.filter(c => new Date(c.communication_date) >= monthStart).length
+
+    // Count unique athletes contacted this week
+    const contactedThisWeek = new Set(
+      staffComms
+        .filter(c => new Date(c.communication_date) >= weekStart)
+        .map(c => c.athlete_id)
+    ).size
 
     // Filter tasks for this staff member
     const staffTasks = tasks.filter(t => t.assigned_to === staff.id)
@@ -119,6 +169,7 @@ export default async function ProductivityPage() {
       email: staff.email,
       role: staff.role,
       avatar_url: staff.avatar_url,
+      assigned_regions: staff.assigned_regions || [],
       emailsThisWeek,
       emailsThisMonth,
       emailsAllTime: staffEmails.length,
@@ -129,8 +180,25 @@ export default async function ProductivityPage() {
       tasksPending,
       tasksOverdue,
       athletesManaged,
+      contactedThisWeek,
     }
   })
 
-  return <ProductivityClient staffProductivity={productivity} />
+  // Get unassigned athletes for assignment modal
+  const unassignedAthletes = allAthletes.map(a => ({
+    id: a.id,
+    name: a.name,
+    sport: a.sport,
+    assigned_scout_id: a.assigned_scout_id,
+    assigned_agent_id: a.assigned_agent_id,
+    assigned_marketing_lead_id: a.assigned_marketing_lead_id,
+  }))
+
+  return (
+    <ProductivityClient
+      staffProductivity={productivity}
+      staffAthleteMap={staffAthleteMap}
+      allAthletes={unassignedAthletes}
+    />
+  )
 }

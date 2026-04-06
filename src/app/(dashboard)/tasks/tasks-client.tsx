@@ -160,8 +160,12 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
     }
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Memoize today's date to avoid recreating on every render
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
 
   // Helper to check if a task is marketing-related
   const isMarketingTask = (task: TaskWithRelations) => {

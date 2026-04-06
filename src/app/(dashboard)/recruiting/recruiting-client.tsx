@@ -421,6 +421,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
       if (data) setRosterTeams(data as RosterTeam[])
     }
     fetchRosterTeams()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Filter athletes based on selected region and class year

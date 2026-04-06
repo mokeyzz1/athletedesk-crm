@@ -85,6 +85,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     setIsDragging(false)
     const droppedFile = e.dataTransfer.files[0]
     if (droppedFile) await processFile(droppedFile)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const processSheet = (data: Record<string, unknown>[]) => {

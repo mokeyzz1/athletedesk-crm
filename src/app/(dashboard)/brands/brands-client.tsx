@@ -209,6 +209,7 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
       activeOutreach: sortItems(active),
       completedOutreach: sortItems(completed),
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outreach, sortColumn, sortDirection])
 
   const SortIcon = ({ column }: { column: SortColumn }) => (

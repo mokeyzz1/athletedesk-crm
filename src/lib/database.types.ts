@@ -141,6 +141,9 @@ export interface Database {
           // Roster team fields
           school_state: string | null
           roster_team_id: string | null
+          // Handoff tracking
+          handoff_to_agent_at: string | null
+          handoff_to_marketing_at: string | null
         }
         Insert: {
           id?: string
@@ -172,6 +175,9 @@ export interface Database {
           // Roster team fields
           school_state?: string | null
           roster_team_id?: string | null
+          // Handoff tracking
+          handoff_to_agent_at?: string | null
+          handoff_to_marketing_at?: string | null
         }
         Update: {
           id?: string
@@ -203,6 +209,9 @@ export interface Database {
           // Roster team fields
           school_state?: string | null
           roster_team_id?: string | null
+          // Handoff tracking
+          handoff_to_agent_at?: string | null
+          handoff_to_marketing_at?: string | null
         }
       }
       communications_log: {
@@ -602,6 +611,32 @@ export interface Database {
           updated_at?: string
         }
       }
+      region_assignments: {
+        Row: {
+          id: string
+          region: string
+          default_agent_id: string | null
+          default_marketing_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          region: string
+          default_agent_id?: string | null
+          default_marketing_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          region?: string
+          default_agent_id?: string | null
+          default_marketing_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       dashboard_summary: {
@@ -748,6 +783,10 @@ export type RosterTeamUpdate = Database['public']['Tables']['roster_teams']['Upd
 export type RecruitingRegion = Database['public']['Tables']['recruiting_regions']['Row']
 export type RecruitingRegionInsert = Database['public']['Tables']['recruiting_regions']['Insert']
 export type RecruitingRegionUpdate = Database['public']['Tables']['recruiting_regions']['Update']
+
+export type RegionAssignment = Database['public']['Tables']['region_assignments']['Row']
+export type RegionAssignmentInsert = Database['public']['Tables']['region_assignments']['Insert']
+export type RegionAssignmentUpdate = Database['public']['Tables']['region_assignments']['Update']
 
 // US States for selection
 export const US_STATES = [

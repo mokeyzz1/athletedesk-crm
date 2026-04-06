@@ -513,29 +513,25 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
       }))
     }
 
-    // Persist to database
-    const updateData: {
-      outreach_status: OutreachStatus
-      last_contacted_date?: string
-      school_state?: string | null
-      roster_team_id?: string | null
-    } = {
-      outreach_status: newStatus,
-    }
+    // Persist to database via API (handles auto-handoffs)
+    const response = await fetch(`/api/athletes/${athleteId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: newStatus,
+        school_state: newStatus === 'signed' ? schoolState : undefined,
+        roster_team_id: newStatus === 'signed' ? rosterTeamId : undefined,
+      }),
+    })
 
-    if (newStatus !== 'not_contacted' && oldStatus === 'not_contacted') {
-      updateData.last_contacted_date = new Date().toISOString().split('T')[0]
-    }
+    const result = await response.json()
 
-    if (newStatus === 'signed') {
-      updateData.school_state = schoolState
-      updateData.roster_team_id = rosterTeamId
+    // Show handoff notification if any occurred
+    if (result.handoffs && result.handoffs.length > 0) {
+      for (const handoff of result.handoffs) {
+        console.log(`Auto-handoff: ${handoff.type} assigned to ${handoff.assignedTo}`)
+      }
     }
-
-    await supabase
-      .from('athletes')
-      .update(updateData as never)
-      .eq('id', athleteId)
 
     setIsUpdating(false)
   }

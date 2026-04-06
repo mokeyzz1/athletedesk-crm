@@ -15,7 +15,7 @@ interface SettingsClientProps {
   initialRecruitingRegions: RecruitingRegion[]
 }
 
-type SettingsSection = 'profile' | 'notifications' | 'templates' | 'integrations' | 'team' | 'goals' | 'regions' | 'roster-teams'
+type SettingsSection = 'profile' | 'notifications' | 'templates' | 'integrations' | 'team' | 'goals' | 'regions' | 'roster-teams' | 'handoffs'
 
 export function SettingsClient({ profile, initialTemplates, initialRosterTeams, initialRecruitingRegions }: SettingsClientProps) {
   const searchParams = useSearchParams()
@@ -60,9 +60,25 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
   const [teamForm, setTeamForm] = useState({ name: '', areas: '' })
   const [savingTeam, setSavingTeam] = useState(false)
 
-  // Cleanup state
-  const [cleaningUp, setCleaningUp] = useState(false)
-  const [cleanupResult, setCleanupResult] = useState<{ deleted: number; remaining: number } | null>(null)
+
+  // Region assignments state (for handoffs)
+  interface RegionAssignmentData {
+    id: string
+    region: string
+    default_agent_id: string | null
+    default_marketing_id: string | null
+  }
+  interface StaffUser {
+    id: string
+    name: string
+    role: string
+    assigned_regions: string[]
+  }
+  const [regionAssignments, setRegionAssignments] = useState<RegionAssignmentData[]>([])
+  const [availableAgents, setAvailableAgents] = useState<StaffUser[]>([])
+  const [availableMarketingUsers, setAvailableMarketingUsers] = useState<StaffUser[]>([])
+  const [loadingHandoffs, setLoadingHandoffs] = useState(false)
+  const [savingHandoff, setSavingHandoff] = useState<string | null>(null)
 
   const isAdmin = profile?.role === 'admin'
   const router = useRouter()
@@ -77,6 +93,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
     { id: 'goals' as const, label: 'Goals', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', adminOnly: true },
     { id: 'regions' as const, label: 'Recruiting Regions', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z', adminOnly: true },
     { id: 'roster-teams' as const, label: 'Roster Teams', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', adminOnly: true },
+    { id: 'handoffs' as const, label: 'Auto Handoffs', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4', adminOnly: true },
   ]
 
   const generalSections = sections.filter(s => !s.adminOnly)
@@ -334,21 +351,53 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
     }
   }
 
-  // Cleanup bad imports
-  const runCleanup = async () => {
-    setCleaningUp(true)
-    setCleanupResult(null)
+
+  // Fetch region assignments for handoffs
+  const fetchRegionAssignments = async () => {
+    setLoadingHandoffs(true)
     try {
-      const response = await fetch('/api/cleanup-imports', { method: 'DELETE' })
+      const response = await fetch('/api/settings/region-assignments')
       const data = await response.json()
-      if (data.deleted !== undefined) {
-        setCleanupResult({ deleted: data.deleted, remaining: data.remaining })
-        router.refresh()
+      if (data.assignments) {
+        setRegionAssignments(data.assignments)
+        setAvailableAgents(data.agents || [])
+        setAvailableMarketingUsers(data.marketingUsers || [])
       }
     } catch (error) {
-      console.error('Cleanup failed:', error)
+      console.error('Failed to fetch region assignments:', error)
     }
-    setCleaningUp(false)
+    setLoadingHandoffs(false)
+  }
+
+  // Load handoffs data when section becomes active
+  useEffect(() => {
+    if (activeSection === 'handoffs' && regionAssignments.length === 0) {
+      fetchRegionAssignments()
+    }
+  }, [activeSection]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save region assignment
+  const saveRegionAssignment = async (region: string, field: 'default_agent_id' | 'default_marketing_id', userId: string | null) => {
+    setSavingHandoff(region + field)
+    try {
+      const current = regionAssignments.find(r => r.region === region)
+      const response = await fetch('/api/settings/region-assignments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          region,
+          default_agent_id: field === 'default_agent_id' ? userId : (current?.default_agent_id || null),
+          default_marketing_id: field === 'default_marketing_id' ? userId : (current?.default_marketing_id || null),
+        }),
+      })
+      const data = await response.json()
+      if (data.success && data.assignment) {
+        setRegionAssignments(prev => prev.map(r => r.region === region ? data.assignment : r))
+      }
+    } catch (error) {
+      console.error('Failed to save region assignment:', error)
+    }
+    setSavingHandoff(null)
   }
 
   return (
@@ -661,37 +710,6 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </div>
                   </div>
                 </div>
-
-                {/* Data Cleanup Section */}
-                {isAdmin && (
-                  <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900">Data Cleanup</h3>
-                        <p className="text-sm text-gray-500">Remove athletes with invalid region data (city names instead of regions)</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={runCleanup}
-                        disabled={cleaningUp}
-                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
-                      >
-                        {cleaningUp ? 'Cleaning...' : 'Run Cleanup'}
-                      </button>
-                      {cleanupResult && (
-                        <span className="text-sm text-gray-600">
-                          Deleted {cleanupResult.deleted} athletes. {cleanupResult.remaining} remaining.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -954,6 +972,126 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     <div>
                       <p className="text-sm font-medium text-amber-800">Roster Teams</p>
                       <p className="text-sm text-amber-700">Roster teams organize signed athletes by school location. Enter states or areas (e.g., &quot;California, Oregon&quot; or &quot;DMV, Northeast&quot;).</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auto Handoffs Section */}
+            {activeSection === 'handoffs' && isAdmin && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Automated Handoffs</h2>
+                  <p className="text-sm text-gray-500">Configure automatic assignment of athletes when their status changes</p>
+                </div>
+
+                {/* How it works */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4">How it works</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-green-700">1</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Scout → Agent</p>
+                        <p className="text-sm text-gray-500">When a scout marks an athlete as &quot;Interested&quot; or &quot;In Conversation&quot;, the athlete is automatically assigned to the default agent for that region.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-blue-700">2</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Agent → Marketing</p>
+                        <p className="text-sm text-gray-500">When an agent marks an athlete as &quot;Signed&quot;, they are automatically assigned to the default marketing lead for that region.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-3 h-3 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Auto-created Tasks</p>
+                        <p className="text-sm text-gray-500">A high-priority task is automatically created for the newly assigned user with a 3-day due date.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Region Assignments */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Default Assignments by Region</h3>
+                  {loadingHandoffs ? (
+                    <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                      <div className="animate-spin w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full mx-auto"></div>
+                      <p className="mt-2 text-sm text-gray-500">Loading...</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                          <tr>
+                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Region</th>
+                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Default Agent</th>
+                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 py-3">Default Marketing</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {regionAssignments.map((assignment) => (
+                            <tr key={assignment.region}>
+                              <td className="px-4 py-3">
+                                <span className="text-sm font-medium text-gray-900">{assignment.region}</span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={assignment.default_agent_id || ''}
+                                  onChange={(e) => saveRegionAssignment(assignment.region, 'default_agent_id', e.target.value || null)}
+                                  disabled={savingHandoff === assignment.region + 'default_agent_id'}
+                                  className="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-50"
+                                >
+                                  <option value="">Not assigned</option>
+                                  {availableAgents.map((agent) => (
+                                    <option key={agent.id} value={agent.id}>
+                                      {agent.name} ({agent.role})
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={assignment.default_marketing_id || ''}
+                                  onChange={(e) => saveRegionAssignment(assignment.region, 'default_marketing_id', e.target.value || null)}
+                                  disabled={savingHandoff === assignment.region + 'default_marketing_id'}
+                                  className="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-50"
+                                >
+                                  <option value="">Not assigned</option>
+                                  {availableMarketingUsers.map((user) => (
+                                    <option key={user.id} value={user.id}>
+                                      {user.name} ({user.role})
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+                  <div className="flex gap-3">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Important</p>
+                      <p className="text-sm text-blue-700">Handoffs only trigger when the athlete has a region set and hasn&apos;t already been assigned. Manual assignments take priority over automatic ones.</p>
                     </div>
                   </div>
                 </div>

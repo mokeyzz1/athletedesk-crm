@@ -94,6 +94,12 @@ const navigationGroups = [
         adminOnly: true,
       },
       {
+        name: 'Analytics',
+        href: '/analytics',
+        icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+        adminOnly: true,
+      },
+      {
         name: 'Weekly View',
         href: '/team/weekly',
         icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',

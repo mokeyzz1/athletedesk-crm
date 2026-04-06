@@ -637,6 +637,50 @@ export interface Database {
           updated_at?: string
         }
       }
+      outreach_goals: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          metric: 'emails' | 'calls' | 'texts' | 'all_communications'
+          target_count: number
+          period: 'weekly' | 'monthly'
+          staff_id: string | null
+          target_role: UserRole | null
+          is_active: boolean
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          metric: 'emails' | 'calls' | 'texts' | 'all_communications'
+          target_count: number
+          period: 'weekly' | 'monthly'
+          staff_id?: string | null
+          target_role?: UserRole | null
+          is_active?: boolean
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          metric?: 'emails' | 'calls' | 'texts' | 'all_communications'
+          target_count?: number
+          period?: 'weekly' | 'monthly'
+          staff_id?: string | null
+          target_role?: UserRole | null
+          is_active?: boolean
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       dashboard_summary: {
@@ -787,6 +831,10 @@ export type RecruitingRegionUpdate = Database['public']['Tables']['recruiting_re
 export type RegionAssignment = Database['public']['Tables']['region_assignments']['Row']
 export type RegionAssignmentInsert = Database['public']['Tables']['region_assignments']['Insert']
 export type RegionAssignmentUpdate = Database['public']['Tables']['region_assignments']['Update']
+
+export type OutreachGoal = Database['public']['Tables']['outreach_goals']['Row']
+export type OutreachGoalInsert = Database['public']['Tables']['outreach_goals']['Insert']
+export type OutreachGoalUpdate = Database['public']['Tables']['outreach_goals']['Update']
 
 // US States for selection
 export const US_STATES = [

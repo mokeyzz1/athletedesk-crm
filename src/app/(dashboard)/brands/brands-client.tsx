@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import type { BrandOutreach, Athlete, OutreachMethod, ResponseStatus } from '@/lib/database.types'
 import { ExportButtons } from '@/components/export/export-buttons'
 import { createClient } from '@/lib/supabase/client'
+import { ApolloSearchModal } from '@/components/apollo/apollo-search-modal'
 
 interface BrandOutreachWithRelations extends BrandOutreach {
   athletes: { id: string; name: string } | null
@@ -54,6 +55,7 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
   const [editingItem, setEditingItem] = useState<BrandOutreachWithRelations | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showApolloModal, setShowApolloModal] = useState(false)
   const router = useRouter()
 
   // For portal mounting
@@ -280,6 +282,15 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
               sheetName="Brand Outreach"
             />
           )}
+          <button
+            onClick={() => setShowApolloModal(true)}
+            className="btn-secondary"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Search Apollo
+          </button>
           <Link href="/brands/new" className="btn-primary">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -720,6 +731,21 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
           </div>
         </>,
         document.body
+      )}
+
+      {/* Apollo Search Modal */}
+      {showApolloModal && (
+        <ApolloSearchModal
+          onClose={() => setShowApolloModal(false)}
+          onSelectContact={(contact) => {
+            // Navigate to new outreach form with pre-filled contact info
+            const params = new URLSearchParams()
+            if (contact.name) params.set('contact_name', contact.name)
+            if (contact.email) params.set('contact_email', contact.email)
+            if (contact.company) params.set('brand_name', contact.company)
+            router.push(`/brands/new?${params.toString()}`)
+          }}
+        />
       )}
     </div>
   )

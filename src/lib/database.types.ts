@@ -24,6 +24,8 @@ export type OutreachMethod = 'email' | 'phone' | 'linkedin' | 'event'
 export type ResponseStatus = 'no_response' | 'interested' | 'not_interested' | 'in_discussion' | 'deal_closed'
 export type PaymentStatus = 'pending' | 'invoiced' | 'paid'
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
+export type IntegrationProvider = 'google_calendar' | 'calendly' | 'docusign' | 'apollo'
+export type InviteType = 'new_org' | 'join_org'
 
 // New types for recruiting database
 export type ClassYear = '2025' | '2026' | '2027' | '2028' | '2029' | '2030' | 'pro' | 'n_a'
@@ -45,9 +47,86 @@ export type Region = typeof REGIONS[number] | string
 export interface Database {
   public: {
     Tables: {
+      organizations: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          owner_id: string | null
+          logo_url: string | null
+          settings: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          owner_id?: string | null
+          logo_url?: string | null
+          settings?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          owner_id?: string | null
+          logo_url?: string | null
+          settings?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      organization_invites: {
+        Row: {
+          id: string
+          token: string
+          email: string | null
+          created_by: string | null
+          organization_id: string | null
+          expires_at: string
+          accepted_at: string | null
+          accepted_by: string | null
+          invite_type: InviteType
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          token?: string
+          email?: string | null
+          created_by?: string | null
+          organization_id?: string | null
+          expires_at?: string
+          accepted_at?: string | null
+          accepted_by?: string | null
+          invite_type?: InviteType
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          token?: string
+          email?: string | null
+          created_by?: string | null
+          organization_id?: string | null
+          expires_at?: string
+          accepted_at?: string | null
+          accepted_by?: string | null
+          invite_type?: InviteType
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
       users: {
         Row: {
           id: string
+          organization_id: string | null
           name: string
           email: string
           role: UserRole
@@ -66,9 +145,12 @@ export interface Database {
           gmail_refresh_token: string | null
           gmail_token_expiry: string | null
           gmail_email: string | null
+          // Super admin access
+          is_super_admin: boolean
         }
         Insert: {
           id?: string
+          organization_id?: string | null
           name: string
           email: string
           role?: UserRole
@@ -87,9 +169,12 @@ export interface Database {
           gmail_refresh_token?: string | null
           gmail_token_expiry?: string | null
           gmail_email?: string | null
+          // Super admin access
+          is_super_admin?: boolean
         }
         Update: {
           id?: string
+          organization_id?: string | null
           name?: string
           email?: string
           role?: UserRole
@@ -108,11 +193,14 @@ export interface Database {
           gmail_refresh_token?: string | null
           gmail_token_expiry?: string | null
           gmail_email?: string | null
+          // Super admin access
+          is_super_admin?: boolean
         }
       }
       athletes: {
         Row: {
           id: string
+          organization_id: string
           name: string
           email: string | null
           phone: string | null
@@ -147,6 +235,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           name: string
           email?: string | null
           phone?: string | null
@@ -181,6 +270,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           name?: string
           email?: string | null
           phone?: string | null
@@ -217,6 +307,7 @@ export interface Database {
       communications_log: {
         Row: {
           id: string
+          organization_id: string
           athlete_id: string | null
           staff_member_id: string
           communication_date: string
@@ -232,6 +323,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           athlete_id?: string | null
           staff_member_id: string
           communication_date?: string
@@ -247,6 +339,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           athlete_id?: string | null
           staff_member_id?: string
           communication_date?: string
@@ -264,6 +357,7 @@ export interface Database {
       recruiting_pipeline: {
         Row: {
           id: string
+          organization_id: string
           athlete_id: string
           pipeline_stage: PipelineStage
           priority: PriorityLevel
@@ -275,6 +369,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           athlete_id: string
           pipeline_stage?: PipelineStage
           priority?: PriorityLevel
@@ -286,6 +381,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           athlete_id?: string
           pipeline_stage?: PipelineStage
           priority?: PriorityLevel
@@ -299,6 +395,7 @@ export interface Database {
       brand_outreach: {
         Row: {
           id: string
+          organization_id: string
           brand_name: string
           brand_contact_name: string | null
           brand_contact_email: string | null
@@ -318,6 +415,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           brand_name: string
           brand_contact_name?: string | null
           brand_contact_email?: string | null
@@ -337,6 +435,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           brand_name?: string
           brand_contact_name?: string | null
           brand_contact_email?: string | null
@@ -358,6 +457,7 @@ export interface Database {
       financial_tracking: {
         Row: {
           id: string
+          organization_id: string
           athlete_id: string
           brand_outreach_id: string | null
           deal_name: string
@@ -377,6 +477,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           athlete_id: string
           brand_outreach_id?: string | null
           deal_name: string
@@ -394,6 +495,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           athlete_id?: string
           brand_outreach_id?: string | null
           deal_name?: string
@@ -413,6 +515,7 @@ export interface Database {
       documents: {
         Row: {
           id: string
+          organization_id: string
           athlete_id: string
           uploaded_by: string
           name: string
@@ -426,6 +529,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           athlete_id: string
           uploaded_by: string
           name: string
@@ -439,6 +543,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           athlete_id?: string
           uploaded_by?: string
           name?: string
@@ -454,6 +559,7 @@ export interface Database {
       tasks: {
         Row: {
           id: string
+          organization_id: string
           title: string
           description: string | null
           assigned_to: string
@@ -467,6 +573,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           title: string
           description?: string | null
           assigned_to: string
@@ -480,6 +587,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           title?: string
           description?: string | null
           assigned_to?: string
@@ -495,6 +603,7 @@ export interface Database {
       task_comments: {
         Row: {
           id: string
+          organization_id: string
           task_id: string
           author_id: string
           content: string
@@ -503,6 +612,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           task_id: string
           author_id: string
           content: string
@@ -510,6 +620,7 @@ export interface Database {
           updated_at?: string
         }
         Update: {
+          organization_id?: string
           content?: string
           updated_at?: string
         }
@@ -517,6 +628,7 @@ export interface Database {
       comment_mentions: {
         Row: {
           id: string
+          organization_id: string
           comment_id: string
           mentioned_user_id: string
           is_read: boolean
@@ -524,18 +636,21 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           comment_id: string
           mentioned_user_id: string
           is_read?: boolean
           created_at?: string
         }
         Update: {
+          organization_id?: string
           is_read?: boolean
         }
       }
       email_templates: {
         Row: {
           id: string
+          organization_id: string | null
           name: string
           subject: string
           body: string
@@ -546,6 +661,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string | null
           name: string
           subject: string
           body: string
@@ -556,6 +672,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string | null
           name?: string
           subject?: string
           body?: string
@@ -568,6 +685,7 @@ export interface Database {
       roster_teams: {
         Row: {
           id: string
+          organization_id: string
           name: string
           regions: string[]
           created_at: string
@@ -575,6 +693,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           name: string
           regions?: string[]
           created_at?: string
@@ -582,6 +701,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           name?: string
           regions?: string[]
           created_at?: string
@@ -591,6 +711,7 @@ export interface Database {
       recruiting_regions: {
         Row: {
           id: string
+          organization_id: string
           name: string
           states: string[]
           created_at: string
@@ -598,6 +719,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           name: string
           states?: string[]
           created_at?: string
@@ -605,6 +727,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           name?: string
           states?: string[]
           created_at?: string
@@ -614,6 +737,7 @@ export interface Database {
       region_assignments: {
         Row: {
           id: string
+          organization_id: string
           region: string
           default_agent_id: string | null
           default_marketing_id: string | null
@@ -622,6 +746,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           region: string
           default_agent_id?: string | null
           default_marketing_id?: string | null
@@ -630,6 +755,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           region?: string
           default_agent_id?: string | null
           default_marketing_id?: string | null
@@ -640,6 +766,7 @@ export interface Database {
       outreach_goals: {
         Row: {
           id: string
+          organization_id: string
           name: string
           description: string | null
           metric: 'emails' | 'calls' | 'texts' | 'all_communications'
@@ -654,6 +781,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          organization_id?: string  // Auto-set by database trigger
           name: string
           description?: string | null
           metric: 'emails' | 'calls' | 'texts' | 'all_communications'
@@ -668,6 +796,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          organization_id?: string
           name?: string
           description?: string | null
           metric?: 'emails' | 'calls' | 'texts' | 'all_communications'
@@ -677,6 +806,233 @@ export interface Database {
           target_role?: UserRole | null
           is_active?: boolean
           created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_integrations: {
+        Row: {
+          id: string
+          user_id: string
+          organization_id: string | null
+          provider: IntegrationProvider
+          access_token: string | null
+          refresh_token: string | null
+          token_expires_at: string | null
+          api_key: string | null
+          account_email: string | null
+          account_name: string | null
+          settings: Json
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          organization_id?: string | null
+          provider: IntegrationProvider
+          access_token?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          api_key?: string | null
+          account_email?: string | null
+          account_name?: string | null
+          settings?: Json
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          organization_id?: string | null
+          provider?: IntegrationProvider
+          access_token?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          api_key?: string | null
+          account_email?: string | null
+          account_name?: string | null
+          settings?: Json
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      calendar_events: {
+        Row: {
+          id: string
+          organization_id: string | null
+          user_id: string
+          athlete_id: string | null
+          external_id: string | null
+          provider: 'google_calendar' | 'calendly'
+          title: string
+          description: string | null
+          start_time: string
+          end_time: string
+          location: string | null
+          meeting_url: string | null
+          attendees: Json
+          status: 'confirmed' | 'cancelled' | 'tentative'
+          synced_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string | null
+          user_id: string
+          athlete_id?: string | null
+          external_id?: string | null
+          provider: 'google_calendar' | 'calendly'
+          title: string
+          description?: string | null
+          start_time: string
+          end_time: string
+          location?: string | null
+          meeting_url?: string | null
+          attendees?: Json
+          status?: 'confirmed' | 'cancelled' | 'tentative'
+          synced_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string | null
+          user_id?: string
+          athlete_id?: string | null
+          external_id?: string | null
+          provider?: 'google_calendar' | 'calendly'
+          title?: string
+          description?: string | null
+          start_time?: string
+          end_time?: string
+          location?: string | null
+          meeting_url?: string | null
+          attendees?: Json
+          status?: 'confirmed' | 'cancelled' | 'tentative'
+          synced_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      contracts: {
+        Row: {
+          id: string
+          organization_id: string | null
+          athlete_id: string
+          sent_by_user_id: string
+          envelope_id: string | null
+          title: string
+          recipient_email: string
+          recipient_name: string | null
+          status: 'created' | 'sent' | 'delivered' | 'signed' | 'declined' | 'voided'
+          sent_at: string
+          delivered_at: string | null
+          signed_at: string | null
+          document_id: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string | null
+          athlete_id: string
+          sent_by_user_id: string
+          envelope_id?: string | null
+          title: string
+          recipient_email: string
+          recipient_name?: string | null
+          status?: 'created' | 'sent' | 'delivered' | 'signed' | 'declined' | 'voided'
+          sent_at?: string
+          delivered_at?: string | null
+          signed_at?: string | null
+          document_id?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string | null
+          athlete_id?: string
+          sent_by_user_id?: string
+          envelope_id?: string | null
+          title?: string
+          recipient_email?: string
+          recipient_name?: string | null
+          status?: 'created' | 'sent' | 'delivered' | 'signed' | 'declined' | 'voided'
+          sent_at?: string
+          delivered_at?: string | null
+          signed_at?: string | null
+          document_id?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      apollo_contacts: {
+        Row: {
+          id: string
+          organization_id: string | null
+          email: string
+          first_name: string | null
+          last_name: string | null
+          title: string | null
+          company_name: string | null
+          company_domain: string | null
+          linkedin_url: string | null
+          phone: string | null
+          city: string | null
+          state: string | null
+          country: string | null
+          verified_email: boolean
+          enriched_at: string
+          raw_data: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string | null
+          email: string
+          first_name?: string | null
+          last_name?: string | null
+          title?: string | null
+          company_name?: string | null
+          company_domain?: string | null
+          linkedin_url?: string | null
+          phone?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          verified_email?: boolean
+          enriched_at?: string
+          raw_data?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string | null
+          email?: string
+          first_name?: string | null
+          last_name?: string | null
+          title?: string | null
+          company_name?: string | null
+          company_domain?: string | null
+          linkedin_url?: string | null
+          phone?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          verified_email?: boolean
+          enriched_at?: string
+          raw_data?: Json
           created_at?: string
           updated_at?: string
         }
@@ -767,6 +1123,28 @@ export interface Database {
         Args: Record<string, never>
         Returns: string
       }
+      get_current_organization_id: {
+        Args: Record<string, never>
+        Returns: string
+      }
+      is_super_admin: {
+        Args: Record<string, never>
+        Returns: boolean
+      }
+      validate_invite_token: {
+        Args: { invite_token: string }
+        Returns: {
+          invite_id: string
+          invite_email: string | null
+          invite_type: InviteType
+          organization_id: string | null
+          organization_name: string | null
+        }[]
+      }
+      accept_invite: {
+        Args: { invite_token: string; accepting_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: UserRole
@@ -835,6 +1213,30 @@ export type RegionAssignmentUpdate = Database['public']['Tables']['region_assign
 export type OutreachGoal = Database['public']['Tables']['outreach_goals']['Row']
 export type OutreachGoalInsert = Database['public']['Tables']['outreach_goals']['Insert']
 export type OutreachGoalUpdate = Database['public']['Tables']['outreach_goals']['Update']
+
+export type Organization = Database['public']['Tables']['organizations']['Row']
+export type OrganizationInsert = Database['public']['Tables']['organizations']['Insert']
+export type OrganizationUpdate = Database['public']['Tables']['organizations']['Update']
+
+export type UserIntegration = Database['public']['Tables']['user_integrations']['Row']
+export type UserIntegrationInsert = Database['public']['Tables']['user_integrations']['Insert']
+export type UserIntegrationUpdate = Database['public']['Tables']['user_integrations']['Update']
+
+export type CalendarEvent = Database['public']['Tables']['calendar_events']['Row']
+export type CalendarEventInsert = Database['public']['Tables']['calendar_events']['Insert']
+export type CalendarEventUpdate = Database['public']['Tables']['calendar_events']['Update']
+
+export type Contract = Database['public']['Tables']['contracts']['Row']
+export type ContractInsert = Database['public']['Tables']['contracts']['Insert']
+export type ContractUpdate = Database['public']['Tables']['contracts']['Update']
+
+export type ApolloContact = Database['public']['Tables']['apollo_contacts']['Row']
+export type ApolloContactInsert = Database['public']['Tables']['apollo_contacts']['Insert']
+export type ApolloContactUpdate = Database['public']['Tables']['apollo_contacts']['Update']
+
+export type OrganizationInvite = Database['public']['Tables']['organization_invites']['Row']
+export type OrganizationInviteInsert = Database['public']['Tables']['organization_invites']['Insert']
+export type OrganizationInviteUpdate = Database['public']['Tables']['organization_invites']['Update']
 
 // US States for selection
 export const US_STATES = [

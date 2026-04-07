@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { User, EmailTemplate, RosterTeam, RecruitingRegion } from '@/lib/database.types'
+import type { User, EmailTemplate, RosterTeam, RecruitingRegion, Organization } from '@/lib/database.types'
 import { SettingsClient } from './settings-client'
 
 export default async function SettingsPage() {
@@ -13,6 +13,21 @@ export default async function SettingsPage() {
     .single()
 
   const profile = data as User | null
+
+  // Fetch organization data (for admins)
+  let organization: Organization | null = null
+  let isOwner = false
+
+  if (profile?.role === 'admin' && profile.organization_id) {
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('id', profile.organization_id)
+      .single()
+
+    organization = orgData as Organization | null
+    isOwner = organization?.owner_id === profile.id
+  }
 
   // Fetch email templates (user's own + shared)
   const { data: templatesData } = await supabase
@@ -45,6 +60,8 @@ export default async function SettingsPage() {
       initialTemplates={templates}
       initialRosterTeams={rosterTeams}
       initialRecruitingRegions={recruitingRegions}
+      organization={organization}
+      isOwner={isOwner}
     />
   )
 }

@@ -5,6 +5,10 @@ import type { Athlete, CommunicationLog, RecruitingPipeline, FinancialTracking, 
 import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } from '@/lib/sport-fields'
 import { AthleteDocuments } from './athlete-documents'
 import { SendEmailButton } from './send-email-button'
+import { ScheduleMeetingButton } from './schedule-meeting-button'
+import { SendCalendlyLinkButton } from './send-calendly-link-button'
+import { SendContractButton } from './send-contract-button'
+import { AthleteContracts } from './athlete-contracts'
 import { EditAthleteButton } from '@/components/athletes/edit-athlete-button'
 import { DeleteAthleteButton } from './delete-athlete-button'
 import { PipelineStatusCard } from './pipeline-status-card'
@@ -355,6 +359,9 @@ export default async function AthletePage({ params }: AthletePageProps) {
           {/* Documents */}
           <AthleteDocuments athleteId={id} initialDocuments={documents} />
 
+          {/* Contracts */}
+          <AthleteContracts athleteId={id} />
+
           {/* Activity Timeline */}
           <div className="card">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Activity Timeline</h2>
@@ -535,6 +542,20 @@ export default async function AthletePage({ params }: AthletePageProps) {
                 athleteName={athlete.name}
                 athleteEmail={athlete.email}
                 schoolName={athlete.school}
+              />
+              <ScheduleMeetingButton
+                athleteId={id}
+                athleteName={athlete.name}
+                athleteEmail={athlete.email}
+              />
+              <SendCalendlyLinkButton
+                athleteEmail={athlete.email}
+                athleteName={athlete.name}
+              />
+              <SendContractButton
+                athleteId={id}
+                athleteName={athlete.name}
+                athleteEmail={athlete.email}
               />
               <Link href={`/communications/new?athlete=${id}`} className="btn-secondary w-full justify-center">
                 Log Communication

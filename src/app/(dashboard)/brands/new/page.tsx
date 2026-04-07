@@ -1,18 +1,25 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
 import type { User, Athlete, OutreachMethod, BrandOutreachInsert, DealStage } from '@/lib/database.types'
 import { DEAL_STAGES } from '@/lib/database.types'
 
-export default function NewBrandOutreachPage() {
+function NewBrandOutreachForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+
+  // Get pre-filled values from URL (from Apollo search)
+  const prefillBrandName = searchParams.get('brand_name') || ''
+  const prefillContactName = searchParams.get('contact_name') || ''
+  const prefillContactEmail = searchParams.get('contact_email') || ''
+  const prefillAthleteId = searchParams.get('athlete') || ''
 
   useEffect(() => {
     async function fetchData() {
@@ -107,6 +114,7 @@ export default function NewBrandOutreachPage() {
                 name="brand_name"
                 id="brand_name"
                 required
+                defaultValue={prefillBrandName}
                 className="mt-1 input"
                 placeholder="e.g., Nike, Gatorade, State Farm"
               />
@@ -117,6 +125,7 @@ export default function NewBrandOutreachPage() {
                 type="text"
                 name="brand_contact_name"
                 id="brand_contact_name"
+                defaultValue={prefillContactName}
                 className="mt-1 input"
                 placeholder="Contact person at brand"
               />
@@ -127,6 +136,7 @@ export default function NewBrandOutreachPage() {
                 type="email"
                 name="brand_contact_email"
                 id="brand_contact_email"
+                defaultValue={prefillContactEmail}
                 className="mt-1 input"
                 placeholder="contact@brand.com"
               />
@@ -149,7 +159,7 @@ export default function NewBrandOutreachPage() {
             </div>
             <div>
               <label htmlFor="athlete_id" className="label">Athlete *</label>
-              <select name="athlete_id" id="athlete_id" required className="mt-1 input">
+              <select name="athlete_id" id="athlete_id" required defaultValue={prefillAthleteId} className="mt-1 input">
                 <option value="">Select an athlete</option>
                 {athletes.filter(a => a.outreach_status === 'signed').length > 0 && (
                   <optgroup label="Roster (Signed Athletes)">
@@ -262,5 +272,17 @@ export default function NewBrandOutreachPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function NewBrandOutreachPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+      </div>
+    }>
+      <NewBrandOutreachForm />
+    </Suspense>
   )
 }

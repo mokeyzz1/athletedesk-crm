@@ -4,30 +4,184 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { User, EmailTemplate, RosterTeam, RecruitingRegion } from '@/lib/database.types'
+import type { User, EmailTemplate, RosterTeam, RecruitingRegion, Organization, IntegrationProvider } from '@/lib/database.types'
 import { US_STATES } from '@/lib/database.types'
-import { GmailSettings } from './gmail-settings'
+
+interface Integration {
+  id: string
+  provider: IntegrationProvider
+  account_email: string | null
+  account_name: string | null
+  is_active: boolean
+  created_at: string
+}
 
 interface SettingsClientProps {
   profile: User | null
   initialTemplates: EmailTemplate[]
   initialRosterTeams: RosterTeam[]
   initialRecruitingRegions: RecruitingRegion[]
+  organization: Organization | null
+  isOwner: boolean
 }
 
-type SettingsSection = 'profile' | 'notifications' | 'templates' | 'integrations' | 'team' | 'goals' | 'regions' | 'roster-teams' | 'handoffs'
+type SettingsSection = 'profile' | 'notifications' | 'templates' | 'integrations' | 'team' | 'goals' | 'regions' | 'roster-teams' | 'handoffs' | 'organization'
 
-export function SettingsClient({ profile, initialTemplates, initialRosterTeams, initialRecruitingRegions }: SettingsClientProps) {
+export function SettingsClient({ profile, initialTemplates, initialRosterTeams, initialRecruitingRegions, organization, isOwner }: SettingsClientProps) {
   const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
 
-  // Switch to integrations tab if gmail param is present (after OAuth callback)
+  // Integrations state
+  const [integrations, setIntegrations] = useState<Integration[]>([])
+  const [loadingIntegrations, setLoadingIntegrations] = useState(false)
+  const [gmailConnected, setGmailConnected] = useState<boolean | null>(null)
+  const [gmailEmail, setGmailEmail] = useState<string | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [showApolloModal, setShowApolloModal] = useState(false)
+  const [apolloApiKey, setApolloApiKey] = useState('')
+  const [savingApollo, setSavingApollo] = useState(false)
+  const [apolloError, setApolloError] = useState('')
+
+  // Switch to integrations tab if integration param is present (after OAuth callback)
   useEffect(() => {
     const gmailParam = searchParams.get('gmail')
-    if (gmailParam) {
+    const integrationParam = searchParams.get('integration')
+    if (gmailParam || integrationParam) {
       setActiveSection('integrations')
+      // Auto-open Apollo modal if redirected from /api/integrations/apollo
+      if (integrationParam === 'apollo') {
+        setShowApolloModal(true)
+      }
     }
   }, [searchParams])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!openDropdown) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target && !target.closest('[data-dropdown]')) {
+        setOpenDropdown(null)
+      }
+    }
+
+    // Use setTimeout to avoid closing immediately on the same click that opened it
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [openDropdown])
+
+  // Fetch integrations
+  useEffect(() => {
+    const fetchIntegrations = async () => {
+      setLoadingIntegrations(true)
+      try {
+        // Fetch regular integrations
+        const response = await fetch('/api/integrations')
+        const data = await response.json()
+        if (data.integrations) {
+          setIntegrations(data.integrations)
+        }
+
+        // Fetch Gmail status separately
+        const gmailRes = await fetch('/api/gmail/status')
+        const gmailData = await gmailRes.json()
+        setGmailConnected(gmailData.connected)
+        setGmailEmail(gmailData.email)
+      } catch (error) {
+        console.error('Failed to fetch integrations:', error)
+      }
+      setLoadingIntegrations(false)
+    }
+    fetchIntegrations()
+  }, [searchParams]) // Refetch after OAuth callback
+
+  const isIntegrationConnected = (provider: IntegrationProvider) => {
+    return integrations.some(i => i.provider === provider && i.is_active)
+  }
+
+  const getIntegration = (provider: IntegrationProvider) => {
+    return integrations.find(i => i.provider === provider)
+  }
+
+  const disconnectIntegration = async (provider: IntegrationProvider) => {
+    if (!confirm(`Are you sure you want to disconnect ${provider.replace('_', ' ')}?`)) {
+      return
+    }
+    try {
+      const response = await fetch('/api/integrations', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      })
+      if (response.ok) {
+        setIntegrations(prev => prev.filter(i => i.provider !== provider))
+      }
+    } catch (error) {
+      console.error('Failed to disconnect integration:', error)
+    }
+    setOpenDropdown(null)
+  }
+
+  const disconnectGmail = async () => {
+    if (!confirm('Are you sure you want to disconnect Gmail?')) {
+      return
+    }
+    try {
+      const response = await fetch('/api/gmail/disconnect', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        setGmailConnected(false)
+        setGmailEmail(null)
+      }
+    } catch (error) {
+      console.error('Failed to disconnect Gmail:', error)
+    }
+    setOpenDropdown(null)
+  }
+
+  const saveApolloApiKey = async () => {
+    if (!apolloApiKey.trim()) return
+    setSavingApollo(true)
+    setApolloError('')
+
+    try {
+      const response = await fetch('/api/integrations/apollo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: apolloApiKey.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setApolloError(data.error || 'Failed to save API key')
+        setSavingApollo(false)
+        return
+      }
+
+      // Refresh integrations list
+      const integrationsRes = await fetch('/api/integrations')
+      const integrationsData = await integrationsRes.json()
+      if (integrationsData.integrations) {
+        setIntegrations(integrationsData.integrations)
+      }
+
+      setShowApolloModal(false)
+      setApolloApiKey('')
+    } catch (error) {
+      console.error('Failed to save Apollo API key:', error)
+      setApolloError('Failed to save API key')
+    }
+    setSavingApollo(false)
+  }
 
   // Notification state - initialized from profile
   const [notifications, setNotifications] = useState({
@@ -80,24 +234,45 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
   const [loadingHandoffs, setLoadingHandoffs] = useState(false)
   const [savingHandoff, setSavingHandoff] = useState<string | null>(null)
 
+  // Organization state
+  const [orgName, setOrgName] = useState(organization?.name || '')
+  const [isEditingOrgName, setIsEditingOrgName] = useState(false)
+  const [isSavingOrg, setIsSavingOrg] = useState(false)
+
   const isAdmin = profile?.role === 'admin'
   const router = useRouter()
   const supabase = createClient()
 
-  const sections = [
-    { id: 'profile' as const, label: 'Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', adminOnly: false },
-    { id: 'notifications' as const, label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9', adminOnly: false },
-    { id: 'templates' as const, label: 'Templates', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', adminOnly: false },
-    { id: 'integrations' as const, label: 'Integrations', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1', adminOnly: false },
-    { id: 'team' as const, label: 'Team', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', adminOnly: true },
-    { id: 'goals' as const, label: 'Goals', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', adminOnly: true },
-    { id: 'regions' as const, label: 'Recruiting Regions', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z', adminOnly: true },
-    { id: 'roster-teams' as const, label: 'Roster Teams', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', adminOnly: true },
-    { id: 'handoffs' as const, label: 'Auto Handoffs', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4', adminOnly: true },
+  const sidebarGroups = [
+    {
+      label: 'My Account',
+      adminOnly: false,
+      items: [
+        { id: 'profile' as const, label: 'Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+        { id: 'notifications' as const, label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
+        { id: 'templates' as const, label: 'Templates', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+      ],
+    },
+    {
+      label: 'Integrations',
+      adminOnly: false,
+      items: [
+        { id: 'integrations' as const, label: 'Integrations', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
+      ],
+    },
+    {
+      label: 'Organization',
+      adminOnly: true,
+      items: [
+        { id: 'organization' as const, label: 'Organization', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+        { id: 'team' as const, label: 'Team', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+        { id: 'regions' as const, label: 'Recruiting Regions', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { id: 'roster-teams' as const, label: 'Roster Teams', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+        { id: 'handoffs' as const, label: 'Auto Handoffs', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
+        { id: 'goals' as const, label: 'Goals', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+      ],
+    },
   ]
-
-  const generalSections = sections.filter(s => !s.adminOnly)
-  const adminSections = sections.filter(s => s.adminOnly)
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -400,6 +575,23 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
     setSavingHandoff(null)
   }
 
+  // Organization functions
+  const handleSaveOrgName = async () => {
+    if (!organization || !orgName.trim()) return
+    setIsSavingOrg(true)
+
+    const { error } = await supabase
+      .from('organizations')
+      .update({ name: orgName.trim() } as never)
+      .eq('id', organization.id)
+
+    setIsSavingOrg(false)
+    if (!error) {
+      setIsEditingOrgName(false)
+      router.refresh()
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -412,50 +604,35 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
         <div className="w-52 flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto">
-          <nav className="p-3 space-y-1">
-            {generalSections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeSection === section.id
-                    ? 'bg-white text-brand-700 shadow-sm border border-gray-200'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
-                }`}
-              >
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={section.icon} />
-                </svg>
-                <span className="truncate">{section.label}</span>
-              </button>
-            ))}
+          <nav className="p-3 space-y-4">
+            {sidebarGroups
+              .filter(group => !group.adminOnly || isAdmin)
+              .map((group) => (
+                <div key={group.label}>
+                  <p className="px-3 mb-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    {group.label}
+                  </p>
+                  <div className="space-y-1">
+                    {group.items.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSection(item.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                          activeSection === item.id
+                            ? 'bg-white text-brand-700 shadow-sm border border-gray-200'
+                            : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                        }`}
+                      >
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                        </svg>
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
           </nav>
-
-          {isAdmin && (
-            <>
-              <div className="px-6 pt-4 pb-2">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Admin</p>
-              </div>
-              <nav className="px-3 pb-3 space-y-1">
-                {adminSections.map((section) => (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                      activeSection === section.id
-                        ? 'bg-white text-brand-700 shadow-sm border border-gray-200'
-                        : 'text-gray-600 hover:bg-white hover:text-gray-900'
-                    }`}
-                  >
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={section.icon} />
-                    </svg>
-                    <span className="truncate">{section.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </>
-          )}
         </div>
 
         {/* Main Content */}
@@ -691,25 +868,312 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
             {activeSection === 'integrations' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Integrations</h2>
-                  <p className="text-sm text-gray-500">Connect external services to AthleteDesk</p>
+                  <h2 className="text-lg font-semibold text-gray-900">Connectors</h2>
+                  <p className="text-sm text-gray-500">Connect apps and services to AthleteDesk</p>
                 </div>
 
-                <GmailSettings />
-
-                <div className="bg-white rounded-lg border border-gray-200 border-dashed p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
+                {loadingIntegrations ? (
+                  <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                    <div className="animate-spin w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-500">Loading integrations...</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
+                    {/* Gmail */}
+                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <img
+                          src="https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_48dp.png"
+                          alt="Gmail"
+                          className="w-8 h-8"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-gray-900">Gmail</h3>
+                        {gmailConnected && gmailEmail && (
+                          <p className="text-xs text-gray-500 truncate">{gmailEmail}</p>
+                        )}
+                      </div>
+                      {gmailConnected ? (
+                        <span className="text-sm font-medium text-green-600">Connected</span>
+                      ) : (
+                        <button
+                          onClick={() => window.location.href = '/api/gmail/auth'}
+                          className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        >
+                          Connect
+                        </button>
+                      )}
+                      <div className="relative" data-dropdown>
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'gmail' ? null : 'gmail')}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                        {openDropdown === 'gmail' && (
+                          <div className="absolute right-0 mt-1 w-36 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10">
+                            {gmailConnected ? (
+                              <button
+                                onClick={disconnectGmail}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                              >
+                                Disconnect
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  window.location.href = '/api/gmail/auth'
+                                  setOpenDropdown(null)
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                Connect
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900">More integrations coming soon</h3>
-                      <p className="text-sm text-gray-500">Slack, Calendly, and more</p>
+
+                    {/* Google Calendar - uses same auth as Gmail */}
+                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <img
+                          src="https://www.gstatic.com/images/branding/product/2x/calendar_2020q4_48dp.png"
+                          alt="Google Calendar"
+                          className="w-8 h-8"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-gray-900">Google Calendar</h3>
+                        {(isIntegrationConnected('google_calendar') || gmailConnected) && (gmailEmail || getIntegration('google_calendar')?.account_email) && (
+                          <p className="text-xs text-gray-500 truncate">{gmailEmail || getIntegration('google_calendar')?.account_email}</p>
+                        )}
+                      </div>
+                      {(isIntegrationConnected('google_calendar') || gmailConnected) ? (
+                        <span className="text-sm font-medium text-green-600">Connected</span>
+                      ) : (
+                        <button
+                          onClick={() => window.location.href = '/api/gmail/auth'}
+                          className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        >
+                          Connect
+                        </button>
+                      )}
+                      <div className="relative" data-dropdown>
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'google_calendar' ? null : 'google_calendar')}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                        {openDropdown === 'google_calendar' && (
+                          <div className="absolute right-0 mt-1 w-36 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10">
+                            {(isIntegrationConnected('google_calendar') || gmailConnected) ? (
+                              <button
+                                onClick={() => disconnectIntegration('google_calendar')}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                              >
+                                Disconnect
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  window.location.href = '/api/gmail/auth'
+                                  setOpenDropdown(null)
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                Connect
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Calendly */}
+                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-8 h-8" viewBox="0 0 120 120">
+                          <circle fill="#006BFF" cx="60" cy="60" r="60"/>
+                          <path fill="#fff" d="M60 25c-19.33 0-35 15.67-35 35s15.67 35 35 35c9.27 0 17.71-3.61 24-9.5l-8.5-8.5c-4.12 3.85-9.64 6.2-15.5 6.2-12.7 0-23-10.3-23-23s10.3-23 23-23c6.35 0 12.1 2.58 16.26 6.74L84 35.5C77.71 28.61 69.27 25 60 25z"/>
+                          <path fill="#fff" d="M85 55h-25v10h25z"/>
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-gray-900">Calendly</h3>
+                        {isIntegrationConnected('calendly') && getIntegration('calendly')?.account_name && (
+                          <p className="text-xs text-gray-500 truncate">{getIntegration('calendly')?.account_name}</p>
+                        )}
+                      </div>
+                      {isIntegrationConnected('calendly') ? (
+                        <span className="text-sm font-medium text-green-600">Connected</span>
+                      ) : (
+                        <button
+                          onClick={() => window.location.href = '/api/integrations/calendly'}
+                          className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        >
+                          Connect
+                        </button>
+                      )}
+                      <div className="relative" data-dropdown>
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'calendly' ? null : 'calendly')}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                        {openDropdown === 'calendly' && (
+                          <div className="absolute right-0 mt-1 w-36 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10">
+                            {isIntegrationConnected('calendly') ? (
+                              <button
+                                onClick={() => disconnectIntegration('calendly')}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                              >
+                                Disconnect
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  window.location.href = '/api/integrations/calendly'
+                                  setOpenDropdown(null)
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                Connect
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* DocuSign */}
+                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-8 h-8" viewBox="0 0 40 40">
+                          <rect fill="#FFC829" width="40" height="40" rx="4"/>
+                          <path fill="#1A1A1A" d="M10 12h20v2H10zM10 18h20v2H10zM10 24h14v2H10z"/>
+                          <path fill="#1A1A1A" d="M28 20c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm2.5 5l-3.5 3.5-1.5-1.5 1-1 .5.5 2.5-2.5 1 1z"/>
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-gray-900">DocuSign</h3>
+                        {isIntegrationConnected('docusign') && getIntegration('docusign')?.account_email && (
+                          <p className="text-xs text-gray-500 truncate">{getIntegration('docusign')?.account_email}</p>
+                        )}
+                      </div>
+                      {isIntegrationConnected('docusign') ? (
+                        <span className="text-sm font-medium text-green-600">Connected</span>
+                      ) : (
+                        <button
+                          onClick={() => window.location.href = '/api/integrations/docusign'}
+                          className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        >
+                          Connect
+                        </button>
+                      )}
+                      <div className="relative" data-dropdown>
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'docusign' ? null : 'docusign')}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                        {openDropdown === 'docusign' && (
+                          <div className="absolute right-0 mt-1 w-36 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10">
+                            {isIntegrationConnected('docusign') ? (
+                              <button
+                                onClick={() => disconnectIntegration('docusign')}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                              >
+                                Disconnect
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  window.location.href = '/api/integrations/docusign'
+                                  setOpenDropdown(null)
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                Connect
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Apollo */}
+                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-8 h-8" viewBox="0 0 40 40">
+                          <rect fill="#6C5CE7" width="40" height="40" rx="8"/>
+                          <path fill="#fff" d="M20 8l-10 20h6l4-8 4 8h6L20 8zm0 6l3 6h-6l3-6z"/>
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-gray-900">Apollo.io</h3>
+                        {isIntegrationConnected('apollo') && (
+                          <p className="text-xs text-gray-500">API Key configured</p>
+                        )}
+                      </div>
+                      {isIntegrationConnected('apollo') ? (
+                        <span className="text-sm font-medium text-green-600">Connected</span>
+                      ) : (
+                        <button
+                          onClick={() => setShowApolloModal(true)}
+                          className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        >
+                          Connect
+                        </button>
+                      )}
+                      <div className="relative" data-dropdown>
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === 'apollo' ? null : 'apollo')}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                        {openDropdown === 'apollo' && (
+                          <div className="absolute right-0 mt-1 w-36 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10">
+                            {isIntegrationConnected('apollo') ? (
+                              <button
+                                onClick={() => disconnectIntegration('apollo')}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                              >
+                                Disconnect
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setShowApolloModal(true)
+                                  setOpenDropdown(null)
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                Connect
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -1097,6 +1561,97 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                 </div>
               </div>
             )}
+
+            {/* Organization Section */}
+            {activeSection === 'organization' && isAdmin && organization && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Organization Settings</h2>
+                  <p className="text-sm text-gray-500">Manage your organization details</p>
+                </div>
+
+                {/* Organization Details */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                        Organization Name
+                      </label>
+                      {isEditingOrgName ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={orgName}
+                            onChange={(e) => setOrgName(e.target.value)}
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                            placeholder="Organization name"
+                          />
+                          <button
+                            onClick={handleSaveOrgName}
+                            disabled={isSavingOrg || !orgName.trim()}
+                            className="px-3 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50"
+                          >
+                            {isSavingOrg ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingOrgName(false)
+                              setOrgName(organization.name)
+                            }}
+                            className="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-900">{organization.name}</span>
+                          {isOwner && (
+                            <button
+                              onClick={() => setIsEditingOrgName(true)}
+                              className="p-1 text-gray-400 hover:text-gray-600"
+                            >
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Organization ID
+                        </label>
+                        <span className="text-sm text-gray-500 font-mono">{organization.slug}</span>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Created
+                        </label>
+                        <span className="text-sm text-gray-500">
+                          {new Date(organization.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+                  <div className="flex gap-3">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Team Members</p>
+                      <p className="text-sm text-blue-700">To manage team members, roles, and invitations, go to the <Link href="/settings/team" className="underline font-medium">Team Management</Link> page.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1281,6 +1836,73 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
           </div>
         </div>
       )}
+
+      {/* Apollo API Key Modal */}
+      {showApolloModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <svg className="w-8 h-8" viewBox="0 0 40 40">
+                  <rect fill="#6C5CE7" width="40" height="40" rx="8"/>
+                  <path fill="#fff" d="M20 8l-10 20h6l4-8 4 8h6L20 8zm0 6l3 6h-6l3-6z"/>
+                </svg>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Connect Apollo.io</h2>
+                  <p className="text-sm text-gray-500">Enter your Apollo API key</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                <input
+                  type="password"
+                  value={apolloApiKey}
+                  onChange={(e) => setApolloApiKey(e.target.value)}
+                  placeholder="Enter your Apollo API key"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+              {apolloError && (
+                <div className="bg-red-50 text-red-700 text-sm p-3 rounded-md">
+                  {apolloError}
+                </div>
+              )}
+              <div className="bg-blue-50 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Where to find your API key:</strong>
+                </p>
+                <ol className="text-sm text-blue-700 mt-1 list-decimal list-inside space-y-1">
+                  <li>Go to <a href="https://app.apollo.io" target="_blank" rel="noopener noreferrer" className="underline">app.apollo.io</a></li>
+                  <li>Click Settings → Integrations → API Keys</li>
+                  <li>Create or copy your API key</li>
+                </ol>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowApolloModal(false)
+                  setApolloApiKey('')
+                  setApolloError('')
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveApolloApiKey}
+                disabled={savingApollo || !apolloApiKey.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50"
+              >
+                {savingApollo ? 'Connecting...' : 'Connect'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

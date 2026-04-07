@@ -124,6 +124,47 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/settings?gmail=error&reason=rls', request.url))
     }
 
+    // Also create/update Google Calendar integration (uses same Google OAuth tokens)
+    const { data: existingCalendar } = await supabase
+      .from('user_integrations')
+      .select('id')
+      .eq('user_id', existingUser.id)
+      .eq('provider', 'google_calendar')
+      .single() as { data: { id: string } | null }
+
+    if (existingCalendar) {
+      await supabase
+        .from('user_integrations')
+        .update({
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+          account_email: userInfo.email,
+          is_active: true,
+        } as never)
+        .eq('id', existingCalendar.id)
+    } else {
+      // Get organization_id from user
+      const { data: userOrgData } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', existingUser.id)
+        .single() as { data: { organization_id: string } | null }
+
+      await supabase
+        .from('user_integrations')
+        .insert({
+          user_id: existingUser.id,
+          organization_id: userOrgData?.organization_id,
+          provider: 'google_calendar',
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+          account_email: userInfo.email,
+          is_active: true,
+        } as never)
+    }
+
     // Redirect back to where they came from, or settings
     return NextResponse.redirect(new URL(returnUrl, request.url))
   } catch (err) {

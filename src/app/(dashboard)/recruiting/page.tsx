@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { RecruitingClient } from './recruiting-client'
 import type { Athlete, OutreachStatus, ClassYear } from '@/lib/database.types'
+import { CLASS_YEARS } from '@/lib/database.types'
 import { getAthleteEmailCounts } from '@/lib/queries/email-stats'
 
 export interface RecruitingAthlete {
@@ -21,6 +22,14 @@ export interface RecruitingAthlete {
 
 export interface RegionStats {
   region: string
+  total: number
+  contacted: number
+  percentage: number
+}
+
+export interface ClassYearStats {
+  classYear: string
+  label: string
   total: number
   contacted: number
   percentage: number
@@ -76,5 +85,31 @@ export default async function RecruitingPage() {
     percentage: stats.total > 0 ? Math.round((stats.contacted / stats.total) * 100) : 0,
   })).sort((a, b) => a.region.localeCompare(b.region))
 
-  return <RecruitingClient athletes={athletes} regionStats={regionStats} />
+  // Calculate class year stats
+  const classYearMap = new Map<string, { total: number; contacted: number }>()
+
+  athletes.forEach(a => {
+    const classYear = a.class_year || 'n_a'
+    const current = classYearMap.get(classYear) || { total: 0, contacted: 0 }
+    current.total++
+    if (a.outreach_status !== 'not_contacted') {
+      current.contacted++
+    }
+    classYearMap.set(classYear, current)
+  })
+
+  const classYearStats: ClassYearStats[] = CLASS_YEARS
+    .filter(cy => classYearMap.has(cy.value))
+    .map(cy => {
+      const stats = classYearMap.get(cy.value)!
+      return {
+        classYear: cy.value,
+        label: cy.label,
+        total: stats.total,
+        contacted: stats.contacted,
+        percentage: stats.total > 0 ? Math.round((stats.contacted / stats.total) * 100) : 0,
+      }
+    })
+
+  return <RecruitingClient athletes={athletes} regionStats={regionStats} classYearStats={classYearStats} />
 }

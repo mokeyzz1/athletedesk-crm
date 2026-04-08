@@ -50,8 +50,11 @@ export default function AdminPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteType, setInviteType] = useState<'new_org' | 'join_org'>('new_org')
   const [selectedOrgId, setSelectedOrgId] = useState('')
+  const [sendEmailInvite, setSendEmailInvite] = useState(true)
   const [creatingInvite, setCreatingInvite] = useState(false)
   const [newInviteUrl, setNewInviteUrl] = useState('')
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   const loadData = useCallback(async () => {
@@ -100,6 +103,8 @@ export default function AdminPage() {
   const createInvite = async () => {
     setCreatingInvite(true)
     setNewInviteUrl('')
+    setEmailSent(false)
+    setEmailError(null)
     setCopied(false)
     try {
       const response = await fetch('/api/admin/invites', {
@@ -109,12 +114,15 @@ export default function AdminPage() {
           email: inviteEmail || null,
           inviteType,
           organizationId: inviteType === 'join_org' ? selectedOrgId : null,
+          sendEmailInvite: sendEmailInvite && !!inviteEmail,
         }),
       })
 
       if (response.ok) {
         const data = await response.json()
         setNewInviteUrl(data.inviteUrl)
+        setEmailSent(data.emailSent)
+        setEmailError(data.emailError)
         setInviteEmail('')
         loadData()
       }
@@ -127,6 +135,54 @@ export default function AdminPage() {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const viewOrganization = async (orgId: string) => {
+    // Set impersonation via API and wait for confirmation
+    const response = await fetch('/api/admin/impersonate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizationId: orgId }),
+    })
+
+    const result = await response.json()
+
+    if (result.success) {
+      // Force a hard navigation to ensure fresh data
+      window.location.href = '/dashboard'
+    } else {
+      console.error('Failed to set impersonation:', result.error)
+    }
+  }
+
+  const [deletingOrgId, setDeletingOrgId] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+  const deleteOrganization = async (orgId: string, orgName: string) => {
+    if (confirmDelete !== orgId) {
+      setConfirmDelete(orgId)
+      return
+    }
+
+    setDeletingOrgId(orgId)
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Refresh data
+        loadData()
+        setConfirmDelete(null)
+      } else {
+        const result = await response.json()
+        alert(`Failed to delete: ${result.error}`)
+      }
+    } catch (err) {
+      alert('Failed to delete organization')
+    } finally {
+      setDeletingOrgId(null)
+    }
   }
 
   if (loading) {
@@ -262,6 +318,7 @@ export default function AdminPage() {
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Users</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Athletes</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Created</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -297,11 +354,32 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {new Date(org.created_at).toLocaleDateString()}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => viewOrganization(org.id)}
+                            className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => deleteOrganization(org.id, org.name)}
+                            disabled={deletingOrgId === org.id}
+                            className={`text-sm font-medium ${
+                              confirmDelete === org.id
+                                ? 'text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded'
+                                : 'text-red-600 hover:text-red-700'
+                            } disabled:opacity-50`}
+                          >
+                            {deletingOrgId === org.id ? 'Deleting...' : confirmDelete === org.id ? 'Confirm?' : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   {organizations.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
+                      <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
                         No organizations yet
                       </td>
                     </tr>
@@ -372,6 +450,20 @@ export default function AdminPage() {
                     </div>
                   </div>
 
+                  {inviteEmail && (
+                    <div className="mt-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={sendEmailInvite}
+                          onChange={(e) => setSendEmailInvite(e.target.checked)}
+                          className="h-4 w-4 text-brand-600 focus:ring-brand-500 rounded"
+                        />
+                        <span className="text-sm text-gray-700">Send email invitation</span>
+                      </label>
+                    </div>
+                  )}
+
                   <div className="mt-4 flex items-center gap-3">
                     <button
                       onClick={createInvite}
@@ -391,6 +483,25 @@ export default function AdminPage() {
                   {newInviteUrl && (
                     <div className="mt-4 p-3 bg-brand-50 border border-brand-200 rounded-md">
                       <p className="text-sm font-medium text-brand-700 mb-2">Invite created!</p>
+
+                      {emailSent && (
+                        <p className="text-sm text-green-600 mb-2 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Email sent successfully
+                        </p>
+                      )}
+
+                      {emailError && (
+                        <p className="text-sm text-amber-600 mb-2 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Email failed: {emailError}
+                        </p>
+                      )}
+
                       <div className="flex items-center gap-2">
                         <input
                           type="text"

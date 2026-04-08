@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 interface InviteData {
   valid: boolean
@@ -14,6 +15,7 @@ interface InviteData {
 export default function InvitePage() {
   const params = useParams()
   const router = useRouter()
+  const supabase = createClient()
   const token = params.token as string
   const [loading, setLoading] = useState(true)
   const [invite, setInvite] = useState<InviteData | null>(null)
@@ -44,9 +46,16 @@ export default function InvitePage() {
     validateInvite()
   }, [token])
 
-  const handleAccept = () => {
-    // Redirect to login - the auth callback will handle the rest
-    router.push('/login')
+  const handleAccept = async () => {
+    // Sign out any existing session first
+    await supabase.auth.signOut()
+
+    // If invite has a specific email, pass it to login for auto-selection
+    if (invite?.email) {
+      router.push(`/login?hint=${encodeURIComponent(invite.email)}`)
+    } else {
+      router.push('/login')
+    }
   }
 
   if (loading) {

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -9,8 +9,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check if user is super admin
-  const { data: userData } = await supabase
+  // Use service client to bypass RLS for admin check
+  const serviceClient = createServiceClient()
+
+  // Check if user is super admin (using service client to bypass RLS)
+  const { data: userData } = await serviceClient
     .from('users')
     .select('id, is_super_admin')
     .eq('google_sso_id', user.id)

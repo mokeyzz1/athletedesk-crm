@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface ApolloPerson {
   id: string
@@ -66,9 +66,9 @@ export function ApolloSearchModal({ onClose, onSelectContact }: ApolloSearchModa
   const [hasApollo, setHasApollo] = useState<boolean | null>(null)
 
   // Check Apollo connection on mount
-  useState(() => {
+  useEffect(() => {
     checkConnection()
-  })
+  }, [])
 
   const checkConnection = async () => {
     try {

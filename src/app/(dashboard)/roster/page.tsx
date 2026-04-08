@@ -64,31 +64,28 @@ export default async function RosterPage() {
   }
 
   const athletes = (athletesData || []) as AthleteFromQuery[]
-
-  // Get deal summaries for signed athletes with deal_type
   const athleteIds = athletes.map(a => a.id)
-
-  // Fetch email counts for all roster athletes
-  const emailCounts = athleteIds.length > 0 ? await getAthleteEmailCounts(athleteIds) : {}
+  const safeAthleteIds = athleteIds.length > 0 ? athleteIds : ['00000000-0000-0000-0000-000000000000']
 
   type DealFromQuery = { athlete_id: string; deal_value: number | null; deal_type: DealType | null }
   type BrandDealFromQuery = { athlete_id: string; deal_value: number | null }
 
-  const { data: deals } = await supabase
-    .from('financial_tracking')
-    .select('athlete_id, deal_value, deal_type')
-    .in('athlete_id', athleteIds.length > 0 ? athleteIds : ['00000000-0000-0000-0000-000000000000'])
+  // PARALLEL: Fetch email counts, deals, and brand deals simultaneously
+  const [emailCounts, dealsResult, brandDealsResult] = await Promise.all([
+    athleteIds.length > 0 ? getAthleteEmailCounts(athleteIds) : Promise.resolve({} as Record<string, number>),
+    supabase
+      .from('financial_tracking')
+      .select('athlete_id, deal_value, deal_type')
+      .in('athlete_id', safeAthleteIds),
+    supabase
+      .from('brand_outreach')
+      .select('athlete_id, deal_value')
+      .eq('response_status', 'deal_closed')
+      .in('athlete_id', safeAthleteIds),
+  ])
 
-  const typedDeals = (deals || []) as DealFromQuery[]
-
-  // Get brand outreach with closed deals (these are marketing_brand deals)
-  const { data: brandDeals } = await supabase
-    .from('brand_outreach')
-    .select('athlete_id, deal_value')
-    .eq('response_status', 'deal_closed')
-    .in('athlete_id', athleteIds.length > 0 ? athleteIds : ['00000000-0000-0000-0000-000000000000'])
-
-  const typedBrandDeals = (brandDeals || []) as BrandDealFromQuery[]
+  const typedDeals = (dealsResult.data || []) as DealFromQuery[]
+  const typedBrandDeals = (brandDealsResult.data || []) as BrandDealFromQuery[]
 
   // Calculate totals per athlete by deal type
   type DealSummary = {
@@ -107,6 +104,11 @@ export default async function RosterPage() {
     return dealSummary.get(athleteId)!
   }
 
+  // Build a Set for O(1) duplicate checking instead of O(n) .some()
+  const financialDealSet = new Set(
+    typedDeals.map(d => `${d.athlete_id}-${d.deal_value}`)
+  )
+
   // Add financial tracking deals
   typedDeals.forEach(deal => {
     const summary = getOrCreate(deal.athlete_id)
@@ -117,11 +119,8 @@ export default async function RosterPage() {
 
   // Add brand outreach deals (these are always marketing_brand type)
   typedBrandDeals.forEach(deal => {
-    // Check if this deal is already tracked in financial_tracking to avoid double counting
-    const existingInFinancial = typedDeals.some(d =>
-      d.athlete_id === deal.athlete_id && d.deal_value === deal.deal_value
-    )
-    if (!existingInFinancial) {
+    // O(1) check if this deal is already tracked in financial_tracking
+    if (!financialDealSet.has(`${deal.athlete_id}-${deal.deal_value}`)) {
       const summary = getOrCreate(deal.athlete_id)
       summary.marketing_brand.total += deal.deal_value || 0
       summary.marketing_brand.count += 1

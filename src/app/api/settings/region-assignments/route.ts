@@ -3,8 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 
 interface RegionAssignmentUpdate {
   region: string
-  default_agent_id: string | null
-  default_marketing_id: string | null
+  agent_ids: string[]
+  marketing_ids: string[]
+  primary_agent_id: string | null
+  primary_marketing_id: string | null
 }
 
 export async function GET() {
@@ -68,7 +70,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body: RegionAssignmentUpdate = await request.json()
-  const { region, default_agent_id, default_marketing_id } = body
+  const { region, agent_ids, marketing_ids, primary_agent_id, primary_marketing_id } = body
 
   if (!region) {
     return NextResponse.json({ error: 'Region is required' }, { status: 400 })
@@ -80,8 +82,13 @@ export async function PATCH(request: NextRequest) {
     .upsert(
       {
         region,
-        default_agent_id: default_agent_id || null,
-        default_marketing_id: default_marketing_id || null,
+        agent_ids: agent_ids || [],
+        marketing_ids: marketing_ids || [],
+        primary_agent_id: primary_agent_id || null,
+        primary_marketing_id: primary_marketing_id || null,
+        // Keep legacy fields in sync for backward compatibility
+        default_agent_id: primary_agent_id || null,
+        default_marketing_id: primary_marketing_id || null,
         updated_at: new Date().toISOString(),
       } as never,
       { onConflict: 'region' }

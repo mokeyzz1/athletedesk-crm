@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -9,8 +9,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check if user is super admin
-  const { data: userData } = await supabase
+  // Use service client to bypass RLS for admin operations
+  const serviceClient = createServiceClient()
+
+  // Check if user is super admin (using service client to bypass RLS)
+  const { data: userData } = await serviceClient
     .from('users')
     .select('is_super_admin')
     .eq('google_sso_id', user.id)
@@ -28,11 +31,11 @@ export async function GET() {
     { count: pendingInvites },
     { count: usedInvites },
   ] = await Promise.all([
-    supabase.from('organizations').select('*', { count: 'exact', head: true }),
-    supabase.from('users').select('*', { count: 'exact', head: true }),
-    supabase.from('athletes').select('*', { count: 'exact', head: true }),
-    supabase.from('organization_invites').select('*', { count: 'exact', head: true }).is('accepted_at', null).gt('expires_at', new Date().toISOString()),
-    supabase.from('organization_invites').select('*', { count: 'exact', head: true }).not('accepted_at', 'is', null),
+    serviceClient.from('organizations').select('*', { count: 'exact', head: true }),
+    serviceClient.from('users').select('*', { count: 'exact', head: true }),
+    serviceClient.from('athletes').select('*', { count: 'exact', head: true }),
+    serviceClient.from('organization_invites').select('*', { count: 'exact', head: true }).is('accepted_at', null).gt('expires_at', new Date().toISOString()),
+    serviceClient.from('organization_invites').select('*', { count: 'exact', head: true }).not('accepted_at', 'is', null),
   ])
 
   return NextResponse.json({

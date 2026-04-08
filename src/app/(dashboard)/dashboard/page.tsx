@@ -6,10 +6,13 @@ import { UpcomingMeetingsCard } from '@/components/calendar/upcoming-meetings-ca
 import { REGIONS } from '@/lib/database.types'
 import { getGoalProgressForUser, getTeamGoalsSummary } from '@/lib/queries/goal-progress'
 
+// Disable caching to ensure fresh data on each request
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  // Get current user's name, ID, and role
+  // Get current user first (needed for subsequent queries)
   const { data: { user } } = await supabase.auth.getUser()
   const { data: userData } = await supabase
     .from('users')
@@ -22,125 +25,96 @@ export default async function DashboardPage() {
   const userRole = userData?.role || ''
   const isAdmin = userRole === 'admin'
 
-  // Fetch goal progress
-  const userGoalProgress = currentUserId ? await getGoalProgressForUser(currentUserId) : []
-  const teamGoalsSummary = isAdmin ? await getTeamGoalsSummary() : null
-
-  // Fetch dashboard summary
-  const { data: summaryData } = await supabase
-    .from('dashboard_summary')
-    .select('*')
-    .single()
-  const summary = summaryData as DashboardSummary | null
-
-  // Get accurate signed clients count (recruiting_status = 'signed')
-  const { count: signedClientsCount } = await supabase
-    .from('athletes')
-    .select('*', { count: 'exact', head: true })
-    .eq('recruiting_status', 'signed')
-
-  // Get athletes in pipeline count (actively recruiting or open to contact)
-  const { count: pipelineCount } = await supabase
-    .from('athletes')
-    .select('*', { count: 'exact', head: true })
-    .in('recruiting_status', ['actively_recruiting', 'open_to_contact'])
-
-  // Fetch pending follow-ups
-  const { data: followUpsData } = await supabase
-    .from('pending_follow_ups')
-    .select('*')
-    .limit(5)
-  const followUps = followUpsData as PendingFollowUp[] | null
-
-  // Count follow-ups: overdue, today, and tomorrow
+  // Date calculations
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayStr = today.toISOString().split('T')[0]
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
   const tomorrowStr = tomorrow.toISOString().split('T')[0]
-
-  const { count: overdueFollowUpsCount } = await supabase
-    .from('communications_log')
-    .select('*', { count: 'exact', head: true })
-    .eq('follow_up_completed', false)
-    .not('follow_up_date', 'is', null)
-    .lt('follow_up_date', todayStr)
-
-  const { count: todayFollowUpsCount } = await supabase
-    .from('communications_log')
-    .select('*', { count: 'exact', head: true })
-    .eq('follow_up_completed', false)
-    .eq('follow_up_date', todayStr)
-
-  const { count: tomorrowFollowUpsCount } = await supabase
-    .from('communications_log')
-    .select('*', { count: 'exact', head: true })
-    .eq('follow_up_completed', false)
-    .eq('follow_up_date', tomorrowStr)
-
-  // Fetch recent athletes
-  const { data: recentAthletesData } = await supabase
-    .from('athletes')
-    .select('id, name, sport, school, recruiting_status')
-    .order('created_at', { ascending: false })
-    .limit(5)
-  const recentAthletes = recentAthletesData as Pick<Athlete, 'id' | 'name' | 'sport' | 'school' | 'recruiting_status'>[] | null
-
-  // Fetch deals closing this month
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
   const endOfMonth = new Date(startOfMonth)
   endOfMonth.setMonth(endOfMonth.getMonth() + 1)
 
-  const { data: monthlyDealsData } = await supabase
-    .from('financial_tracking')
-    .select('*, athletes(name)')
-    .gte('deal_date', startOfMonth.toISOString())
-    .lt('deal_date', endOfMonth.toISOString())
-    .order('deal_date', { ascending: false })
-    .limit(5)
+  // PARALLEL FETCH: Run all independent queries simultaneously
+  const [
+    goalProgressResult,
+    teamGoalsResult,
+    summaryResult,
+    signedClientsResult,
+    pipelineResult,
+    followUpsResult,
+    overdueResult,
+    todayFollowUpsResult,
+    tomorrowFollowUpsResult,
+    recentAthletesResult,
+    monthlyDealsResult,
+    recentCommsResult,
+    recentDealsResult,
+    recentBrandsResult,
+    recentDocsResult,
+    activeDealsResult,
+    activeBrandsResult,
+    userTasksResult,
+    recruitingResult,
+  ] = await Promise.all([
+    // Goal progress
+    currentUserId ? getGoalProgressForUser(currentUserId) : Promise.resolve([]),
+    isAdmin ? getTeamGoalsSummary() : Promise.resolve(null),
+    // Dashboard summary
+    supabase.from('dashboard_summary').select('*').single(),
+    // Counts
+    supabase.from('athletes').select('*', { count: 'exact', head: true }).eq('recruiting_status', 'signed'),
+    supabase.from('athletes').select('*', { count: 'exact', head: true }).in('recruiting_status', ['actively_recruiting', 'open_to_contact']),
+    // Follow-ups
+    supabase.from('pending_follow_ups').select('*').limit(5),
+    supabase.from('communications_log').select('*', { count: 'exact', head: true }).eq('follow_up_completed', false).not('follow_up_date', 'is', null).lt('follow_up_date', todayStr),
+    supabase.from('communications_log').select('*', { count: 'exact', head: true }).eq('follow_up_completed', false).eq('follow_up_date', todayStr),
+    supabase.from('communications_log').select('*', { count: 'exact', head: true }).eq('follow_up_completed', false).eq('follow_up_date', tomorrowStr),
+    // Recent data
+    supabase.from('athletes').select('id, name, sport, school, recruiting_status').order('created_at', { ascending: false }).limit(5),
+    supabase.from('financial_tracking').select('*, athletes(name)').gte('deal_date', startOfMonth.toISOString()).lt('deal_date', endOfMonth.toISOString()).order('deal_date', { ascending: false }).limit(5),
+    supabase.from('communications_log').select('id, athlete_id, type, subject, communication_date, athletes(name)').order('created_at', { ascending: false }).limit(3),
+    supabase.from('financial_tracking').select('id, athlete_id, deal_name, deal_value, created_at, athletes(name)').order('created_at', { ascending: false }).limit(3),
+    supabase.from('brand_outreach').select('id, athlete_id, brand_name, response_status, created_at, athletes(name)').order('created_at', { ascending: false }).limit(3),
+    supabase.from('documents').select('id, athlete_id, name, document_type, created_at, athletes(name)').order('created_at', { ascending: false }).limit(2),
+    // Active data
+    supabase.from('financial_tracking').select('deal_value').eq('payment_status', 'pending'),
+    supabase.from('brand_outreach').select('*, athletes(name)').in('response_status', ['interested', 'in_discussion']).order('date_contacted', { ascending: false }).limit(5),
+    supabase.from('tasks').select('*, athletes:athlete_id(name)').eq('assigned_to', currentUserId).neq('status', 'done').order('due_date', { ascending: true, nullsFirst: false }).limit(5),
+    // Recruiting stats
+    supabase.from('athletes').select('id, region, outreach_status').neq('outreach_status', 'signed'),
+  ])
 
-  const monthlyDeals = monthlyDealsData as (FinancialTracking & { athletes: { name: string } | null })[] | null
+  // Extract results
+  const userGoalProgress = goalProgressResult
+  const teamGoalsSummary = teamGoalsResult
+  const summary = summaryResult.data as DashboardSummary | null
+  const signedClientsCount = signedClientsResult.count
+  const pipelineCount = pipelineResult.count
+  const followUps = followUpsResult.data as PendingFollowUp[] | null
+  const overdueFollowUpsCount = overdueResult.count
+  const todayFollowUpsCount = todayFollowUpsResult.count
+  const tomorrowFollowUpsCount = tomorrowFollowUpsResult.count
+  const recentAthletes = recentAthletesResult.data as Pick<Athlete, 'id' | 'name' | 'sport' | 'school' | 'recruiting_status'>[] | null
+  const monthlyDeals = monthlyDealsResult.data as (FinancialTracking & { athletes: { name: string } | null })[] | null
 
   // Calculate monthly deal totals
   const monthlyDealValue = monthlyDeals?.reduce((sum, d) => sum + Number(d.deal_value), 0) ?? 0
   const monthlyAgencyFee = monthlyDeals?.reduce((sum, d) => sum + Number(d.agency_fee), 0) ?? 0
 
-  // Fetch recent activity for activity feed
+  // Extract recent activity data (already fetched in parallel)
   type RecentComm = { id: string; athlete_id: string; type: string; subject: string | null; communication_date: string; athletes: { name: string } | null }
   type RecentDeal = { id: string; athlete_id: string; deal_name: string; deal_value: number; created_at: string; athletes: { name: string } | null }
   type RecentBrand = { id: string; athlete_id: string; brand_name: string; response_status: string; created_at: string; athletes: { name: string } | null }
   type RecentDoc = { id: string; athlete_id: string; name: string; document_type: string; created_at: string; athletes: { name: string } | null }
 
-  const [
-    { data: recentComms },
-    { data: recentDeals },
-    { data: recentBrands },
-    { data: recentDocs }
-  ] = await Promise.all([
-    supabase
-      .from('communications_log')
-      .select('id, athlete_id, type, subject, communication_date, athletes(name)')
-      .order('created_at', { ascending: false })
-      .limit(3) as unknown as { data: RecentComm[] | null },
-    supabase
-      .from('financial_tracking')
-      .select('id, athlete_id, deal_name, deal_value, created_at, athletes(name)')
-      .order('created_at', { ascending: false })
-      .limit(3) as unknown as { data: RecentDeal[] | null },
-    supabase
-      .from('brand_outreach')
-      .select('id, athlete_id, brand_name, response_status, created_at, athletes(name)')
-      .order('created_at', { ascending: false })
-      .limit(3) as unknown as { data: RecentBrand[] | null },
-    supabase
-      .from('documents')
-      .select('id, athlete_id, name, document_type, created_at, athletes(name)')
-      .order('created_at', { ascending: false })
-      .limit(2) as unknown as { data: RecentDoc[] | null }
-  ])
+  const recentComms = recentCommsResult.data as RecentComm[] | null
+  const recentDeals = recentDealsResult.data as RecentDeal[] | null
+  const recentBrands = recentBrandsResult.data as RecentBrand[] | null
+  const recentDocs = recentDocsResult.data as RecentDoc[] | null
 
   // Combine and sort activities
   type Activity = {
@@ -213,42 +187,16 @@ export default async function DashboardPage() {
     return date.toLocaleDateString()
   }
 
-  // Get total active deals value
-  const { data: activeDealsData } = await supabase
-    .from('financial_tracking')
-    .select('deal_value')
-    .eq('payment_status', 'pending') as unknown as { data: { deal_value: number }[] | null }
+  // Extract results from parallel fetch
+  const activeDealsData = activeDealsResult.data as { deal_value: number }[] | null
   const activeDealsValue = activeDealsData?.reduce((sum, d) => sum + Number(d.deal_value), 0) ?? 0
 
-  // Fetch active brand discussions
-  const { data: activeBrandsData } = await supabase
-    .from('brand_outreach')
-    .select('*, athletes(name)')
-    .in('response_status', ['interested', 'in_discussion'])
-    .order('date_contacted', { ascending: false })
-    .limit(5)
+  const activeBrands = activeBrandsResult.data as (BrandOutreach & { athletes: { name: string } | null })[] | null
 
-  const activeBrands = activeBrandsData as (BrandOutreach & { athletes: { name: string } | null })[] | null
-
-  // Fetch user's tasks (not done, ordered by due date)
-  const { data: userTasksData } = await supabase
-    .from('tasks')
-    .select('*, athletes:athlete_id(name)')
-    .eq('assigned_to', currentUserId)
-    .neq('status', 'done')
-    .order('due_date', { ascending: true, nullsFirst: false })
-    .limit(5)
-
-  const userTasks = userTasksData as (Task & { athletes: { name: string } | null })[] | null
-
-  // Fetch recruiting database stats
-  const { data: recruitingData } = await supabase
-    .from('athletes')
-    .select('id, region, outreach_status')
-    .neq('outreach_status', 'signed')
+  const userTasks = userTasksResult.data as (Task & { athletes: { name: string } | null })[] | null
 
   type RecruitingRow = { id: string; region: string | null; outreach_status: OutreachStatus }
-  const recruits = (recruitingData as RecruitingRow[] | null) || []
+  const recruits = (recruitingResult.data as RecruitingRow[] | null) || []
 
   // Calculate recruiting stats
   const totalRecruits = recruits.length

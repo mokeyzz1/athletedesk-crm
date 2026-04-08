@@ -43,15 +43,6 @@ export default async function ProductivityPage() {
     redirect('/dashboard')
   }
 
-  // Get all staff members
-  const { data: users } = await supabase
-    .from('users')
-    .select('*')
-    .order('name')
-
-  const staffList = (users || []) as User[]
-  const staffIds = staffList.map(s => s.id)
-
   // Calculate date ranges
   const now = new Date()
   const weekStart = new Date(now)
@@ -61,25 +52,13 @@ export default async function ProductivityPage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // Get all communications
+  // Limit comms query to last 3 months for performance
+  const threeMonthsAgo = new Date(now)
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+
+  // PARALLEL: Fetch all data simultaneously
   type CommRow = { staff_member_id: string; type: string; communication_date: string; athlete_id: string }
-  const { data: commsData } = await supabase
-    .from('communications_log')
-    .select('staff_member_id, type, communication_date, athlete_id')
-    .in('staff_member_id', staffIds.length > 0 ? staffIds : ['00000000-0000-0000-0000-000000000000'])
-
-  const comms = (commsData || []) as CommRow[]
-
-  // Get all tasks
   type TaskRow = { assigned_to: string; status: string; due_date: string | null; updated_at: string }
-  const { data: tasksData } = await supabase
-    .from('tasks')
-    .select('assigned_to, status, due_date, updated_at')
-    .in('assigned_to', staffIds.length > 0 ? staffIds : ['00000000-0000-0000-0000-000000000000'])
-
-  const tasks = (tasksData || []) as TaskRow[]
-
-  // Get athlete assignments with details
   type AthleteRow = {
     id: string
     name: string
@@ -88,80 +67,100 @@ export default async function ProductivityPage() {
     assigned_agent_id: string | null
     assigned_marketing_lead_id: string | null
   }
-  const { data: athletesData } = await supabase
-    .from('athletes')
-    .select('id, name, sport, assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id')
 
-  const allAthletes = (athletesData || []) as AthleteRow[]
+  const [usersResult, commsResult, tasksResult, athletesResult] = await Promise.all([
+    supabase.from('users').select('*').order('name'),
+    supabase.from('communications_log').select('staff_member_id, type, communication_date, athlete_id').gte('communication_date', threeMonthsAgo.toISOString()),
+    supabase.from('tasks').select('assigned_to, status, due_date, updated_at'),
+    supabase.from('athletes').select('id, name, sport, assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id'),
+  ])
 
-  // Build map of staff ID -> assigned athletes
+  const staffList = (usersResult.data || []) as User[]
+  const staffIds = staffList.map(s => s.id)
+  const comms = (commsResult.data || []) as CommRow[]
+  const tasks = (tasksResult.data || []) as TaskRow[]
+  const allAthletes = (athletesResult.data || []) as AthleteRow[]
+
+  // PRE-BUILD LOOKUP MAPS for O(1) access instead of O(n) filtering
+
+  // Communications by staff ID
+  const commsByStaff = new Map<string, CommRow[]>()
+  staffIds.forEach(id => commsByStaff.set(id, []))
+  comms.forEach(c => {
+    const list = commsByStaff.get(c.staff_member_id)
+    if (list) list.push(c)
+  })
+
+  // Tasks by staff ID
+  const tasksByStaff = new Map<string, TaskRow[]>()
+  staffIds.forEach(id => tasksByStaff.set(id, []))
+  tasks.forEach(t => {
+    const list = tasksByStaff.get(t.assigned_to)
+    if (list) list.push(t)
+  })
+
+  // Athletes managed count by staff ID
+  const athleteCountByStaff = new Map<string, number>()
+  staffIds.forEach(id => athleteCountByStaff.set(id, 0))
+  allAthletes.forEach(a => {
+    if (a.assigned_scout_id) athleteCountByStaff.set(a.assigned_scout_id, (athleteCountByStaff.get(a.assigned_scout_id) || 0) + 1)
+    if (a.assigned_agent_id) athleteCountByStaff.set(a.assigned_agent_id, (athleteCountByStaff.get(a.assigned_agent_id) || 0) + 1)
+    if (a.assigned_marketing_lead_id) athleteCountByStaff.set(a.assigned_marketing_lead_id, (athleteCountByStaff.get(a.assigned_marketing_lead_id) || 0) + 1)
+  })
+
+  // Build map of staff ID -> assigned athletes (for UI display)
   const staffAthleteMap: Record<string, { id: string; name: string; sport: string; role: string }[]> = {}
   staffIds.forEach(id => { staffAthleteMap[id] = [] })
-
   allAthletes.forEach(athlete => {
     if (athlete.assigned_scout_id && staffAthleteMap[athlete.assigned_scout_id]) {
-      staffAthleteMap[athlete.assigned_scout_id].push({
-        id: athlete.id,
-        name: athlete.name,
-        sport: athlete.sport,
-        role: 'Scout'
-      })
+      staffAthleteMap[athlete.assigned_scout_id].push({ id: athlete.id, name: athlete.name, sport: athlete.sport, role: 'Scout' })
     }
     if (athlete.assigned_agent_id && staffAthleteMap[athlete.assigned_agent_id]) {
-      staffAthleteMap[athlete.assigned_agent_id].push({
-        id: athlete.id,
-        name: athlete.name,
-        sport: athlete.sport,
-        role: 'Agent'
-      })
+      staffAthleteMap[athlete.assigned_agent_id].push({ id: athlete.id, name: athlete.name, sport: athlete.sport, role: 'Agent' })
     }
     if (athlete.assigned_marketing_lead_id && staffAthleteMap[athlete.assigned_marketing_lead_id]) {
-      staffAthleteMap[athlete.assigned_marketing_lead_id].push({
-        id: athlete.id,
-        name: athlete.name,
-        sport: athlete.sport,
-        role: 'Marketing'
-      })
+      staffAthleteMap[athlete.assigned_marketing_lead_id].push({ id: athlete.id, name: athlete.name, sport: athlete.sport, role: 'Marketing' })
     }
   })
 
-  // For counting, use the old method
-  const athleteAssignments = allAthletes
-
-  // Calculate metrics per staff member
+  // Calculate metrics per staff member using pre-built maps
   const productivity: StaffProductivity[] = staffList.map(staff => {
-    // Filter communications for this staff member
-    const staffComms = comms.filter(c => c.staff_member_id === staff.id)
+    const staffComms = commsByStaff.get(staff.id) || []
+    const staffTasks = tasksByStaff.get(staff.id) || []
+
+    // Pre-filter emails once
     const staffEmails = staffComms.filter(c => c.type === 'email')
 
-    const emailsThisWeek = staffEmails.filter(c => new Date(c.communication_date) >= weekStart).length
-    const emailsThisMonth = staffEmails.filter(c => new Date(c.communication_date) >= monthStart).length
+    // Calculate email metrics
+    let emailsThisWeek = 0, emailsThisMonth = 0
+    staffEmails.forEach(c => {
+      const date = new Date(c.communication_date)
+      if (date >= weekStart) emailsThisWeek++
+      if (date >= monthStart) emailsThisMonth++
+    })
 
-    const commsThisWeek = staffComms.filter(c => new Date(c.communication_date) >= weekStart).length
-    const commsThisMonth = staffComms.filter(c => new Date(c.communication_date) >= monthStart).length
+    // Calculate comm metrics
+    let commsThisWeek = 0, commsThisMonth = 0
+    const contactedAthletesThisWeek = new Set<string>()
+    staffComms.forEach(c => {
+      const date = new Date(c.communication_date)
+      if (date >= weekStart) {
+        commsThisWeek++
+        contactedAthletesThisWeek.add(c.athlete_id)
+      }
+      if (date >= monthStart) commsThisMonth++
+    })
 
-    // Count unique athletes contacted this week
-    const contactedThisWeek = new Set(
-      staffComms
-        .filter(c => new Date(c.communication_date) >= weekStart)
-        .map(c => c.athlete_id)
-    ).size
-
-    // Filter tasks for this staff member
-    const staffTasks = tasks.filter(t => t.assigned_to === staff.id)
-    const tasksCompleted = staffTasks.filter(t => t.status === 'done').length
-    const tasksPending = staffTasks.filter(t => t.status !== 'done').length
-    const tasksOverdue = staffTasks.filter(t => {
-      if (!t.due_date || t.status === 'done') return false
-      return new Date(t.due_date) < today
-    }).length
-
-    // Count athletes managed by this staff member
-    const athletesManaged = athleteAssignments.filter(a =>
-      a.assigned_scout_id === staff.id ||
-      a.assigned_agent_id === staff.id ||
-      a.assigned_marketing_lead_id === staff.id
-    ).length
+    // Calculate task metrics
+    let tasksCompleted = 0, tasksPending = 0, tasksOverdue = 0
+    staffTasks.forEach(t => {
+      if (t.status === 'done') {
+        tasksCompleted++
+      } else {
+        tasksPending++
+        if (t.due_date && new Date(t.due_date) < today) tasksOverdue++
+      }
+    })
 
     return {
       id: staff.id,
@@ -179,8 +178,8 @@ export default async function ProductivityPage() {
       tasksCompleted,
       tasksPending,
       tasksOverdue,
-      athletesManaged,
-      contactedThisWeek,
+      athletesManaged: athleteCountByStaff.get(staff.id) || 0,
+      contactedThisWeek: contactedAthletesThisWeek.size,
     }
   })
 

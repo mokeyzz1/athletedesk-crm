@@ -12,6 +12,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Get internal user ID (integrations are stored with internal ID, not Google SSO ID)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id')
+      .eq('google_sso_id', user.id)
+      .single() as { data: { id: string } | null }
+
+    if (!userData) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const internalUserId = userData.id
+
     const body = await request.json()
     const {
       query,
@@ -28,7 +41,7 @@ export async function POST(request: Request) {
 
     if (decisionMakersOnly) {
       // Use the specialized decision makers search
-      result = await findDecisionMakers(user.id, {
+      result = await findDecisionMakers(internalUserId, {
         companyName,
         domain,
       })
@@ -55,7 +68,7 @@ export async function POST(request: Request) {
         searchOptions.person_seniorities = seniorities
       }
 
-      result = await searchPeople(user.id, searchOptions)
+      result = await searchPeople(internalUserId, searchOptions)
     }
 
     if (result.error) {

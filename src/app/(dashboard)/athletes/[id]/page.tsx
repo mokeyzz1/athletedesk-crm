@@ -67,13 +67,13 @@ export default async function AthletePage({ params }: AthletePageProps) {
     notFound()
   }
 
-  // Fetch all related data
+  // Fetch all related data in parallel with limits to avoid loading unused records
   const [pipelineRes, communicationsRes, brandsRes, financialsRes, documentsRes, emailCount] = await Promise.all([
     supabase.from('recruiting_pipeline').select('*').eq('athlete_id', id).single(),
-    supabase.from('communications_log').select('*, users:staff_member_id (name)').eq('athlete_id', id).order('communication_date', { ascending: false }),
-    supabase.from('brand_outreach').select('*, users:staff_member_id (name)').eq('athlete_id', id).order('date_contacted', { ascending: false }),
-    supabase.from('financial_tracking').select('*').eq('athlete_id', id).order('deal_date', { ascending: false }),
-    supabase.from('documents').select('*, users:uploaded_by (name)').eq('athlete_id', id).order('created_at', { ascending: false }),
+    supabase.from('communications_log').select('*, users:staff_member_id (name)').eq('athlete_id', id).order('communication_date', { ascending: false }).limit(20),
+    supabase.from('brand_outreach').select('*, users:staff_member_id (name)').eq('athlete_id', id).order('date_contacted', { ascending: false }).limit(20),
+    supabase.from('financial_tracking').select('*').eq('athlete_id', id).order('deal_date', { ascending: false }).limit(20),
+    supabase.from('documents').select('*, users:uploaded_by (name)').eq('athlete_id', id).order('created_at', { ascending: false }).limit(20),
     getAthleteEmailCount(id),
   ])
 

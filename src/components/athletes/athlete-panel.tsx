@@ -7,6 +7,7 @@ import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS, US_STATES } from '@/lib/databa
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
+import { updateAthlete, deleteAthlete } from '@/lib/actions/athletes'
 
 interface AthletePanelProps {
   athleteId: string | null
@@ -36,12 +37,20 @@ export function AthletePanel({
   const [sportSpecificStats, setSportSpecificStats] = useState<Record<string, unknown>>({})
   const [socialMedia, setSocialMedia] = useState<SocialMediaData>({})
 
+  // Multi-select staff assignments
+  const [selectedScouts, setSelectedScouts] = useState<string[]>([])
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([])
+  const [selectedMarketing, setSelectedMarketing] = useState<string[]>([])
+
   useEffect(() => {
     if (!athleteId || !isOpen) {
       setAthlete(null)
       setSelectedSport('')
       setSportSpecificStats({})
       setSocialMedia({})
+      setSelectedScouts([])
+      setSelectedAgents([])
+      setSelectedMarketing([])
       return
     }
 
@@ -59,11 +68,15 @@ export function AthletePanel({
       if (fetchError) {
         setError(fetchError.message)
       } else {
-        const athleteData = data as Athlete
+        const athleteData = data as Athlete & { scout_ids?: string[]; agent_ids?: string[]; marketing_ids?: string[] }
         setAthlete(athleteData)
         setSelectedSport(athleteData.sport)
         setSportSpecificStats((athleteData.sport_specific_stats as Record<string, unknown>) || {})
         setSocialMedia((athleteData.social_media as SocialMediaData) || {})
+        // Initialize multi-select staff (use arrays if available, fallback to single IDs)
+        setSelectedScouts(athleteData.scout_ids || (athleteData.assigned_scout_id ? [athleteData.assigned_scout_id] : []))
+        setSelectedAgents(athleteData.agent_ids || (athleteData.assigned_agent_id ? [athleteData.assigned_agent_id] : []))
+        setSelectedMarketing(athleteData.marketing_ids || (athleteData.assigned_marketing_lead_id ? [athleteData.assigned_marketing_lead_id] : []))
       }
       setIsLoading(false)
     }
@@ -112,12 +125,17 @@ export function AthletePanel({
       recruiting_status: formData.get('recruiting_status') as RecruitingStatus,
       transfer_portal_status: formData.get('transfer_portal_status') as TransferPortalStatus,
       marketability_score: formData.get('marketability_score') ? parseInt(formData.get('marketability_score') as string) : null,
-      assigned_scout_id: (formData.get('assigned_scout_id') as string) || null,
-      assigned_agent_id: (formData.get('assigned_agent_id') as string) || null,
-      assigned_marketing_lead_id: (formData.get('assigned_marketing_lead_id') as string) || null,
+      // Multi-staff assignments (arrays)
+      scout_ids: selectedScouts,
+      agent_ids: selectedAgents,
+      marketing_ids: selectedMarketing,
+      // Keep legacy single-ID fields in sync (use first from array)
+      assigned_scout_id: selectedScouts[0] || null,
+      assigned_agent_id: selectedAgents[0] || null,
+      assigned_marketing_lead_id: selectedMarketing[0] || null,
       notes: (formData.get('notes') as string) || null,
-      sport_specific_stats: Object.keys(filteredStats).length > 0 ? filteredStats as Json : null,
-      social_media: Object.keys(filteredSocialMedia).length > 0 ? filteredSocialMedia as Json : null,
+      sport_specific_stats: Object.keys(filteredStats).length > 0 ? filteredStats : null,
+      social_media: Object.keys(filteredSocialMedia).length > 0 ? filteredSocialMedia : null,
       // Recruiting fields
       class_year: formData.get('class_year') as ClassYear,
       region: (formData.get('region') as string) || null,
@@ -127,28 +145,17 @@ export function AthletePanel({
       roster_team_id: (formData.get('roster_team_id') as string) || null,
     }
 
-    const supabase = createClient()
-    const { error: updateError } = await supabase
-      .from('athletes')
-      .update(updateData as never)
-      .eq('id', athlete.id)
+    // Use server action instead of direct Supabase call
+    const result = await updateAthlete(athlete.id, updateData)
 
-    if (updateError) {
-      setError(updateError.message)
+    if (!result.success) {
+      setError(result.error)
     } else {
       onAthleteUpdated()
-      // Refresh athlete data
-      const { data } = await supabase
-        .from('athletes')
-        .select('*')
-        .eq('id', athlete.id)
-        .single()
-      if (data) {
-        const athleteData = data as Athlete
-        setAthlete(athleteData)
-        setSportSpecificStats((athleteData.sport_specific_stats as Record<string, unknown>) || {})
-        setSocialMedia((athleteData.social_media as SocialMediaData) || {})
-      }
+      // Update local state with returned data
+      setAthlete(result.data)
+      setSportSpecificStats((result.data.sport_specific_stats as Record<string, unknown>) || {})
+      setSocialMedia((result.data.social_media as SocialMediaData) || {})
     }
     setIsSaving(false)
   }
@@ -158,14 +165,11 @@ export function AthletePanel({
 
     setIsDeleting(true)
 
-    const supabase = createClient()
-    const { error: deleteError } = await supabase
-      .from('athletes')
-      .delete()
-      .eq('id', athlete.id)
+    // Use server action instead of direct Supabase call
+    const result = await deleteAthlete(athlete.id)
 
-    if (deleteError) {
-      setError(deleteError.message)
+    if (!result.success) {
+      setError(result.error)
       setIsDeleting(false)
     } else {
       onAthleteUpdated()
@@ -492,48 +496,83 @@ export function AthletePanel({
               {/* Staff Assignments */}
               <div className="border-t border-gray-200 pt-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Staff Assignments</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Scouts */}
                   <div>
-                    <label htmlFor="assigned_scout_id" className="label">Scout</label>
-                    <select
-                      name="assigned_scout_id"
-                      id="assigned_scout_id"
-                      defaultValue={athlete.assigned_scout_id || ''}
-                      className="mt-1 input w-full"
-                    >
-                      <option value="">Unassigned</option>
-                      {scouts.map(user => (
-                        <option key={user.id} value={user.id}>{user.name}</option>
-                      ))}
-                    </select>
+                    <label className="label mb-2">Scouts ({selectedScouts.length})</label>
+                    <div className="border border-gray-200 rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
+                      {scouts.length > 0 ? scouts.map(user => (
+                        <label key={user.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedScouts.includes(user.id)}
+                            onChange={() => {
+                              setSelectedScouts(prev =>
+                                prev.includes(user.id)
+                                  ? prev.filter(id => id !== user.id)
+                                  : [...prev, user.id]
+                              )
+                            }}
+                            className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+                          />
+                          <span className="text-sm text-gray-700">{user.name}</span>
+                        </label>
+                      )) : (
+                        <p className="text-xs text-gray-400 py-1">No scouts available</p>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Agents */}
                   <div>
-                    <label htmlFor="assigned_agent_id" className="label">Agent</label>
-                    <select
-                      name="assigned_agent_id"
-                      id="assigned_agent_id"
-                      defaultValue={athlete.assigned_agent_id || ''}
-                      className="mt-1 input w-full"
-                    >
-                      <option value="">Unassigned</option>
-                      {agents.map(user => (
-                        <option key={user.id} value={user.id}>{user.name}</option>
-                      ))}
-                    </select>
+                    <label className="label mb-2">Agents ({selectedAgents.length})</label>
+                    <div className="border border-gray-200 rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
+                      {agents.length > 0 ? agents.map(user => (
+                        <label key={user.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedAgents.includes(user.id)}
+                            onChange={() => {
+                              setSelectedAgents(prev =>
+                                prev.includes(user.id)
+                                  ? prev.filter(id => id !== user.id)
+                                  : [...prev, user.id]
+                              )
+                            }}
+                            className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+                          />
+                          <span className="text-sm text-gray-700">{user.name}</span>
+                        </label>
+                      )) : (
+                        <p className="text-xs text-gray-400 py-1">No agents available</p>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Marketing */}
                   <div>
-                    <label htmlFor="assigned_marketing_lead_id" className="label">Marketing</label>
-                    <select
-                      name="assigned_marketing_lead_id"
-                      id="assigned_marketing_lead_id"
-                      defaultValue={athlete.assigned_marketing_lead_id || ''}
-                      className="mt-1 input w-full"
-                    >
-                      <option value="">Unassigned</option>
-                      {marketingLeads.map(user => (
-                        <option key={user.id} value={user.id}>{user.name}</option>
-                      ))}
-                    </select>
+                    <label className="label mb-2">Marketing ({selectedMarketing.length})</label>
+                    <div className="border border-gray-200 rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
+                      {marketingLeads.length > 0 ? marketingLeads.map(user => (
+                        <label key={user.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedMarketing.includes(user.id)}
+                            onChange={() => {
+                              setSelectedMarketing(prev =>
+                                prev.includes(user.id)
+                                  ? prev.filter(id => id !== user.id)
+                                  : [...prev, user.id]
+                              )
+                            }}
+                            className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+                          />
+                          <span className="text-sm text-gray-700">{user.name}</span>
+                        </label>
+                      )) : (
+                        <p className="text-xs text-gray-400 py-1">No marketing available</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

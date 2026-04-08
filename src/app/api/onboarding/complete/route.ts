@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -38,7 +38,8 @@ export async function POST(request: Request) {
     }
   }
 
-  const supabase = await createClient()
+  // Use service client to bypass RLS for onboarding operations
+  const supabase = createServiceClient()
 
   try {
     let organizationId = pendingUser.organization_id

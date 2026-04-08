@@ -1,5 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { sendEmail, generateInviteEmail } from '@/lib/gmail'
 
 export async function GET() {
   const supabase = await createClient()
@@ -9,8 +10,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check if user is super admin
-  const { data: userData } = await supabase
+  // Use service client to bypass RLS for admin operations
+  const serviceClient = createServiceClient()
+
+  // Check if user is super admin (using service client to bypass RLS)
+  const { data: userData } = await serviceClient
     .from('users')
     .select('id, is_super_admin')
     .eq('google_sso_id', user.id)
@@ -21,7 +25,7 @@ export async function GET() {
   }
 
   // Get all invites
-  const { data: invites, error } = await supabase
+  const { data: invites, error } = await serviceClient
     .from('organization_invites')
     .select(`
       id,
@@ -49,13 +53,17 @@ export async function GET() {
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) {
+  if (!user || !session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check if user is super admin
-  const { data: userData } = await supabase
+  // Use service client to bypass RLS for admin operations
+  const serviceClient = createServiceClient()
+
+  // Check if user is super admin (using service client to bypass RLS)
+  const { data: userData } = await serviceClient
     .from('users')
     .select('id, is_super_admin')
     .eq('google_sso_id', user.id)
@@ -66,7 +74,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { email, inviteType, organizationId, expiresInDays = 7 } = body
+  const { email, inviteType, organizationId, expiresInDays = 7, sendEmailInvite = true } = body
 
   if (!inviteType || !['new_org', 'join_org'].includes(inviteType)) {
     return NextResponse.json({ error: 'Invalid invite type' }, { status: 400 })
@@ -74,6 +82,17 @@ export async function POST(request: Request) {
 
   if (inviteType === 'join_org' && !organizationId) {
     return NextResponse.json({ error: 'Organization ID required for join_org invites' }, { status: 400 })
+  }
+
+  // Get organization name if joining
+  let organizationName: string | undefined
+  if (inviteType === 'join_org' && organizationId) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', organizationId)
+      .single() as { data: { name: string } | null }
+    organizationName = org?.name
   }
 
   // Create invite
@@ -99,8 +118,33 @@ export async function POST(request: Request) {
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${(invite as { token: string }).token}`
 
+  // Send email if email provided and sendEmailInvite is true
+  let emailSent = false
+  let emailError: string | undefined
+
+  if (email && sendEmailInvite && session.provider_token) {
+    const { subject, body: emailBody } = generateInviteEmail({
+      inviteUrl,
+      inviteType,
+      organizationName,
+      expiresInDays,
+    })
+
+    const result = await sendEmail(session.provider_token, {
+      to: email,
+      subject,
+      body: emailBody,
+      html: true,
+    })
+
+    emailSent = result.success
+    emailError = result.error
+  }
+
   return NextResponse.json({
     invite,
     inviteUrl,
+    emailSent,
+    emailError,
   })
 }

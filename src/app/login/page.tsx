@@ -23,13 +23,20 @@ function LoginContent() {
     setIsLoading(true)
     setError(null)
 
+    // Check if there's a login hint (from invite link with specific email)
+    const hint = searchParams.get('hint')
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
-          prompt: 'select_account',
+          // If we have a hint (invite email), use it to auto-select the account
+          // Otherwise, show account picker for manual selection
+          ...(hint ? { login_hint: hint } : { prompt: 'select_account' }),
+          access_type: 'offline',
         },
+        scopes: 'https://www.googleapis.com/auth/gmail.send',
       },
     })
 

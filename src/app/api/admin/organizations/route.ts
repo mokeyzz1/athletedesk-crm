@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -9,8 +9,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check if user is super admin
-  const { data: userData } = await supabase
+  // Use service client to bypass RLS for all admin queries
+  const serviceClient = createServiceClient()
+
+  // Check if user is super admin (using service client to bypass RLS)
+  const { data: userData } = await serviceClient
     .from('users')
     .select('is_super_admin')
     .eq('google_sso_id', user.id)
@@ -28,10 +31,10 @@ export async function GET() {
     logo_url: string | null
     settings: Record<string, unknown>
     created_at: string
-    owner: { id: string; name: string; email: string } | null
+    owner_id: string | null
   }
 
-  const { data: organizations, error } = await supabase
+  const { data: organizations, error } = await serviceClient
     .from('organizations')
     .select(`
       id,
@@ -40,30 +43,49 @@ export async function GET() {
       logo_url,
       settings,
       created_at,
-      owner:users!organizations_owner_id_fkey(id, name, email)
+      owner_id
     `)
     .order('created_at', { ascending: false }) as { data: OrgRow[] | null; error: { message: string } | null }
+
+  console.log('Organizations fetch result:', { count: organizations?.length, error })
 
   if (error) {
     console.error('Failed to fetch organizations:', error)
     return NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 })
   }
 
-  // Get user counts for each org
+  // Get user counts and owner info for each org
   const orgsWithCounts = await Promise.all(
     (organizations || []).map(async (org: OrgRow) => {
-      const { count } = await supabase
+      const { count } = await serviceClient
         .from('users')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', org.id)
 
-      const { count: athleteCount } = await supabase
+      const { count: athleteCount } = await serviceClient
         .from('athletes')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', org.id)
 
+      // Get owner info if owner_id exists
+      let owner: { id: string; name: string; email: string } | null = null
+      if (org.owner_id) {
+        const { data: ownerData } = await serviceClient
+          .from('users')
+          .select('id, name, email')
+          .eq('id', org.owner_id)
+          .single() as { data: { id: string; name: string; email: string } | null }
+        owner = ownerData
+      }
+
       return {
-        ...org,
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        logo_url: org.logo_url,
+        settings: org.settings,
+        created_at: org.created_at,
+        owner,
         userCount: count || 0,
         athleteCount: athleteCount || 0,
       }

@@ -221,6 +221,10 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
     region: string
     default_agent_id: string | null
     default_marketing_id: string | null
+    agent_ids: string[]
+    marketing_ids: string[]
+    primary_agent_id: string | null
+    primary_marketing_id: string | null
   }
   interface StaffUser {
     id: string
@@ -233,6 +237,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
   const [availableMarketingUsers, setAvailableMarketingUsers] = useState<StaffUser[]>([])
   const [loadingHandoffs, setLoadingHandoffs] = useState(false)
   const [savingHandoff, setSavingHandoff] = useState<string | null>(null)
+  const [expandedRegion, setExpandedRegion] = useState<string | null>(null)
 
   // Organization state
   const [orgName, setOrgName] = useState(organization?.name || '')
@@ -551,18 +556,37 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
     }
   }, [activeSection]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save region assignment
-  const saveRegionAssignment = async (region: string, field: 'default_agent_id' | 'default_marketing_id', userId: string | null) => {
-    setSavingHandoff(region + field)
+  // Toggle user in region assignment
+  const toggleUserInRegion = async (region: string, userId: string, type: 'agent' | 'marketing') => {
+    const current = regionAssignments.find(r => r.region === region)
+    if (!current) return
+
+    setSavingHandoff(region)
+
+    const currentIds = type === 'agent' ? (current.agent_ids || []) : (current.marketing_ids || [])
+    const isCurrentlyAssigned = currentIds.includes(userId)
+    const newIds = isCurrentlyAssigned
+      ? currentIds.filter(id => id !== userId)
+      : [...currentIds, userId]
+
+    // Update primary if needed
+    let newPrimary = type === 'agent' ? current.primary_agent_id : current.primary_marketing_id
+    if (isCurrentlyAssigned && newPrimary === userId) {
+      newPrimary = newIds[0] || null
+    } else if (!isCurrentlyAssigned && newIds.length === 1) {
+      newPrimary = userId
+    }
+
     try {
-      const current = regionAssignments.find(r => r.region === region)
       const response = await fetch('/api/settings/region-assignments', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           region,
-          default_agent_id: field === 'default_agent_id' ? userId : (current?.default_agent_id || null),
-          default_marketing_id: field === 'default_marketing_id' ? userId : (current?.default_marketing_id || null),
+          agent_ids: type === 'agent' ? newIds : (current.agent_ids || []),
+          marketing_ids: type === 'marketing' ? newIds : (current.marketing_ids || []),
+          primary_agent_id: type === 'agent' ? newPrimary : current.primary_agent_id,
+          primary_marketing_id: type === 'marketing' ? newPrimary : current.primary_marketing_id,
         }),
       })
       const data = await response.json()
@@ -571,6 +595,35 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
       }
     } catch (error) {
       console.error('Failed to save region assignment:', error)
+    }
+    setSavingHandoff(null)
+  }
+
+  // Set primary user for a region
+  const setPrimaryUser = async (region: string, userId: string, type: 'agent' | 'marketing') => {
+    const current = regionAssignments.find(r => r.region === region)
+    if (!current) return
+
+    setSavingHandoff(region)
+
+    try {
+      const response = await fetch('/api/settings/region-assignments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          region,
+          agent_ids: current.agent_ids || [],
+          marketing_ids: current.marketing_ids || [],
+          primary_agent_id: type === 'agent' ? userId : current.primary_agent_id,
+          primary_marketing_id: type === 'marketing' ? userId : current.primary_marketing_id,
+        }),
+      })
+      const data = await response.json()
+      if (data.success && data.assignment) {
+        setRegionAssignments(prev => prev.map(r => r.region === region ? data.assignment : r))
+      }
+    } catch (error) {
+      console.error('Failed to save primary assignment:', error)
     }
     setSavingHandoff(null)
   }
@@ -1488,14 +1541,136 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
 
                 {/* Region Assignments */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Default Assignments by Region</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Assignments by Region</h3>
+                  <p className="text-xs text-gray-500 mb-3">Click a region to assign multiple agents and marketing users. The primary user (starred) receives auto-handoffs.</p>
                   {loadingHandoffs ? (
                     <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
                       <div className="animate-spin w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full mx-auto"></div>
                       <p className="mt-2 text-sm text-gray-500">Loading...</p>
                     </div>
                   ) : (
-                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="space-y-2">
+                      {regionAssignments.map((assignment) => {
+                        const isExpanded = expandedRegion === assignment.region
+                        const agentCount = (assignment.agent_ids || []).length
+                        const marketingCount = (assignment.marketing_ids || []).length
+
+                        return (
+                          <div key={assignment.region} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            {/* Region Header - Click to expand */}
+                            <button
+                              onClick={() => setExpandedRegion(isExpanded ? null : assignment.region)}
+                              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                                <span className="text-sm font-medium text-gray-900">{assignment.region}</span>
+                                {savingHandoff === assignment.region && (
+                                  <span className="text-xs text-brand-600">Saving...</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                                <span>{agentCount} agent{agentCount !== 1 ? 's' : ''}</span>
+                                <span>{marketingCount} marketing</span>
+                              </div>
+                            </button>
+
+                            {/* Expanded Content */}
+                            {isExpanded && (
+                              <div className="border-t border-gray-200 px-4 py-4 bg-gray-50">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  {/* Agents */}
+                                  <div>
+                                    <h4 className="text-xs font-semibold text-gray-700 uppercase mb-2">Agents</h4>
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                      {availableAgents.map((agent) => {
+                                        const isAssigned = (assignment.agent_ids || []).includes(agent.id)
+                                        const isPrimary = assignment.primary_agent_id === agent.id
+                                        return (
+                                          <div key={agent.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-white">
+                                            <label className="flex items-center gap-2 cursor-pointer flex-1">
+                                              <input
+                                                type="checkbox"
+                                                checked={isAssigned}
+                                                onChange={() => toggleUserInRegion(assignment.region, agent.id, 'agent')}
+                                                className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+                                              />
+                                              <span className="text-sm text-gray-700">{agent.name}</span>
+                                              <span className="text-xs text-gray-400">({agent.role})</span>
+                                            </label>
+                                            {isAssigned && (
+                                              <button
+                                                onClick={() => setPrimaryUser(assignment.region, agent.id, 'agent')}
+                                                className={`p-1 rounded ${isPrimary ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
+                                                title={isPrimary ? 'Primary (receives handoffs)' : 'Set as primary'}
+                                              >
+                                                <svg className="w-4 h-4" fill={isPrimary ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                                </svg>
+                                              </button>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                      {availableAgents.length === 0 && (
+                                        <p className="text-xs text-gray-400 py-2">No agents available</p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Marketing */}
+                                  <div>
+                                    <h4 className="text-xs font-semibold text-gray-700 uppercase mb-2">Marketing</h4>
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                      {availableMarketingUsers.map((user) => {
+                                        const isAssigned = (assignment.marketing_ids || []).includes(user.id)
+                                        const isPrimary = assignment.primary_marketing_id === user.id
+                                        return (
+                                          <div key={user.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-white">
+                                            <label className="flex items-center gap-2 cursor-pointer flex-1">
+                                              <input
+                                                type="checkbox"
+                                                checked={isAssigned}
+                                                onChange={() => toggleUserInRegion(assignment.region, user.id, 'marketing')}
+                                                className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+                                              />
+                                              <span className="text-sm text-gray-700">{user.name}</span>
+                                              <span className="text-xs text-gray-400">({user.role})</span>
+                                            </label>
+                                            {isAssigned && (
+                                              <button
+                                                onClick={() => setPrimaryUser(assignment.region, user.id, 'marketing')}
+                                                className={`p-1 rounded ${isPrimary ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
+                                                title={isPrimary ? 'Primary (receives handoffs)' : 'Set as primary'}
+                                              >
+                                                <svg className="w-4 h-4" fill={isPrimary ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                                </svg>
+                                              </button>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                      {availableMarketingUsers.length === 0 && (
+                                        <p className="text-xs text-gray-400 py-2">No marketing users available</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Legacy table removed - now using expandable cards above */}
+                <div className="hidden">
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                       <table className="w-full">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
@@ -1506,46 +1681,24 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {regionAssignments.map((assignment) => (
-                            <tr key={assignment.region}>
+                            <tr key={assignment.region + '-legacy'}>
                               <td className="px-4 py-3">
                                 <span className="text-sm font-medium text-gray-900">{assignment.region}</span>
                               </td>
                               <td className="px-4 py-3">
-                                <select
-                                  value={assignment.default_agent_id || ''}
-                                  onChange={(e) => saveRegionAssignment(assignment.region, 'default_agent_id', e.target.value || null)}
-                                  disabled={savingHandoff === assignment.region + 'default_agent_id'}
-                                  className="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-50"
-                                >
-                                  <option value="">Not assigned</option>
-                                  {availableAgents.map((agent) => (
-                                    <option key={agent.id} value={agent.id}>
-                                      {agent.name} ({agent.role})
-                                    </option>
-                                  ))}
-                                </select>
+                                <span className="text-sm text-gray-500">See above</span>
                               </td>
                               <td className="px-4 py-3">
-                                <select
-                                  value={assignment.default_marketing_id || ''}
-                                  onChange={(e) => saveRegionAssignment(assignment.region, 'default_marketing_id', e.target.value || null)}
-                                  disabled={savingHandoff === assignment.region + 'default_marketing_id'}
-                                  className="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-50"
-                                >
-                                  <option value="">Not assigned</option>
-                                  {availableMarketingUsers.map((user) => (
-                                    <option key={user.id} value={user.id}>
-                                      {user.name} ({user.role})
-                                    </option>
-                                  ))}
-                                </select>
+                                <span className="text-sm text-gray-500">See above</span>
                               </td>
                             </tr>
                           ))}
+                          {regionAssignments.length === 0 && (
+                            <tr><td colSpan={3}><span className="text-sm text-gray-500">Loading...</span></td></tr>
+                          )}
                         </tbody>
                       </table>
                     </div>
-                  )}
                 </div>
 
                 <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">

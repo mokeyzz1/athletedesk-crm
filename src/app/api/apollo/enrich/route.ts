@@ -12,12 +12,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Get internal user ID (integrations are stored with internal ID, not Google SSO ID)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id')
+      .eq('google_sso_id', user.id)
+      .single() as { data: { id: string } | null }
+
+    if (!userData) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const internalUserId = userData.id
+
     const body = await request.json()
     const { email, linkedinUrl, domain, type = 'person' } = body
 
     if (type === 'organization' && domain) {
       // Enrich organization by domain
-      const result = await getOrganization(user.id, domain)
+      const result = await getOrganization(internalUserId, domain)
 
       if (result.error) {
         return NextResponse.json({ error: result.error }, { status: 400 })
@@ -37,9 +50,9 @@ export async function POST(request: Request) {
     let result
 
     if (linkedinUrl) {
-      result = await enrichByLinkedIn(user.id, linkedinUrl)
+      result = await enrichByLinkedIn(internalUserId, linkedinUrl)
     } else if (email) {
-      result = await enrichByEmail(user.id, email)
+      result = await enrichByEmail(internalUserId, email)
     }
 
     if (!result || result.error) {

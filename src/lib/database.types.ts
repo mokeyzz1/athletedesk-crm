@@ -147,6 +147,7 @@ export interface Database {
           gmail_email: string | null
           // Super admin access
           is_super_admin: boolean
+          viewing_organization_id: string | null
         }
         Insert: {
           id?: string

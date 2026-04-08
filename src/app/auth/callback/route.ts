@@ -38,13 +38,18 @@ export async function GET(request: Request) {
       .eq('google_sso_id', data.user.id)
       .single() as { data: { id: string; organization_id: string | null; is_super_admin: boolean } | null }
 
-    // EXISTING USER - redirect to dashboard
+    // EXISTING USER - redirect appropriately
     if (existingUser) {
       // Update avatar_url on every login to keep it fresh
       await supabase
         .from('users')
         .update({ avatar_url: data.user.user_metadata.avatar_url } as never)
         .eq('google_sso_id', data.user.id)
+
+      // Super admin always goes to admin panel on sign-in
+      if (existingUser.is_super_admin) {
+        return NextResponse.redirect(`${origin}/admin`)
+      }
 
       return NextResponse.redirect(`${origin}${next}`)
     }

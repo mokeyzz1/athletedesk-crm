@@ -6,11 +6,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import type { OutreachStatus, ClassYear, RosterTeam } from '@/lib/database.types'
 import { OUTREACH_STATUSES, CLASS_YEARS, REGIONS, US_STATES } from '@/lib/database.types'
-import type { RecruitingAthlete, RegionStats } from './page'
+import type { RecruitingAthlete, RegionStats, ClassYearStats } from './page'
 
 interface RecruitingClientProps {
   athletes: RecruitingAthlete[]
   regionStats: RegionStats[]
+  classYearStats: ClassYearStats[]
 }
 
 interface SigningModalProps {
@@ -245,7 +246,66 @@ function StatusColumn({
   )
 }
 
-function RegionProgressBar({ stat }: { stat: RegionStats }) {
+interface RegionStatusBreakdown {
+  region: string
+  total: number
+  statuses: {
+    not_contacted: number
+    contacted: number
+    in_conversation: number
+    interested: number
+    circling_back: number
+    dead_lead: number
+  }
+}
+
+const STATUS_BAR_COLORS: Record<string, string> = {
+  'not_contacted': 'bg-gray-400',
+  'contacted': 'bg-blue-400',
+  'in_conversation': 'bg-indigo-400',
+  'interested': 'bg-yellow-400',
+  'circling_back': 'bg-orange-400',
+  'dead_lead': 'bg-red-400',
+}
+
+function RegionProgressBar({ stat, isSelected, onClick }: { stat: RegionStatusBreakdown; isSelected: boolean; onClick: () => void }) {
+  const statusOrder: (keyof typeof stat.statuses)[] = ['interested', 'in_conversation', 'contacted', 'circling_back', 'dead_lead', 'not_contacted']
+  const contacted = stat.total - stat.statuses.not_contacted
+  const percentage = stat.total > 0 ? Math.round((contacted / stat.total) * 100) : 0
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 p-2 -mx-2 rounded-lg transition-colors ${
+        isSelected ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-gray-50'
+      }`}
+    >
+      <div className={`w-24 text-sm truncate text-left ${isSelected ? 'font-medium text-brand-700' : 'text-gray-600'}`}>
+        {stat.region}
+      </div>
+      <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden flex">
+        {statusOrder.map(status => {
+          const count = stat.statuses[status]
+          if (count === 0) return null
+          const width = (count / stat.total) * 100
+          return (
+            <div
+              key={status}
+              className={`h-full ${STATUS_BAR_COLORS[status]} first:rounded-l-full last:rounded-r-full`}
+              style={{ width: `${width}%` }}
+              title={`${OUTREACH_STATUSES.find(s => s.value === status)?.label}: ${count}`}
+            />
+          )
+        })}
+      </div>
+      <div className={`w-16 text-xs text-right ${isSelected ? 'text-brand-600 font-medium' : 'text-gray-500'}`}>
+        {contacted}/{stat.total}
+      </div>
+    </button>
+  )
+}
+
+function ClassYearProgressBar({ stat, isSelected, onClick }: { stat: ClassYearStats; isSelected: boolean; onClick: () => void }) {
   const getProgressColor = (percentage: number) => {
     if (percentage >= 80) return 'bg-green-500'
     if (percentage >= 50) return 'bg-yellow-500'
@@ -254,18 +314,25 @@ function RegionProgressBar({ stat }: { stat: RegionStats }) {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-24 text-sm text-gray-600 truncate">{stat.region}</div>
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 p-2 -mx-2 rounded-lg transition-colors ${
+        isSelected ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-gray-50'
+      }`}
+    >
+      <div className={`w-24 text-sm truncate text-left ${isSelected ? 'font-medium text-brand-700' : 'text-gray-600'}`}>
+        {stat.label}
+      </div>
       <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
         <div
           className={`h-full ${getProgressColor(stat.percentage)} transition-all`}
           style={{ width: `${stat.percentage}%` }}
         />
       </div>
-      <div className="w-20 text-xs text-gray-500 text-right">
+      <div className={`w-20 text-xs text-right ${isSelected ? 'text-brand-600 font-medium' : 'text-gray-500'}`}>
         {stat.contacted}/{stat.total} ({stat.percentage}%)
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -402,9 +469,10 @@ function TableView({
   )
 }
 
-export function RecruitingClient({ athletes: initialAthletes, regionStats: initialRegionStats }: RecruitingClientProps) {
+export function RecruitingClient({ athletes: initialAthletes, regionStats: initialRegionStats, classYearStats: initialClassYearStats }: RecruitingClientProps) {
   const [athletes, setAthletes] = useState(initialAthletes)
   const [regionStats, setRegionStats] = useState(initialRegionStats)
+  const [classYearStats, setClassYearStats] = useState(initialClassYearStats)
   const [selectedRegion, setSelectedRegion] = useState<string>('all')
   const [selectedClassYear, setSelectedClassYear] = useState<string>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('table')
@@ -511,6 +579,37 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
         }
         return stat
       }))
+
+      // Update class year stats
+      const classYear = athlete.class_year || 'n_a'
+
+      setClassYearStats(prev => prev.map(stat => {
+        if (stat.classYear === classYear) {
+          let newContacted = stat.contacted
+          let newTotal = stat.total
+
+          if (newStatus === 'signed') {
+            newTotal--
+            if (oldStatus !== 'not_contacted') {
+              newContacted--
+            }
+          } else {
+            if (oldStatus === 'not_contacted' && newStatus !== 'not_contacted') {
+              newContacted++
+            }
+            if (oldStatus !== 'not_contacted' && newStatus === 'not_contacted') {
+              newContacted--
+            }
+          }
+          return {
+            ...stat,
+            total: newTotal,
+            contacted: newContacted,
+            percentage: newTotal > 0 ? Math.round((newContacted / newTotal) * 100) : 0,
+          }
+        }
+        return stat
+      }))
     }
 
     // Persist to database via API (handles auto-handoffs)
@@ -589,11 +688,60 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
           <div className="px-4 md:px-6 py-4">
             {/* Region Progress Section */}
             <div className="card mb-4">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">Region Progress</h2>
-              <div className="space-y-2">
-                {regionStats.map(stat => (
-                  <RegionProgressBar key={stat.region} stat={stat} />
-                ))}
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-gray-900">Region Progress</h2>
+                <div className="flex items-center gap-4">
+                  {/* Legend */}
+                  <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400"></span>Interested</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400"></span>In Conv.</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400"></span>Contacted</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-400"></span>Not Contacted</span>
+                  </div>
+                  {selectedRegion !== 'all' && (
+                    <button
+                      onClick={() => setSelectedRegion('all')}
+                      className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                    >
+                      Clear Filter
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                {/* Calculate region stats based on selected class year filter */}
+                {(() => {
+                  const filteredByClass = selectedClassYear === 'all'
+                    ? athletes
+                    : athletes.filter(a => a.class_year === selectedClassYear)
+
+                  const dynamicRegionStats: RegionStatusBreakdown[] = regionStats.map(stat => {
+                    const athletesInRegion = filteredByClass.filter(a =>
+                      a.region === stat.region || (stat.region === 'Unassigned' && !a.region)
+                    )
+                    return {
+                      region: stat.region,
+                      total: athletesInRegion.length,
+                      statuses: {
+                        not_contacted: athletesInRegion.filter(a => a.outreach_status === 'not_contacted').length,
+                        contacted: athletesInRegion.filter(a => a.outreach_status === 'contacted').length,
+                        in_conversation: athletesInRegion.filter(a => a.outreach_status === 'in_conversation').length,
+                        interested: athletesInRegion.filter(a => a.outreach_status === 'interested').length,
+                        circling_back: athletesInRegion.filter(a => a.outreach_status === 'circling_back').length,
+                        dead_lead: athletesInRegion.filter(a => a.outreach_status === 'dead_lead').length,
+                      },
+                    }
+                  }).filter(stat => stat.total > 0)
+
+                  return dynamicRegionStats.map(stat => (
+                    <RegionProgressBar
+                      key={stat.region}
+                      stat={stat}
+                      isSelected={selectedRegion === stat.region}
+                      onClick={() => setSelectedRegion(selectedRegion === stat.region ? 'all' : stat.region)}
+                    />
+                  ))
+                })()}
               </div>
             </div>
 

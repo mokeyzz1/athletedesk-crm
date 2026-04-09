@@ -55,6 +55,15 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      // Get user's internal database ID
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('google_sso_id', user.id)
+        .single() as { data: { id: string } | null }
+
+      if (!userData) throw new Error('User not found')
+
       // Generate unique file path
       const fileExt = file.name.split('.').pop()
       const fileName = `${athleteId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
@@ -65,8 +74,7 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
         .upload(fileName, file)
 
       if (uploadError) {
-        // If bucket doesn't exist, save without storage (for demo)
-        console.warn('Storage upload failed, saving metadata only:', uploadError)
+        throw new Error(`Storage upload failed: ${uploadError.message}`)
       }
 
       // Save document record
@@ -74,7 +82,7 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
         .from('documents')
         .insert({
           athlete_id: athleteId,
-          uploaded_by: user.id,
+          uploaded_by: userData.id,
           name: file.name,
           file_type: file.type,
           file_size: file.size,

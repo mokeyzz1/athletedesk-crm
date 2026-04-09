@@ -205,7 +205,7 @@ export default function ContractsPage() {
         .upload(fileName, file)
 
       if (uploadError) {
-        console.warn('Storage upload failed, saving metadata only:', uploadError)
+        throw new Error(`Storage upload failed: ${uploadError.message}`)
       }
 
       // Save document record

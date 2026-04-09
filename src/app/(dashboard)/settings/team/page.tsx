@@ -35,7 +35,7 @@ export default function TeamManagementPage() {
       const { data: profileData } = await supabase
         .from('users')
         .select('*')
-        .eq('google_sso_id', user.id)
+        .eq('auth_user_id', user.id)
         .single()
 
       const profile = profileData as User | null

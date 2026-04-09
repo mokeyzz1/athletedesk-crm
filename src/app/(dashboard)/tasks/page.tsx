@@ -16,7 +16,7 @@ export default async function TasksPage() {
   const { data: currentUser } = await supabase
     .from('users')
     .select('*')
-    .eq('google_sso_id', user?.id || '')
+    .eq('auth_user_id', user?.id || '')
     .single()
 
   // Fetch all tasks with relations

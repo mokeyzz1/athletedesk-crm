@@ -31,46 +31,79 @@ export async function GET(request: Request) {
   }
 
   if (data.user) {
-    // Check if user exists in our users table
+    const authUserId = data.user.id
+    const userEmail = data.user.email
+    const isEmailConfirmed = data.user.email_confirmed_at != null
+    const isGoogleProvider = data.user.app_metadata?.provider === 'google'
+
+    // STEP 1: Try exact match by auth_user_id (primary lookup)
     const { data: existingUser } = await supabase
       .from('users')
-      .select('id, organization_id, is_super_admin')
-      .eq('google_sso_id', data.user.id)
-      .single() as { data: { id: string; organization_id: string | null; is_super_admin: boolean } | null }
+      .select('id, organization_id, is_super_admin, auth_user_id, google_sso_id')
+      .eq('auth_user_id', authUserId)
+      .single() as { data: { id: string; organization_id: string | null; is_super_admin: boolean; auth_user_id: string | null; google_sso_id: string | null } | null }
 
-    // EXISTING USER - redirect appropriately
     if (existingUser) {
-      // Update avatar_url on every login to keep it fresh
+      // Found by auth_user_id - update avatar and proceed
       await supabase
         .from('users')
-        .update({ avatar_url: data.user.user_metadata.avatar_url } as never)
-        .eq('google_sso_id', data.user.id)
+        .update({
+          avatar_url: data.user.user_metadata.avatar_url,
+          // If Google login and google_sso_id not set, link it
+          ...(isGoogleProvider && !existingUser.google_sso_id && { google_sso_id: authUserId })
+        } as never)
+        .eq('auth_user_id', authUserId)
 
-      // Super admin always goes to admin panel on sign-in
       if (existingUser.is_super_admin) {
         return NextResponse.redirect(`${origin}/admin`)
       }
-
       return NextResponse.redirect(`${origin}${next}`)
     }
 
-    // NEW USER - check for invite token
-    const cookieStore = await cookies()
-    const inviteToken = cookieStore.get('invite_token')?.value
+    // STEP 2: Fallback - try match by confirmed email (identity linking)
+    // Only do this if email is present and confirmed to prevent hijacking
+    if (userEmail && isEmailConfirmed) {
+      const { data: emailUser } = await supabase
+        .from('users')
+        .select('id, organization_id, is_super_admin, auth_user_id, google_sso_id')
+        .eq('email', userEmail)
+        .single() as { data: { id: string; organization_id: string | null; is_super_admin: boolean; auth_user_id: string | null; google_sso_id: string | null } | null }
+
+      if (emailUser) {
+        // Found by email - LINK this auth identity to existing CRM user
+        await supabase
+          .from('users')
+          .update({
+            auth_user_id: authUserId,  // Link new auth ID
+            avatar_url: data.user.user_metadata.avatar_url,
+            // If Google login, also store google_sso_id
+            ...(isGoogleProvider && { google_sso_id: authUserId })
+          } as never)
+          .eq('id', emailUser.id)
+
+        if (emailUser.is_super_admin) {
+          return NextResponse.redirect(`${origin}/admin`)
+        }
+        return NextResponse.redirect(`${origin}${next}`)
+      }
+    }
+
+    // STEP 3: No existing user found - this is a new user
 
     // Check if super admin (special case - no invite needed)
-    const isSuperAdmin = data.user.email === SUPER_ADMIN_EMAIL
+    const isSuperAdmin = userEmail === SUPER_ADMIN_EMAIL
 
     if (isSuperAdmin) {
       // Create super admin user without org - they can access /admin
       const { error: insertError } = await supabase.from('users').insert({
-        name: data.user.user_metadata.full_name || data.user.email?.split('@')[0] || 'Super Admin',
-        email: data.user.email!,
-        google_sso_id: data.user.id,
+        name: data.user.user_metadata.full_name || userEmail?.split('@')[0] || 'Super Admin',
+        email: userEmail!,
+        auth_user_id: authUserId,
+        google_sso_id: isGoogleProvider ? authUserId : null,
         avatar_url: data.user.user_metadata.avatar_url,
         role: 'admin',
         is_super_admin: true,
-        organization_id: null, // Super admin doesn't need an org initially
+        organization_id: null,
       } as never)
 
       if (insertError) {
@@ -82,6 +115,9 @@ export async function GET(request: Request) {
     }
 
     // Regular user - must have invite
+    const cookieStore = await cookies()
+    const inviteToken = cookieStore.get('invite_token')?.value
+
     if (!inviteToken) {
       // No invite token - redirect to invite-only page
       return NextResponse.redirect(`${origin}/invite-only`)
@@ -101,7 +137,6 @@ export async function GET(request: Request) {
     if (!inviteData || inviteData.length === 0) {
       // Invalid or expired invite
       const response = NextResponse.redirect(`${origin}/invite-only?error=invalid_invite`)
-      // Clear the bad token
       response.cookies.delete('invite_token')
       return response
     }
@@ -109,7 +144,7 @@ export async function GET(request: Request) {
     const invite = inviteData[0]
 
     // Check if email restriction matches (if set)
-    if (invite.invite_email && invite.invite_email !== data.user.email) {
+    if (invite.invite_email && invite.invite_email !== userEmail) {
       const response = NextResponse.redirect(`${origin}/invite-only?error=email_mismatch`)
       response.cookies.delete('invite_token')
       return response
@@ -121,9 +156,10 @@ export async function GET(request: Request) {
 
     // Store pending user data in a cookie for the onboarding flow
     response.cookies.set('pending_user', JSON.stringify({
-      name: data.user.user_metadata.full_name || data.user.email?.split('@')[0] || 'Unknown',
-      email: data.user.email!,
-      google_sso_id: data.user.id,
+      name: data.user.user_metadata.full_name || userEmail?.split('@')[0] || 'Unknown',
+      email: userEmail!,
+      auth_user_id: authUserId,
+      google_sso_id: isGoogleProvider ? authUserId : null,
       avatar_url: data.user.user_metadata.avatar_url,
       invite_id: invite.invite_id,
       invite_type: invite.invite_type,

@@ -130,7 +130,8 @@ export interface Database {
           name: string
           email: string
           role: UserRole
-          google_sso_id: string | null
+          auth_user_id: string | null  // Primary auth lookup (provider-neutral)
+          google_sso_id: string | null  // Legacy: Google-specific, kept for tracking
           avatar_url: string | null
           created_at: string
           updated_at: string
@@ -155,6 +156,7 @@ export interface Database {
           name: string
           email: string
           role?: UserRole
+          auth_user_id?: string | null
           google_sso_id?: string | null
           avatar_url?: string | null
           created_at?: string
@@ -179,6 +181,7 @@ export interface Database {
           name?: string
           email?: string
           role?: UserRole
+          auth_user_id?: string | null
           google_sso_id?: string | null
           avatar_url?: string | null
           created_at?: string

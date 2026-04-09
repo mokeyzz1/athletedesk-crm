@@ -36,7 +36,7 @@ export default function TaskDetailPage() {
         const { data: userData } = await supabase
           .from('users')
           .select('*')
-          .eq('google_sso_id', user.id)
+          .eq('auth_user_id', user.id)
           .single()
 
         if (userData) {

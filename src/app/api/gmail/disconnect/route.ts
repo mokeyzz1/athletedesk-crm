@@ -13,7 +13,7 @@ export async function POST() {
   const { data: userData } = await supabase
     .from('users')
     .select('id')
-    .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
+    .eq('auth_user_id', user.id)
     .single() as { data: { id: string } | null }
 
   if (!userData) {

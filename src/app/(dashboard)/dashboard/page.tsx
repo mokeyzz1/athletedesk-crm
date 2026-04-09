@@ -17,7 +17,7 @@ export default async function DashboardPage() {
   const { data: userData } = await supabase
     .from('users')
     .select('id, name, role')
-    .eq('google_sso_id', user?.id || '')
+    .eq('auth_user_id', user?.id || '')
     .single() as { data: { id: string; name: string; role: string } | null }
 
   const userName = userData?.name || 'there'

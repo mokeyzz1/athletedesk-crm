@@ -5,7 +5,8 @@ import { NextResponse } from 'next/server'
 interface PendingUser {
   name: string
   email: string
-  google_sso_id: string
+  auth_user_id: string
+  google_sso_id: string | null
   avatar_url: string | null
   invite_id: string
   invite_type: 'new_org' | 'join_org'
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
       .insert({
         name: pendingUser.name,
         email: pendingUser.email,
+        auth_user_id: pendingUser.auth_user_id,
         google_sso_id: pendingUser.google_sso_id,
         avatar_url: pendingUser.avatar_url,
         role: pendingUser.invite_type === 'new_org' ? 'admin' : 'intern', // New org owners are admins

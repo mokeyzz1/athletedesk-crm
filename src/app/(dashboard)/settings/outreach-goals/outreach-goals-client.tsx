@@ -110,7 +110,7 @@ export function OutreachGoalsClient({ goals: initialGoals, staff }: OutreachGoal
         const { data: userData } = await supabase
           .from('users')
           .select('id')
-          .eq('google_sso_id', user?.id || '')
+          .eq('auth_user_id', user?.id || '')
           .single()
 
         if (!userData) throw new Error('User not found')

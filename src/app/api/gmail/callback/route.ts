@@ -81,9 +81,9 @@ export async function GET(request: NextRequest) {
     // First, check if the user exists in the users table
     const { data: existingUser, error: findError } = await supabase
       .from('users')
-      .select('id, email, google_sso_id')
-      .or(`email.eq.${authUser.email},google_sso_id.eq.${authUser.id}`)
-      .single() as { data: { id: string; email: string; google_sso_id: string | null } | null; error: { message: string } | null }
+      .select('id, email, auth_user_id')
+      .eq('auth_user_id', authUser.id)
+      .single() as { data: { id: string; email: string; auth_user_id: string | null } | null; error: { message: string } | null }
 
     console.log('Found user:', {
       existingUser,

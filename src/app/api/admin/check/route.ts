@@ -16,7 +16,7 @@ export async function GET() {
   const { data: userData } = await serviceClient
     .from('users')
     .select('id, is_super_admin')
-    .eq('google_sso_id', user.id)
+    .eq('auth_user_id', user.id)
     .single() as { data: { id: string; is_super_admin: boolean } | null }
 
   if (!userData?.is_super_admin) {

@@ -60,7 +60,7 @@ export async function PATCH(request: NextRequest) {
   const { data: currentUserData } = await supabase
     .from('users')
     .select('role')
-    .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
+    .eq('auth_user_id', user.id)
     .single()
 
   const currentUser = currentUserData as { role: string } | null

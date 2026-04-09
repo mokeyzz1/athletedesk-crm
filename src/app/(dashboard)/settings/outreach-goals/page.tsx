@@ -26,7 +26,7 @@ export default async function OutreachGoalsPage() {
   const { data: currentUser } = await supabase
     .from('users')
     .select('*')
-    .eq('google_sso_id', user?.id || '')
+    .eq('auth_user_id', user?.id || '')
     .single()
 
   const typedCurrentUser = currentUser as User | null

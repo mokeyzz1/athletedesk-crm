@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
   const { data: userDataRaw } = await supabase
     .from('users')
     .select('id, gmail_access_token, gmail_refresh_token, gmail_token_expiry, gmail_email')
-    .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
+    .eq('auth_user_id', user.id)
     .single()
 
   const userData = userDataRaw as UserWithGmail | null

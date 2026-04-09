@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('google_sso_id', user.id)
+      .eq('auth_user_id', user.id)
       .single() as { data: { id: string } | null }
 
     if (!userData) {

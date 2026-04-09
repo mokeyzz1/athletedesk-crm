@@ -64,11 +64,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user's Gmail tokens - look up by email or google_sso_id
+  // Get user's Gmail tokens
   const { data: userDataRaw } = await supabase
     .from('users')
     .select('id, gmail_access_token, gmail_refresh_token, gmail_token_expiry, gmail_email')
-    .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
+    .eq('auth_user_id', user.id)
     .single()
 
   const userData = userDataRaw as UserWithGmail | null

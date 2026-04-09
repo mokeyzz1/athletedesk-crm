@@ -14,12 +14,12 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Look up user by email OR google_sso_id
+  // Look up user by auth_user_id
   const { data: userDataRaw, error } = await supabase
     .from('users')
-    .select('id, email, gmail_email, gmail_access_token, google_sso_id')
-    .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
-    .single() as { data: { id: string; email: string; gmail_email: string | null; gmail_access_token: string | null; google_sso_id: string | null } | null; error: { message: string } | null }
+    .select('id, email, gmail_email, gmail_access_token, auth_user_id')
+    .eq('auth_user_id', user.id)
+    .single() as { data: { id: string; email: string; gmail_email: string | null; gmail_access_token: string | null; auth_user_id: string | null } | null; error: { message: string } | null }
 
   // Debug logging
   console.log('Gmail status check:', {

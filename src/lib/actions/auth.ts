@@ -26,10 +26,11 @@ export async function getAuthContext(): Promise<AuthContext> {
   }
 
   // Get the user's internal ID and organization
+  // Uses auth_user_id as the primary lookup key (provider-neutral)
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('id, organization_id, role')
-    .eq('google_sso_id', user.id)
+    .eq('auth_user_id', user.id)
     .single() as { data: { id: string; organization_id: string | null; role: string } | null; error: unknown }
 
   if (userError || !userData) {

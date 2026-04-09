@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   const { data: userData } = await supabase
     .from('users')
     .select('gmail_refresh_token, gmail_email')
-    .or(`email.eq.${user.email},google_sso_id.eq.${user.id}`)
+    .eq('auth_user_id', user.id)
     .single() as { data: { gmail_refresh_token: string | null; gmail_email: string | null } | null }
 
   // If already has refresh token, no need to go through OAuth again

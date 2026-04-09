@@ -22,11 +22,12 @@ export default async function DashboardLayout({
   }
 
   // Use service client to get user profile (bypasses RLS for super admin)
+  // Uses auth_user_id as the primary lookup key (provider-neutral)
   const serviceClient = createServiceClient()
   const { data } = await serviceClient
     .from('users')
     .select('*')
-    .eq('google_sso_id', user.id)
+    .eq('auth_user_id', user.id)
     .single()
 
   const profile = data as User | null

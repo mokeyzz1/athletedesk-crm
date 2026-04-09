@@ -20,7 +20,8 @@ const SPORTS = [
 interface PendingUser {
   name: string
   email: string
-  google_sso_id: string
+  auth_user_id: string
+  google_sso_id: string | null
   avatar_url: string | null
   invite_id: string
   invite_type: 'new_org' | 'join_org'

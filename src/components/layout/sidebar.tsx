@@ -221,7 +221,7 @@ export function Sidebar({ user }: SidebarProps) {
         const { data: userData } = await supabase
           .from('users')
           .select('id')
-          .eq('google_sso_id', (await supabase.auth.getUser()).data.user?.id || '')
+          .eq('auth_user_id', (await supabase.auth.getUser()).data.user?.id || '')
           .single() as unknown as { data: { id: string } | null }
 
         if (userData) {

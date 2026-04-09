@@ -43,6 +43,7 @@ next-env.d.ts
 # Local docs (not for repo)
 README.md
 DOCUMENTATION.md
+CLAUDE.md
 docs/
 .claude/
 supabase/.temp/

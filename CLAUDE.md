@@ -20,12 +20,14 @@ A sports agency CRM built for managing athletes, recruiting pipelines, brand dea
 
 ---
 
-## Database Structure (14 tables)
+## Database Structure (17+ tables)
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Staff accounts with roles (admin/agent/scout/marketing/intern), Gmail tokens, notification prefs |
-| `athletes` | Core athlete records - both recruiting prospects and signed clients |
+| `organizations` | Multi-tenant orgs - each agency is an organization |
+| `organization_invites` | Invite tokens for new user signup |
+| `users` | Staff accounts with roles, org_id, is_super_admin, Gmail tokens |
+| `athletes` | Core athlete records with scout_ids[], agent_ids[], marketing_ids[] arrays |
 | `communications_log` | All logged communications (email, call, text, zoom) with follow-up tracking |
 | `recruiting_pipeline` | Pipeline stage tracking per athlete |
 | `brand_outreach` | Brand partnership tracking with response status and deal values |
@@ -38,6 +40,7 @@ A sports agency CRM built for managing athletes, recruiting pipelines, brand dea
 | `roster_teams` | Groups of athletes |
 | `recruiting_regions` | Geographic territories (Northwest, Southeast, etc.) |
 | `region_assignments` | Default agent/marketing per region for auto-handoffs |
+| `user_integrations` | OAuth tokens for Gmail, Calendar, DocuSign, Calendly, Apollo |
 
 ---
 
@@ -149,16 +152,23 @@ A sports agency CRM built for managing athletes, recruiting pipelines, brand dea
 - ✅ Settings (notifications, regions, teams)
 - ✅ Mobile responsive
 - ✅ Automated handoffs (Scout→Agent when "Interested", Agent→Marketing when "Signed")
+- ✅ **Multi-tenancy** - Complete org isolation with RLS (50+ policies)
+- ✅ **Invite-only signup** - Users must have valid invite token
+- ✅ **Super admin panel** - Manage all organizations at /admin
+- ✅ **Server actions** - Secure mutations with guaranteed org_id
+- ✅ **Automated testing** - 97 tests with Vitest
+- ✅ **Multi-staff assignments** - scout_ids[], agent_ids[], marketing_ids[]
+- ✅ **Integrations** - Gmail, Google Calendar, DocuSign, Calendly, Apollo
 
 ### Known Issues
 - None critical currently
 
 ### Not Yet Built
 - Push notifications
-- Calendar integration
 - Advanced analytics/charts
 - Bulk email campaigns
 - SMS integration
+- Stripe billing
 
 ---
 
@@ -167,6 +177,8 @@ A sports agency CRM built for managing athletes, recruiting pipelines, brand dea
 | File | What It Does |
 |------|--------------|
 | `src/lib/database.types.ts` | All TypeScript types and enums |
+| `src/lib/actions/auth.ts` | Server action auth context (getAuthContext) |
+| `src/lib/actions/athletes.ts` | Server actions for athlete CRUD |
 | `src/lib/export.ts` | Import/export logic with column mapping |
 | `src/lib/queries/email-stats.ts` | Email count queries |
 | `src/lib/queries/goal-progress.ts` | Goal tracking queries |
@@ -176,7 +188,10 @@ A sports agency CRM built for managing athletes, recruiting pipelines, brand dea
 | `src/contexts/athlete-panel-context.tsx` | Athlete panel state |
 | `src/app/api/athletes/[id]/status/route.ts` | Status changes with auto-handoff logic |
 | `src/app/api/settings/region-assignments/route.ts` | Manage default agents per region |
-| `DOCUMENTATION.md` | Full detailed documentation |
+| `src/app/invite/page.tsx` | Invite acceptance page |
+| `src/app/admin/page.tsx` | Super admin dashboard |
+| `vitest.config.ts` | Test configuration |
+| `docs/` | User guide, deployment notes, multi-tenancy plan |
 
 ---
 
@@ -199,6 +214,12 @@ GOOGLE_CLIENT_SECRET
 ### Run dev server
 ```bash
 npm run dev
+```
+
+### Run tests
+```bash
+npm test              # Run all 97 tests
+npm test -- --watch   # Watch mode
 ```
 
 ### Check for errors

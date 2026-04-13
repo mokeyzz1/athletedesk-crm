@@ -1,6 +1,6 @@
 # AthleteDesk
 
-A full-stack SaaS CRM platform for sports agencies to manage athlete recruiting, brand partnerships, contracts, and revenue tracking.
+CRM for sports agencies. Recruiting, deals, contracts, revenue — all in one place.
 
 **Live:** [athletedesk.io](https://athletedesk.io)
 
@@ -19,16 +19,47 @@ A full-stack SaaS CRM platform for sports agencies to manage athlete recruiting,
 
 ---
 
-## Features
+## Why I Built This
 
-- **Athlete Management** - Profiles with sport-specific stats, social media tracking, marketability scores
-- **Recruiting Pipeline** - Drag-and-drop Kanban board with 7 stages
-- **Brand Partnerships** - Track outreach, negotiations, and NIL deals
-- **Financial Tracking** - Auto-calculated agency fees, payment status, revenue dashboards
-- **Team Collaboration** - Role-based access, task management, @mentions
-- **Communications** - Log calls, emails, texts with follow-up reminders
-- **Document Management** - Upload and track contracts, agreements
-- **Integrations** - Gmail, Google Calendar, DocuSign, Calendly, Apollo
+Sports agents I talked to were using spreadsheets for athletes, email for outreach, another app for contracts, and sticky notes for follow-ups. They'd forget to call someone back and lose a deal. They'd calculate commissions by hand and get it wrong.
+
+So I built a system where everything lives in one place. You can see where every prospect is in your pipeline, what deals are in progress, and who on your team is handling what.
+
+---
+
+## What It Does
+
+**Recruiting Pipeline**
+- Drag prospects through 7 stages (Not Contacted → Signed)
+- Track sport-specific stats for football, basketball, baseball, soccer, tennis, track
+- Set follow-up reminders so you don't forget
+
+**Deals & Revenue**
+- Enter a deal value and agency percentage, it calculates the split automatically
+- Track payment status from pending to paid
+- See your total revenue at a glance
+
+**Team Stuff**
+- 5 roles (Admin, Agent, Scout, Marketing, Intern) with different access levels
+- Assign multiple people to the same athlete
+- Log every call, email, and meeting
+
+**Integrations**
+- Gmail for sending emails
+- Google Calendar for scheduling
+- DocuSign for contracts
+- Calendly for booking links
+- Apollo for finding brand contacts
+
+---
+
+## How It Works
+
+Each agency gets their own workspace. When you log in, you see your athletes, your deals, your team. The system handles the separation.
+
+Signup is invite-only — admins control who joins. You can sign in with Google or email/password, and if you use both with the same email, it's the same account.
+
+The pipeline updates instantly when you drag cards around. It syncs to the database in the background so it doesn't feel slow.
 
 ---
 
@@ -40,74 +71,14 @@ A full-stack SaaS CRM platform for sports agencies to manage athlete recruiting,
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase)
 ![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?style=flat-square&logo=vercel)
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 14 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS |
-| Database | Supabase (PostgreSQL) |
-| Auth | Supabase Auth (Google OAuth + Email/Password) |
-| Storage | Supabase Storage |
-| Deployment | Vercel |
-
----
-
-## Architecture Highlights
-
-### Multi-Tenancy
-- Complete organization isolation with Row Level Security (50+ RLS policies)
-- Each agency's data is completely separated at the database level
-
-### Authentication
-- Dual auth: Google OAuth + Email/Password
-- Identity linking (same email = same account across providers)
-- Invite-only signup with onboarding flow
-
-### Security
-- Server Actions for all mutations (guaranteed org_id injection)
-- Provider-neutral `auth_user_id` system
-- PKCE flow for OAuth
-
-### Testing
-- 97 automated tests with Vitest
-- Server action tests, RLS pattern tests, utility tests
-
----
-
-## Key Technical Decisions
-
-| Challenge | Solution |
-|-----------|----------|
-| Data isolation between agencies | PostgreSQL RLS policies, not app-level filtering |
-| Secure mutations | Next.js Server Actions inject org_id server-side |
-| Multiple auth providers | Provider-neutral `auth_user_id` with email-based identity linking |
-| Real-time Kanban | Optimistic UI updates with Zustand, background sync |
-| Sport-specific fields | JSONB columns with dynamic form rendering |
-
----
-
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── (dashboard)/        # Authenticated routes
-│   ├── api/                # API routes & webhooks
-│   ├── admin/              # Super admin panel
-│   └── auth/               # Auth callbacks
-├── components/             # React components
-├── lib/                    # Utilities, types, integrations
-│   ├── actions/            # Server Actions
-│   ├── integrations/       # OAuth integrations
-│   └── supabase/           # Supabase clients
-└── stores/                 # Zustand stores
-```
+- Next.js 14 with App Router
+- TypeScript
+- Tailwind CSS
+- Supabase (PostgreSQL + Auth + Storage)
+- Vercel
 
 ---
 
 ## Author
 
-**Moses Koroma**
-
-- GitHub: [@mokeyzz1](https://github.com/mokeyzz1)
-
+**Moses Koroma** — [@mokeyzz1](https://github.com/mokeyzz1)

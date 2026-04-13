@@ -29,10 +29,7 @@ export async function GET(request: NextRequest) {
 
   // If already has refresh token, no need to go through OAuth again
   if (userData?.gmail_refresh_token && userData?.gmail_email) {
-    return NextResponse.json({
-      already_connected: true,
-      email: userData.gmail_email
-    })
+    return NextResponse.redirect(new URL('/settings?gmail=already_connected', request.url))
   }
 
   // Get return URL from query param (where to redirect after OAuth)
@@ -51,5 +48,5 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set('prompt', 'consent')
   authUrl.searchParams.set('state', state)
 
-  return NextResponse.json({ url: authUrl.toString() })
+  return NextResponse.redirect(authUrl.toString())
 }

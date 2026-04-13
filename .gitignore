@@ -41,7 +41,6 @@ next-env.d.ts
 *.swo
 
 # Local docs (not for repo)
-README.md
 DOCUMENTATION.md
 CLAUDE.md
 docs/

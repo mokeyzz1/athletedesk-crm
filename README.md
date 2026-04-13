@@ -1,6 +1,6 @@
 # AthleteDesk
 
-CRM for sports agencies. Recruiting, deals, contracts, revenue — all in one place.
+A sports agency was managing hundreds of athletes, brand deals, and contracts across disconnected spreadsheets. Scouts had no way to know who'd been contacted. Agents had no structured handoffs. Leadership had no visibility. I built AthleteDesk to fix that.
 
 **Live:** [athletedesk.io](https://athletedesk.io)
 
@@ -19,62 +19,35 @@ CRM for sports agencies. Recruiting, deals, contracts, revenue — all in one pl
 
 ---
 
-## Why I Built This
+## Features
 
-Sports agents I talked to were using spreadsheets for athletes, email for outreach, another app for contracts, and sticky notes for follow-ups. They'd forget to call someone back and lose a deal. They'd calculate commissions by hand and get it wrong.
+**Recruiting Database** — All prospects organized by region and class year. Every scout sees their assigned region. Admin sees all regions with real-time outreach progress.
 
-So I built a system where everything lives in one place. You can see where every prospect is in your pipeline, what deals are in progress, and who on your team is handling what.
+**Roster** — Signed clients only. Revenue Share contracts and Marketing/Brand deals tracked separately, with agency fee and athlete payout auto-calculated.
 
----
+**Automated Handoffs** — When a scout qualifies an athlete the system auto-assigns an agent. When an athlete signs, marketing is automatically notified. No manual coordination.
 
-## What It Does
+**Brand Outreach** — Track every brand partnership from first contact to deal closed. Attach potential deals to prospects as a pitch tool.
 
-**Recruiting Pipeline**
-- Drag prospects through 7 stages (Not Contacted → Signed)
-- Track sport-specific stats for football, basketball, baseball, soccer, tennis, track
-- Set follow-up reminders so you don't forget
+**Communications** — Every call, email, text, and meeting logged to the athlete's profile. Full history across the entire team.
 
-**Deals & Revenue**
-- Enter a deal value and agency percentage, it calculates the split automatically
-- Track payment status from pending to paid
-- See your total revenue at a glance
+**Gmail Integration** — Send emails directly from the CRM. Every sent email automatically logged.
 
-**Team Stuff**
-- 5 roles (Admin, Agent, Scout, Marketing, Intern) with different access levels
-- Assign multiple people to the same athlete
-- Log every call, email, and meeting
+**Team Visibility** — Leadership sees staff activity, outreach completion by region, and goal progress — all in real time.
 
-**Integrations**
-- Gmail for sending emails
-- Google Calendar for scheduling
-- DocuSign for contracts
-- Calendly for booking links
-- Apollo for finding brand contacts
+**Excel Import** — Existing recruiting spreadsheets import directly. Each sheet becomes a region, athletes populate automatically.
 
 ---
 
-## How It Works
+## Stack
 
-Each agency gets their own workspace. When you log in, you see your athletes, your deals, your team. The system handles the separation.
-
-Signup is invite-only — admins control who joins. You can sign in with Google or email/password, and if you use both with the same email, it's the same account.
-
-The pipeline updates instantly when you drag cards around. It syncs to the database in the background so it doesn't feel slow.
-
----
-
-## Tech Stack
-
-![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=flat-square&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=flat-square&logo=tailwind-css)
-![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase)
-![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?style=flat-square&logo=vercel)
-
-- Next.js 14 with App Router
+- Next.js 14
 - TypeScript
+- Supabase
+- PostgreSQL
 - Tailwind CSS
-- Supabase (PostgreSQL + Auth + Storage)
+- Google OAuth
+- Gmail API
 - Vercel
 
 ---

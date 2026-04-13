@@ -110,16 +110,8 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
     }
   }, [activeTab, gmailConnected, searchQuery])
 
-  const handleConnectGmail = async () => {
-    try {
-      const res = await fetch('/api/gmail/auth?returnUrl=/email')
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      }
-    } catch {
-      setError('Failed to connect Gmail')
-    }
+  const handleConnectGmail = () => {
+    window.location.href = '/api/gmail/auth?returnUrl=/email'
   }
 
   const handleTemplateSelect = (templateId: string) => {

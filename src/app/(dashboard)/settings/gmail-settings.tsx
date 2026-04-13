@@ -34,28 +34,8 @@ export function GmailSettings() {
     fetchStatus()
   }, [searchParams])
 
-  const handleConnect = async () => {
-    setIsLoading(true)
-    try {
-      const res = await fetch('/api/gmail/auth')
-      const data = await res.json()
-
-      // If already connected, just update the state
-      if (data.already_connected) {
-        setIsConnected(true)
-        setGmailEmail(data.email)
-        setMessage({ type: 'success', text: 'Gmail is already connected!' })
-        return
-      }
-
-      if (data.url) {
-        window.location.href = data.url
-      }
-    } catch {
-      setMessage({ type: 'error', text: 'Failed to start Gmail connection' })
-    } finally {
-      setIsLoading(false)
-    }
+  const handleConnect = () => {
+    window.location.href = '/api/gmail/auth'
   }
 
   const handleDisconnect = async () => {

@@ -19,6 +19,7 @@ export default function TeamManagementPage() {
   const [inviteSending, setInviteSending] = useState(false)
   const [inviteSuccess, setInviteSuccess] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  const [inviteLink, setInviteLink] = useState('')
   const [deletingUser, setDeletingUser] = useState<string | null>(null)
   const [editingRegionsUser, setEditingRegionsUser] = useState<User | null>(null)
   const [selectedRegions, setSelectedRegions] = useState<string[]>([])
@@ -79,25 +80,23 @@ export default function TeamManagementPage() {
     setInviteSuccess(false)
 
     try {
-      // Send magic link invitation
-      const { error } = await supabase.auth.signInWithOtp({
-        email: inviteEmail,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            invited_role: inviteRole,
-          }
-        }
+      const response = await fetch('/api/team/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: inviteEmail,
+          role: inviteRole,
+        }),
       })
 
-      if (error) throw error
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create invite')
+      }
 
+      setInviteLink(data.inviteUrl)
       setInviteSuccess(true)
       setInviteEmail('')
-      setTimeout(() => {
-        setShowInviteModal(false)
-        setInviteSuccess(false)
-      }, 2000)
     } catch (error) {
       setInviteError(error instanceof Error ? error.message : 'Failed to send invite')
     } finally {
@@ -353,13 +352,29 @@ export default function TeamManagementPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <p className="text-green-600 font-medium">Invitation sent!</p>
-                <p className="text-sm text-gray-500 mt-1">They&apos;ll receive an email with a magic link to join.</p>
+                <p className="text-green-600 font-medium">Invite link created!</p>
+                <p className="text-sm text-gray-500 mt-1">Share this link with the team member.</p>
+                {inviteLink && (
+                  <div className="mt-4 space-y-3">
+                    <input
+                      readOnly
+                      value={inviteLink}
+                      className="input w-full text-xs"
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                    <button
+                      onClick={() => navigator.clipboard.writeText(inviteLink)}
+                      className="btn-secondary text-sm"
+                    >
+                      Copy invite link
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <>
                 <p className="text-sm text-gray-600 mb-4">
-                  Enter their email address and we&apos;ll send them a magic link to join your team.
+                  Enter their email address and we&apos;ll create a secure invite link for them to join your team.
                 </p>
 
                 <div className="space-y-4">
@@ -402,6 +417,8 @@ export default function TeamManagementPage() {
                       setShowInviteModal(false)
                       setInviteEmail('')
                       setInviteError('')
+                      setInviteLink('')
+                      setInviteSuccess(false)
                     }}
                     className="btn-secondary"
                     disabled={inviteSending}

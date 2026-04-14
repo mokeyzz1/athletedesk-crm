@@ -1,6 +1,9 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import type { UserRole } from '@/lib/database.types'
+
+const ALLOWED_ROLES: UserRole[] = ['admin', 'agent', 'scout', 'marketing', 'intern']
 
 interface PendingUser {
   name: string
@@ -89,6 +92,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No organization ID' }, { status: 400 })
     }
 
+    let assignedRole: UserRole = pendingUser.invite_type === 'new_org' ? 'admin' : 'intern'
+
+    if (pendingUser.invite_type === 'join_org') {
+      const inviteToken = cookieStore.get('invite_token')?.value || ''
+      const { data: inviteRecord } = await supabase
+        .from('organization_invites')
+        .select('metadata')
+        .eq('token', inviteToken)
+        .single() as { data: { metadata: { invited_role?: UserRole } | null } | null }
+
+      const invitedRole = inviteRecord?.metadata?.invited_role
+      if (invitedRole && ALLOWED_ROLES.includes(invitedRole)) {
+        assignedRole = invitedRole
+      }
+    }
+
     // Create user record
     const { data: newUser, error: userError } = await supabase
       .from('users')
@@ -98,7 +117,7 @@ export async function POST(request: Request) {
         auth_user_id: pendingUser.auth_user_id,
         google_sso_id: pendingUser.google_sso_id,
         avatar_url: pendingUser.avatar_url,
-        role: pendingUser.invite_type === 'new_org' ? 'admin' : 'intern', // New org owners are admins
+        role: assignedRole,
         organization_id: organizationId,
         is_super_admin: false,
       } as never)

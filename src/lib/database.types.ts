@@ -769,6 +769,10 @@ export interface Database {
           region: string
           default_agent_id: string | null
           default_marketing_id: string | null
+          agent_ids: string[]
+          marketing_ids: string[]
+          primary_agent_id: string | null
+          primary_marketing_id: string | null
           created_at: string
           updated_at: string
         }
@@ -778,6 +782,10 @@ export interface Database {
           region: string
           default_agent_id?: string | null
           default_marketing_id?: string | null
+          agent_ids?: string[]
+          marketing_ids?: string[]
+          primary_agent_id?: string | null
+          primary_marketing_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -787,6 +795,10 @@ export interface Database {
           region?: string
           default_agent_id?: string | null
           default_marketing_id?: string | null
+          agent_ids?: string[]
+          marketing_ids?: string[]
+          primary_agent_id?: string | null
+          primary_marketing_id?: string | null
           created_at?: string
           updated_at?: string
         }

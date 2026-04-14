@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { User, Athlete, LeagueLevel, RecruitingStatus, TransferPortalStatus, Json, ClassYear, OutreachStatus, RosterTeam } from '@/lib/database.types'
-import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS, US_STATES } from '@/lib/database.types'
+import type { User, Athlete, LeagueLevel, RecruitingStatus, TransferPortalStatus, Json, ClassYear, OutreachStatus, RosterTeam, RecruitingRegion } from '@/lib/database.types'
+import { CLASS_YEARS, OUTREACH_STATUSES, US_STATES } from '@/lib/database.types'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
@@ -15,6 +15,7 @@ interface AthletePanelProps {
   onClose: () => void
   users: User[]
   rosterTeams: RosterTeam[]
+  recruitingRegions: RecruitingRegion[]
   onAthleteUpdated: () => void
 }
 
@@ -24,6 +25,7 @@ export function AthletePanel({
   onClose,
   users,
   rosterTeams,
+  recruitingRegions,
   onAthleteUpdated
 }: AthletePanelProps) {
   const [athlete, setAthlete] = useState<Athlete | null>(null)
@@ -399,8 +401,8 @@ export function AthletePanel({
                       className="mt-1 input w-full"
                     >
                       <option value="">Select Region</option>
-                      {REGIONS.map(r => (
-                        <option key={r} value={r}>{r}</option>
+                      {recruitingRegions.map(r => (
+                        <option key={r.id} value={r.name}>{r.name}</option>
                       ))}
                     </select>
                   </div>

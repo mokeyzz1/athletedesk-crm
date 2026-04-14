@@ -56,14 +56,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check if user is admin
+  // Check if user is admin and get their organization_id
   const { data: currentUserData } = await supabase
     .from('users')
-    .select('role')
+    .select('role, organization_id')
     .eq('auth_user_id', user.id)
     .single()
 
-  const currentUser = currentUserData as { role: string } | null
+  const currentUser = currentUserData as { role: string; organization_id: string } | null
 
   if (!currentUser || currentUser.role !== 'admin') {
     return NextResponse.json({ error: 'Only admins can manage region assignments' }, { status: 403 })
@@ -76,11 +76,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Region is required' }, { status: 400 })
   }
 
-  // Upsert the region assignment
+  // Upsert the region assignment with organization_id
   const { data: assignment, error } = await supabase
     .from('region_assignments')
     .upsert(
       {
+        organization_id: currentUser.organization_id,
         region,
         agent_ids: agent_ids || [],
         marketing_ids: marketing_ids || [],
@@ -91,7 +92,7 @@ export async function PATCH(request: NextRequest) {
         default_marketing_id: primary_marketing_id || null,
         updated_at: new Date().toISOString(),
       } as never,
-      { onConflict: 'region' }
+      { onConflict: 'organization_id,region' }
     )
     .select()
     .single()

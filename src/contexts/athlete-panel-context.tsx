@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { User, RosterTeam } from '@/lib/database.types'
+import type { User, RosterTeam, RecruitingRegion } from '@/lib/database.types'
 import { AthletePanel } from '@/components/athletes/athlete-panel'
 
 interface AthletePanelContextType {
@@ -31,17 +31,20 @@ export function AthletePanelProvider({ children }: AthletePanelProviderProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [rosterTeams, setRosterTeams] = useState<RosterTeam[]>([])
+  const [recruitingRegions, setRecruitingRegions] = useState<RecruitingRegion[]>([])
 
-  // Fetch users and roster teams for the panel
+  // Fetch users, roster teams, and recruiting regions for the panel
   useEffect(() => {
     async function fetchData() {
       const supabase = createClient()
-      const [usersResult, teamsResult] = await Promise.all([
+      const [usersResult, teamsResult, regionsResult] = await Promise.all([
         supabase.from('users').select('*'),
-        supabase.from('roster_teams').select('*').order('name')
+        supabase.from('roster_teams').select('*').order('name'),
+        supabase.from('recruiting_regions').select('*').order('name')
       ])
       if (usersResult.data) setUsers(usersResult.data as User[])
       if (teamsResult.data) setRosterTeams(teamsResult.data as RosterTeam[])
+      if (regionsResult.data) setRecruitingRegions(regionsResult.data as RecruitingRegion[])
     }
     fetchData()
   }, [])
@@ -77,6 +80,7 @@ export function AthletePanelProvider({ children }: AthletePanelProviderProps) {
         onClose={closeAthletePanel}
         users={users}
         rosterTeams={rosterTeams}
+        recruitingRegions={recruitingRegions}
         onAthleteUpdated={handleAthleteUpdated}
       />
     </AthletePanelContext.Provider>

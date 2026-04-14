@@ -44,15 +44,45 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
   }
 }
 
+function stripHtmlWrapper(html: string): string {
+  // Remove DOCTYPE, html, head, and body tags but keep the body content
+  return html
+    .replace(/<!DOCTYPE[^>]*>/gi, '')
+    .replace(/<\/?html[^>]*>/gi, '')
+    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')  // Remove head with any attributes
+    .replace(/<\/?body[^>]*>/gi, '')
+    .replace(/<\/?meta[^>]*>/gi, '')  // Remove meta tags
+    .replace(/<\/?title[^>]*>[\s\S]*?<\/title>/gi, '')  // Remove title tags
+    .trim()
+}
+
 function createRawEmail(to: string, from: string, subject: string, body: string, isHtml: boolean = false): string {
   const contentType = isHtml ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8'
+  const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, 'utf8').toString('base64')}?=`
+
+  // For HTML emails, wrap in proper document structure
+  const emailBody = isHtml
+    ? `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333;">
+${body}
+</body>
+</html>`
+    : body
+
   const email = [
     `To: ${to}`,
     `From: ${from}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodedSubject}`,
+    `MIME-Version: 1.0`,
     `Content-Type: ${contentType}`,
+    `Content-Transfer-Encoding: base64`,
     '',
-    body,
+    Buffer.from(emailBody, 'utf8').toString('base64'),
   ].join('\r\n')
 
   return Buffer.from(email).toString('base64url')
@@ -67,6 +97,9 @@ function appendSignature(body: string, signature: string | null): { body: string
   const hasHtmlSignature = /<[a-z][\s\S]*>/i.test(signature)
 
   if (hasHtmlSignature) {
+    // Strip any document wrapper from signature (WiseStamp might include it)
+    const cleanSignature = stripHtmlWrapper(signature)
+
     // Convert plain text body to HTML-safe and combine with HTML signature
     const htmlBody = body
       .replace(/&/g, '&amp;')
@@ -75,7 +108,7 @@ function appendSignature(body: string, signature: string | null): { body: string
       .replace(/\n/g, '<br>')
 
     return {
-      body: `${htmlBody}<br><br>${signature}`,
+      body: `<div>${htmlBody}</div><br><br><div>${cleanSignature}</div>`,
       isHtml: true,
     }
   } else {

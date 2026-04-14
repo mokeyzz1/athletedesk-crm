@@ -29,9 +29,14 @@ export async function GET() {
   }
 
   // Get existing region assignments
-  const { data: existingAssignments } = await supabase
+  const { data: existingAssignments, error: assignmentsError } = await supabase
     .from('region_assignments')
     .select('*')
+
+  if (assignmentsError) {
+    console.error('Error fetching region assignments:', assignmentsError)
+    return NextResponse.json({ error: 'Failed to fetch region assignments' }, { status: 500 })
+  }
 
   // Create a map of existing assignments by region name
   const assignmentMap = new Map(
@@ -57,17 +62,27 @@ export async function GET() {
   })
 
   // Get all agents and marketing users for the dropdowns
-  const { data: agents } = await supabase
+  const { data: agents, error: agentsError } = await supabase
     .from('users')
     .select('id, name, role, assigned_regions')
     .in('role', ['agent', 'admin'])
     .order('name')
 
-  const { data: marketingUsers } = await supabase
+  if (agentsError) {
+    console.error('Error fetching agents:', agentsError)
+    return NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 })
+  }
+
+  const { data: marketingUsers, error: marketingError } = await supabase
     .from('users')
     .select('id, name, role, assigned_regions')
     .in('role', ['marketing', 'admin'])
     .order('name')
+
+  if (marketingError) {
+    console.error('Error fetching marketing users:', marketingError)
+    return NextResponse.json({ error: 'Failed to fetch marketing users' }, { status: 500 })
+  }
 
   return NextResponse.json({
     assignments,

@@ -41,7 +41,6 @@ export default function OnboardingPage() {
   const [agencyName, setAgencyName] = useState('')
   const [agencyType, setAgencyType] = useState('')
   const [selectedSports, setSelectedSports] = useState<string[]>([])
-  const [logoUrl, setLogoUrl] = useState('')
 
   useEffect(() => {
     // Check for pending user data
@@ -91,7 +90,6 @@ export default function OnboardingPage() {
           agencyName: pendingUser.invite_type === 'new_org' ? agencyName : undefined,
           agencyType: pendingUser.invite_type === 'new_org' ? agencyType : undefined,
           selectedSports: pendingUser.invite_type === 'new_org' ? selectedSports : undefined,
-          logoUrl: pendingUser.invite_type === 'new_org' ? logoUrl : undefined,
         }),
       })
 
@@ -232,32 +230,6 @@ export default function OnboardingPage() {
                     </label>
                   ))}
                 </div>
-              </div>
-
-              <div>
-                <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700">
-                  Logo URL (optional)
-                </label>
-                <input
-                  type="url"
-                  id="logoUrl"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="https://..."
-                />
-                {logoUrl && (
-                  <div className="mt-2">
-                    <Image
-                      src={logoUrl}
-                      alt="Logo preview"
-                      width={64}
-                      height={64}
-                      className="h-16 w-16 object-contain rounded"
-                      onError={() => setLogoUrl('')}
-                    />
-                  </div>
-                )}
               </div>
 
               <div className="flex justify-end">

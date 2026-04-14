@@ -149,6 +149,8 @@ export interface Database {
           // Super admin access
           is_super_admin: boolean
           viewing_organization_id: string | null
+          // Email signature
+          email_signature: string | null
         }
         Insert: {
           id?: string
@@ -174,6 +176,8 @@ export interface Database {
           gmail_email?: string | null
           // Super admin access
           is_super_admin?: boolean
+          // Email signature
+          email_signature?: string | null
         }
         Update: {
           id?: string
@@ -199,6 +203,8 @@ export interface Database {
           gmail_email?: string | null
           // Super admin access
           is_super_admin?: boolean
+          // Email signature
+          email_signature?: string | null
         }
       }
       athletes: {

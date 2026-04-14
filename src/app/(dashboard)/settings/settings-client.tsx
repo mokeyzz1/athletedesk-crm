@@ -25,7 +25,7 @@ interface SettingsClientProps {
   isOwner: boolean
 }
 
-type SettingsSection = 'profile' | 'notifications' | 'templates' | 'integrations' | 'team' | 'goals' | 'regions' | 'roster-teams' | 'handoffs' | 'organization'
+type SettingsSection = 'profile' | 'notifications' | 'signature' | 'templates' | 'integrations' | 'team' | 'goals' | 'regions' | 'roster-teams' | 'handoffs' | 'organization'
 
 export function SettingsClient({ profile, initialTemplates, initialRosterTeams, initialRecruitingRegions, organization, isOwner }: SettingsClientProps) {
   const searchParams = useSearchParams()
@@ -193,6 +193,11 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
   const [savingNotifications, setSavingNotifications] = useState(false)
   const [notificationsSaved, setNotificationsSaved] = useState(false)
 
+  // Email signature state
+  const [emailSignature, setEmailSignature] = useState(profile?.email_signature || '')
+  const [savingSignature, setSavingSignature] = useState(false)
+  const [signatureSaved, setSignatureSaved] = useState(false)
+
   // Templates state
   const [templates, setTemplates] = useState<EmailTemplate[]>(initialTemplates)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
@@ -255,6 +260,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
       items: [
         { id: 'profile' as const, label: 'Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
         { id: 'notifications' as const, label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
+        { id: 'signature' as const, label: 'Email Signature', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
         { id: 'templates' as const, label: 'Templates', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
       ],
     },
@@ -314,6 +320,26 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
     if (!error) {
       setNotificationsSaved(true)
       setTimeout(() => setNotificationsSaved(false), 3000)
+    }
+  }
+
+  // Email signature functions
+  const saveSignature = async () => {
+    if (!profile?.id) return
+    setSavingSignature(true)
+    setSignatureSaved(false)
+
+    const { error } = await supabase
+      .from('users')
+      .update({
+        email_signature: emailSignature || null,
+      } as never)
+      .eq('id', profile.id)
+
+    setSavingSignature(false)
+    if (!error) {
+      setSignatureSaved(true)
+      setTimeout(() => setSignatureSaved(false), 3000)
     }
   }
 
@@ -834,6 +860,76 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                       </svg>
                       Saved
                     </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Email Signature Section */}
+            {activeSection === 'signature' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Email Signature</h2>
+                  <p className="text-sm text-gray-500">Your signature will be added to all outgoing emails</p>
+                </div>
+
+                <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+                  <div>
+                    <label htmlFor="email-signature" className="block text-sm font-medium text-gray-700 mb-2">
+                      Signature HTML
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Paste your signature HTML from WiseStamp or another signature generator. Your logo and formatting will be preserved.
+                    </p>
+                    <textarea
+                      id="email-signature"
+                      rows={8}
+                      value={emailSignature}
+                      onChange={(e) => {
+                        setEmailSignature(e.target.value)
+                        setSignatureSaved(false)
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-1 focus:ring-brand-500 focus:border-brand-500"
+                      placeholder="Paste your signature HTML here..."
+                    />
+                  </div>
+
+                  {emailSignature && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">Preview</p>
+                      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div dangerouslySetInnerHTML={{ __html: emailSignature }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={saveSignature}
+                    disabled={savingSignature}
+                    className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50"
+                  >
+                    {savingSignature ? 'Saving...' : 'Save Signature'}
+                  </button>
+                  {signatureSaved && (
+                    <span className="text-sm text-green-600 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Saved
+                    </span>
+                  )}
+                  {emailSignature && (
+                    <button
+                      onClick={() => {
+                        setEmailSignature('')
+                        setSignatureSaved(false)
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Clear
+                    </button>
                   )}
                 </div>
               </div>

@@ -18,6 +18,7 @@ interface UserWithGmail {
   gmail_refresh_token: string | null
   gmail_token_expiry: string | null
   gmail_email: string | null
+  email_signature: string | null
 }
 
 async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
@@ -43,17 +44,47 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
   }
 }
 
-function createRawEmail(to: string, from: string, subject: string, body: string): string {
+function createRawEmail(to: string, from: string, subject: string, body: string, isHtml: boolean = false): string {
+  const contentType = isHtml ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8'
   const email = [
     `To: ${to}`,
     `From: ${from}`,
     `Subject: ${subject}`,
-    'Content-Type: text/plain; charset=utf-8',
+    `Content-Type: ${contentType}`,
     '',
     body,
   ].join('\r\n')
 
   return Buffer.from(email).toString('base64url')
+}
+
+function appendSignature(body: string, signature: string | null): { body: string; isHtml: boolean } {
+  if (!signature) {
+    return { body, isHtml: false }
+  }
+
+  // If signature contains HTML tags, format as HTML email
+  const hasHtmlSignature = /<[a-z][\s\S]*>/i.test(signature)
+
+  if (hasHtmlSignature) {
+    // Convert plain text body to HTML-safe and combine with HTML signature
+    const htmlBody = body
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>')
+
+    return {
+      body: `${htmlBody}<br><br>${signature}`,
+      isHtml: true,
+    }
+  } else {
+    // Plain text signature
+    return {
+      body: `${body}\n\n--\n${signature}`,
+      isHtml: false,
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -64,10 +95,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user's Gmail tokens
+  // Get user's Gmail tokens and email signature
   const { data: userDataRaw } = await supabase
     .from('users')
-    .select('id, gmail_access_token, gmail_refresh_token, gmail_token_expiry, gmail_email')
+    .select('id, gmail_access_token, gmail_refresh_token, gmail_token_expiry, gmail_email, email_signature')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -110,8 +141,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Append email signature if set
+    const { body: emailWithSignature, isHtml } = appendSignature(emailBody, userData.email_signature)
+
     // Create raw email
-    const rawEmail = createRawEmail(to, userData.gmail_email, subject, emailBody)
+    const rawEmail = createRawEmail(to, userData.gmail_email, subject, emailWithSignature, isHtml)
 
     // Send via Gmail API
     const sendResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {

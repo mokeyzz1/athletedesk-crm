@@ -1041,6 +1041,50 @@ export interface Database {
           updated_at?: string
         }
       }
+      notifications: {
+        Row: {
+          id: string
+          organization_id: string | null
+          user_id: string
+          type: 'assignment' | 'mention' | 'contract' | 'task' | 'system'
+          title: string
+          message: string | null
+          href: string | null
+          actor_id: string | null
+          entity_type: string | null
+          entity_id: string | null
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string | null
+          user_id: string
+          type: 'assignment' | 'mention' | 'contract' | 'task' | 'system'
+          title: string
+          message?: string | null
+          href?: string | null
+          actor_id?: string | null
+          entity_type?: string | null
+          entity_id?: string | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string | null
+          user_id?: string
+          type?: 'assignment' | 'mention' | 'contract' | 'task' | 'system'
+          title?: string
+          message?: string | null
+          href?: string | null
+          actor_id?: string | null
+          entity_type?: string | null
+          entity_id?: string | null
+          is_read?: boolean
+          created_at?: string
+        }
+      }
     }
     Views: {
       dashboard_summary: {

@@ -9,7 +9,7 @@ import { SearchModal } from './search-modal'
 
 interface Notification {
   id: string
-  type: 'followup_overdue' | 'followup_today' | 'pending_contract' | 'mention'
+  type: 'followup_overdue' | 'followup_today' | 'pending_contract' | 'mention' | 'assignment'
   title: string
   subtitle: string
   href: string
@@ -276,6 +276,44 @@ export function Sidebar({ user }: SidebarProps) {
               }
             })
           }
+
+          // Fetch assignment notifications
+          const { data: assignmentNotifs } = await supabase
+            .from('notifications')
+            .select(`
+              id,
+              title,
+              message,
+              href,
+              created_at,
+              actor:actor_id(name, avatar_url)
+            `)
+            .eq('user_id', userData.id)
+            .eq('is_read', false)
+            .eq('type', 'assignment')
+            .order('created_at', { ascending: false })
+            .limit(5)
+
+          if (assignmentNotifs) {
+            assignmentNotifs.forEach((notif: {
+              id: string
+              title: string
+              message: string | null
+              href: string | null
+              created_at: string
+              actor: { name: string; avatar_url: string | null } | null
+            }) => {
+              notifs.push({
+                id: `assignment-${notif.id}`,
+                type: 'assignment',
+                title: notif.title,
+                subtitle: notif.message || 'New assignment',
+                href: notif.href || '/athletes',
+                date: notif.created_at,
+                avatarUrl: notif.actor?.avatar_url || undefined
+              })
+            })
+          }
         }
 
         setNotifications(notifs)
@@ -377,6 +415,17 @@ export function Sidebar({ user }: SidebarProps) {
                                     setNotifications(prev => prev.filter(n => n.id !== notif.id))
                                   })
                               }
+                              // Mark assignment notification as read when clicked
+                              if (notif.type === 'assignment') {
+                                const notificationId = notif.id.replace('assignment-', '')
+                                supabase
+                                  .from('notifications')
+                                  .update({ is_read: true } as never)
+                                  .eq('id', notificationId)
+                                  .then(() => {
+                                    setNotifications(prev => prev.filter(n => n.id !== notif.id))
+                                  })
+                              }
                             }}
                             className="block px-4 py-3 hover:bg-gray-50 border-b border-gray-50"
                           >
@@ -392,6 +441,7 @@ export function Sidebar({ user }: SidebarProps) {
                                   notif.type === 'followup_overdue' ? 'bg-red-50 text-red-600' :
                                   notif.type === 'followup_today' ? 'bg-yellow-50 text-yellow-600' :
                                   notif.type === 'mention' ? 'bg-brand-50 text-brand-600' :
+                                  notif.type === 'assignment' ? 'bg-green-50 text-green-600' :
                                   'bg-gray-100 text-gray-600'
                                 }`}>
                                   {notif.type === 'pending_contract' ? (
@@ -401,6 +451,10 @@ export function Sidebar({ user }: SidebarProps) {
                                   ) : notif.type === 'mention' ? (
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                                    </svg>
+                                  ) : notif.type === 'assignment' ? (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                     </svg>
                                   ) : (
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

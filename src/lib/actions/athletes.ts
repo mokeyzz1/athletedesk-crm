@@ -152,13 +152,14 @@ export async function createAthlete(
  * - Validates input
  * - Ensures user can only update athletes in their org (via RLS)
  * - Strips organization_id from update payload
+ * - Creates notifications for new assignments
  */
 export async function updateAthlete(
   athleteId: string,
   input: UpdateAthleteInput
 ): Promise<ActionResult<Athlete>> {
   try {
-    const { organizationId } = await getAuthContext()
+    const { organizationId, userId } = await getAuthContext()
 
     // Validate
     const validationError = validateUpdateAthlete(input)
@@ -169,6 +170,23 @@ export async function updateAthlete(
     // Strip organization_id if someone tries to pass it
     const { ...safeInput } = input as UpdateAthleteInput & { organization_id?: string }
     delete (safeInput as { organization_id?: string }).organization_id
+
+    const supabase = await createClient()
+
+    // Fetch current athlete to compare assignments
+    const { data: currentAthlete } = await supabase
+      .from('athletes')
+      .select('name, assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id, scout_ids, agent_ids, marketing_ids')
+      .eq('id', athleteId)
+      .single() as { data: {
+        name: string
+        assigned_scout_id: string | null
+        assigned_agent_id: string | null
+        assigned_marketing_lead_id: string | null
+        scout_ids: string[] | null
+        agent_ids: string[] | null
+        marketing_ids: string[] | null
+      } | null }
 
     // Clean up the data
     const updateData: Record<string, unknown> = {}
@@ -199,8 +217,6 @@ export async function updateAthlete(
     if (safeInput.school_state !== undefined) updateData.school_state = safeInput.school_state
     if (safeInput.roster_team_id !== undefined) updateData.roster_team_id = safeInput.roster_team_id
 
-    const supabase = await createClient()
-
     // Update with org check (RLS enforces this, but explicit is safer)
     const { data, error } = await supabase
       .from('athletes')
@@ -213,6 +229,80 @@ export async function updateAthlete(
     if (error) {
       console.error('Update athlete error:', error)
       return { success: false, error: error.message }
+    }
+
+    // Create notifications for new assignments
+    if (currentAthlete && data) {
+      const athleteName = (data as Athlete).name
+      const notifications: Array<{
+        organization_id: string
+        user_id: string
+        type: string
+        title: string
+        message: string
+        href: string
+        actor_id: string
+        entity_type: string
+        entity_id: string
+      }> = []
+
+      // Check primary assignments
+      const checkAssignment = (
+        oldId: string | null,
+        newId: string | null | undefined,
+        role: string
+      ) => {
+        if (newId && newId !== oldId && newId !== userId) {
+          notifications.push({
+            organization_id: organizationId,
+            user_id: newId,
+            type: 'assignment',
+            title: `You were assigned to ${athleteName}`,
+            message: `You have been assigned as ${role} for this athlete.`,
+            href: `/athletes/${athleteId}`,
+            actor_id: userId,
+            entity_type: 'athlete',
+            entity_id: athleteId,
+          })
+        }
+      }
+
+      // Check array assignments for new members
+      const checkArrayAssignment = (
+        oldIds: string[] | null,
+        newIds: string[] | null | undefined,
+        role: string
+      ) => {
+        if (!newIds) return
+        const oldSet = new Set(oldIds || [])
+        newIds.forEach((id) => {
+          if (!oldSet.has(id) && id !== userId) {
+            notifications.push({
+              organization_id: organizationId,
+              user_id: id,
+              type: 'assignment',
+              title: `You were assigned to ${athleteName}`,
+              message: `You have been added as ${role} for this athlete.`,
+              href: `/athletes/${athleteId}`,
+              actor_id: userId,
+              entity_type: 'athlete',
+              entity_id: athleteId,
+            })
+          }
+        })
+      }
+
+      checkAssignment(currentAthlete.assigned_scout_id, safeInput.assigned_scout_id, 'Scout')
+      checkAssignment(currentAthlete.assigned_agent_id, safeInput.assigned_agent_id, 'Agent')
+      checkAssignment(currentAthlete.assigned_marketing_lead_id, safeInput.assigned_marketing_lead_id, 'Marketing Lead')
+      checkArrayAssignment(currentAthlete.scout_ids, safeInput.scout_ids, 'Scout')
+      checkArrayAssignment(currentAthlete.agent_ids, safeInput.agent_ids, 'Agent')
+      checkArrayAssignment(currentAthlete.marketing_ids, safeInput.marketing_ids, 'Marketing')
+
+      // Insert notifications
+      if (notifications.length > 0) {
+        await supabase.from('notifications').insert(notifications as never[])
+      }
     }
 
     return { success: true, data: data as Athlete }

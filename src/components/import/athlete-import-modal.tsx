@@ -57,7 +57,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
       if (parsed.sheetNames.length === 1) {
         const sheetName = parsed.sheetNames[0]
         setSelectedSheet(sheetName)
-        processSheet(parsed.sheets[sheetName])
+        await processSheet(parsed.sheets[sheetName])
       } else {
         setStep('select-sheet')
       }
@@ -155,17 +155,17 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     setDuplicates(duplicateIndices)
   }
 
-  const handleSheetSelect = (sheetName: string) => {
+  const handleSheetSelect = async (sheetName: string) => {
     if (!workbook) return
     setSelectedSheet(sheetName)
     const dataWithSheet = workbook.sheets[sheetName].map(row => ({
       ...row,
       _sourceSheet: sheetName
     }))
-    processSheet(dataWithSheet)
+    await processSheet(dataWithSheet)
   }
 
-  const handleImportAllSheets = () => {
+  const handleImportAllSheets = async () => {
     if (!workbook) return
     const allData: Record<string, unknown>[] = []
     workbook.sheetNames.forEach(sheetName => {
@@ -175,7 +175,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
       })
     })
     setSelectedSheet('All Sheets')
-    processSheet(allData)
+    await processSheet(allData)
   }
 
   const handleImport = async () => {

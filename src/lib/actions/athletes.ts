@@ -291,7 +291,7 @@ export async function getAthlete(
 
 /**
  * Bulk delete athletes
- * - Deletes multiple athletes at once
+ * - Deletes multiple athletes in batches to avoid query limits
  * - Ensures user can only delete athletes in their org
  */
 export async function bulkDeleteAthletes(
@@ -305,19 +305,31 @@ export async function bulkDeleteAthletes(
     }
 
     const supabase = await createClient()
+    const BATCH_SIZE = 100
+    let totalDeleted = 0
 
-    const { error, count } = await supabase
-      .from('athletes')
-      .delete({ count: 'exact' })
-      .in('id', athleteIds)
-      .eq('organization_id', organizationId) // Extra safety
+    // Process in batches to avoid query size limits
+    for (let i = 0; i < athleteIds.length; i += BATCH_SIZE) {
+      const batch = athleteIds.slice(i, i + BATCH_SIZE)
 
-    if (error) {
-      console.error('Bulk delete athletes error:', error)
-      return { success: false, error: error.message }
+      const { error, count } = await supabase
+        .from('athletes')
+        .delete({ count: 'exact' })
+        .in('id', batch)
+        .eq('organization_id', organizationId)
+
+      if (error) {
+        console.error('Bulk delete athletes error:', error)
+        return {
+          success: false,
+          error: `Failed after deleting ${totalDeleted} athletes: ${error.message}`
+        }
+      }
+
+      totalDeleted += count || 0
     }
 
-    return { success: true, data: { deleted: count || 0 } }
+    return { success: true, data: { deleted: totalDeleted } }
   } catch (err) {
     if (err instanceof AuthError) {
       return { success: false, error: err.message }

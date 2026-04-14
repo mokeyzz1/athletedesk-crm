@@ -19,8 +19,62 @@ interface AthleteImportModalProps {
   title?: string
 }
 
-type ImportStep = 'upload' | 'select-type' | 'select-sheet' | 'preview' | 'importing' | 'complete'
+type ImportStep = 'upload' | 'select-type' | 'mismatch-warning' | 'select-sheet' | 'preview' | 'importing' | 'complete'
 type ImportType = 'recruiting' | 'roster'
+
+// Columns that suggest roster data (signed athletes)
+const ROSTER_INDICATORS = [
+  'birthday', 'birth date', 'dob', 'date of birth',
+  'hometown', 'home town',
+  'mailing address', 'address',
+  'interests', 'hobbies',
+  'dream partnership', 'dream brand',
+  'favorite food', 'favorite restaurant',
+]
+
+// Columns that suggest recruiting data (prospects)
+const RECRUITING_INDICATORS = [
+  'outreach status', 'outreach',
+  'transfer portal', 'portal status',
+  'recruiting status',
+  'marketability', 'marketability score',
+  'eligibility year', 'eligibility',
+  '40 time', '40 yard', 'bench press', 'vertical',
+  'gpa', 'sat', 'act',
+  'film link', 'hudl', 'highlight',
+]
+
+function detectImportType(columns: string[]): { detected: ImportType; confidence: 'high' | 'low' } {
+  const lowerColumns = columns.map(c => c.toLowerCase().trim())
+
+  let rosterScore = 0
+  let recruitingScore = 0
+
+  for (const col of lowerColumns) {
+    if (ROSTER_INDICATORS.some(indicator => col.includes(indicator))) {
+      rosterScore++
+    }
+    if (RECRUITING_INDICATORS.some(indicator => col.includes(indicator))) {
+      recruitingScore++
+    }
+  }
+
+  // Determine type and confidence
+  if (rosterScore > 0 && recruitingScore === 0) {
+    return { detected: 'roster', confidence: 'high' }
+  }
+  if (recruitingScore > 0 && rosterScore === 0) {
+    return { detected: 'recruiting', confidence: 'high' }
+  }
+  if (rosterScore > recruitingScore) {
+    return { detected: 'roster', confidence: 'low' }
+  }
+  if (recruitingScore > rosterScore) {
+    return { detected: 'recruiting', confidence: 'low' }
+  }
+  // Default to recruiting if can't determine
+  return { detected: 'recruiting', confidence: 'low' }
+}
 
 const SPORTS = [
   'Football', 'Basketball', 'Baseball', 'Soccer', 'Track & Field',
@@ -40,6 +94,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
   const [skipDuplicates, setSkipDuplicates] = useState(true)
   const [selectedSport, setSelectedSport] = useState<string>('Football')
   const [importType, setImportType] = useState<ImportType | null>(null)
+  const [detectedType, setDetectedType] = useState<{ detected: ImportType; confidence: 'high' | 'low' } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importResults, setImportResults] = useState({ success: 0, failed: 0, duplicatesSkipped: 0 })
@@ -56,32 +111,58 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
       const parsed = await parseImportFile(selectedFile)
       setWorkbook(parsed)
 
-      // If pipelineStage is already set (from props), use it to determine import type
-      if (pipelineStage === 'signed_client') {
-        setImportType('roster')
-        if (parsed.sheetNames.length === 1) {
-          const sheetName = parsed.sheetNames[0]
-          setSelectedSheet(sheetName)
-          await processSheet(parsed.sheets[sheetName])
+      // Get columns from first sheet to detect type
+      const firstSheet = parsed.sheets[parsed.sheetNames[0]]
+      const columns = firstSheet.length > 0 ? Object.keys(firstSheet[0]) : []
+      const detected = detectImportType(columns)
+      setDetectedType(detected)
+
+      // Determine expected type from pipelineStage
+      const expectedType: ImportType | null = pipelineStage === 'signed_client'
+        ? 'roster'
+        : pipelineStage === 'prospect_identified'
+          ? 'recruiting'
+          : null
+
+      // If pipelineStage is set, check for mismatch
+      if (expectedType) {
+        const hasMismatch = detected.detected !== expectedType && detected.confidence === 'high'
+
+        if (hasMismatch) {
+          // Show warning - let user confirm or change
+          setImportType(expectedType)
+          setStep('mismatch-warning')
         } else {
-          setStep('select-sheet')
-        }
-      } else if (pipelineStage === 'prospect_identified') {
-        setImportType('recruiting')
-        if (parsed.sheetNames.length === 1) {
-          const sheetName = parsed.sheetNames[0]
-          setSelectedSheet(sheetName)
-          await processSheet(parsed.sheets[sheetName])
-        } else {
-          setStep('select-sheet')
+          // No mismatch or low confidence - proceed normally
+          setImportType(expectedType)
+          if (parsed.sheetNames.length === 1) {
+            const sheetName = parsed.sheetNames[0]
+            setSelectedSheet(sheetName)
+            await processSheet(parsed.sheets[sheetName])
+          } else {
+            setStep('select-sheet')
+          }
         }
       } else {
-        // Ask user what type of import
+        // No pipelineStage - ask user what type of import
         setStep('select-type')
       }
     } catch (err) {
       setError('Failed to parse file. Please ensure it\'s a valid CSV or Excel file.')
       console.error(err)
+    }
+  }
+
+  const handleMismatchContinue = async (confirmedType: ImportType) => {
+    setImportType(confirmedType)
+    if (workbook) {
+      if (workbook.sheetNames.length === 1) {
+        const sheetName = workbook.sheetNames[0]
+        setSelectedSheet(sheetName)
+        await processSheet(workbook.sheets[sheetName])
+      } else {
+        setStep('select-sheet')
+      }
     }
   }
 
@@ -333,6 +414,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     setSkipDuplicates(true)
     setSelectedSport('Football')
     setImportType(null)
+    setDetectedType(null)
     setError(null)
     setImportProgress({ current: 0, total: 0 })
     setImportResults({ success: 0, failed: 0, duplicatesSkipped: 0 })
@@ -468,6 +550,88 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                     <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Mismatch Warning */}
+          {step === 'mismatch-warning' && detectedType && (
+            <div className="p-6">
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <svg className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="font-medium text-amber-800">
+                      This looks like {detectedType.detected === 'roster' ? 'Roster' : 'Recruiting'} data
+                    </p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      {detectedType.detected === 'roster'
+                        ? 'We found columns like birthday, hometown, or interests that are typically used for signed athletes.'
+                        : 'We found columns like outreach status, portal status, or stats that are typically used for prospects.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                Where do you want to import these athletes?
+              </p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleMismatchContinue(detectedType.detected)}
+                  className="w-full p-4 text-left border-2 border-brand-500 bg-brand-50 rounded-lg transition-colors group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      detectedType.detected === 'roster' ? 'bg-green-100' : 'bg-blue-100'
+                    }`}>
+                      <svg className={`w-5 h-5 ${detectedType.detected === 'roster' ? 'text-green-600' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-brand-700">
+                        {detectedType.detected === 'roster' ? 'Import to Roster' : 'Import to Recruiting'} (Recommended)
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {detectedType.detected === 'roster'
+                          ? 'Import as signed athletes with profile details'
+                          : 'Import as prospects to recruit'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleMismatchContinue(detectedType.detected === 'roster' ? 'recruiting' : 'roster')}
+                  className="w-full p-4 text-left border border-gray-200 rounded-lg hover:border-gray-300 transition-colors group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      detectedType.detected === 'roster' ? 'bg-blue-100' : 'bg-green-100'
+                    }`}>
+                      <svg className={`w-5 h-5 ${detectedType.detected === 'roster' ? 'text-blue-600' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {detectedType.detected === 'roster'
+                          ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        }
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">
+                        {detectedType.detected === 'roster' ? 'Import to Recruiting anyway' : 'Import to Roster anyway'}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {detectedType.detected === 'roster'
+                          ? 'Import as prospects (some columns may not map)'
+                          : 'Import as signed athletes (some columns may not map)'}
+                      </p>
+                    </div>
                   </div>
                 </button>
               </div>

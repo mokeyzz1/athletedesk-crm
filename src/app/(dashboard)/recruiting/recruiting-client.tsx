@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import type { OutreachStatus, ClassYear, RosterTeam } from '@/lib/database.types'
 import { OUTREACH_STATUSES, CLASS_YEARS, REGIONS, US_STATES } from '@/lib/database.types'
+import { bulkDeleteAthletes } from '@/lib/actions/athletes'
 import type { RecruitingAthlete, RegionStats, ClassYearStats } from './page'
 
 interface RecruitingClientProps {
@@ -340,10 +342,16 @@ function TableView({
   athletes,
   onStatusChange,
   onEditClick,
+  selectedAthletes,
+  onSelectAll,
+  onSelectAthlete,
 }: {
   athletes: RecruitingAthlete[]
   onStatusChange: (athleteId: string, newStatus: OutreachStatus) => void
   onEditClick: (athleteId: string) => void
+  selectedAthletes: Set<string>
+  onSelectAll: (checked: boolean) => void
+  onSelectAthlete: (athleteId: string, checked: boolean) => void
 }) {
   const [sortField, setSortField] = useState<'name' | 'sport' | 'class_year' | 'region' | 'outreach_status'>('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
@@ -389,6 +397,14 @@ function TableView({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={sortedAthletes.length > 0 && selectedAthletes.size === sortedAthletes.length}
+                  onChange={(e) => onSelectAll(e.target.checked)}
+                  className="h-4 w-4 text-brand-600 focus:ring-brand-500 rounded"
+                />
+              </th>
               <SortHeader field="name" label="Name" />
               <SortHeader field="sport" label="Sport" />
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
@@ -403,6 +419,14 @@ function TableView({
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedAthletes.map((athlete) => (
               <tr key={athlete.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedAthletes.has(athlete.id)}
+                    onChange={(e) => onSelectAthlete(athlete.id, e.target.checked)}
+                    className="h-4 w-4 text-brand-600 focus:ring-brand-500 rounded"
+                  />
+                </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <Link href={`/athletes/${athlete.id}`} className="text-sm font-medium text-gray-900 hover:text-brand-600">
                     {athlete.name}
@@ -479,7 +503,12 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
   const [isUpdating, setIsUpdating] = useState(false)
   const [rosterTeams, setRosterTeams] = useState<RosterTeam[]>([])
   const [signingAthlete, setSigningAthlete] = useState<RecruitingAthlete | null>(null)
+  const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set())
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const { openAthletePanel } = useAthletePanel()
+  const router = useRouter()
   const supabase = createClient()
 
   // Fetch roster teams for the signing modal
@@ -498,6 +527,43 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
     const classYearMatch = selectedClassYear === 'all' || a.class_year === selectedClassYear
     return regionMatch && classYearMatch
   })
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedAthletes(new Set(filteredAthletes.map(a => a.id)))
+    } else {
+      setSelectedAthletes(new Set())
+    }
+  }
+
+  const handleSelectAthlete = (athleteId: string, checked: boolean) => {
+    const newSelected = new Set(selectedAthletes)
+    if (checked) {
+      newSelected.add(athleteId)
+    } else {
+      newSelected.delete(athleteId)
+    }
+    setSelectedAthletes(newSelected)
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedAthletes.size === 0) return
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    const result = await bulkDeleteAthletes(Array.from(selectedAthletes))
+
+    if (result.success) {
+      setSelectedAthletes(new Set())
+      setShowDeleteModal(false)
+      router.refresh()
+    } else {
+      setDeleteError(result.error)
+    }
+
+    setIsDeleting(false)
+  }
 
   // Group filtered athletes by status for Kanban
   const columnGroups = OUTREACH_COLUMNS.map(column => ({
@@ -650,6 +716,18 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {selectedAthletes.size > 0 && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="btn-secondary text-sm text-red-600 hover:text-red-700 hover:border-red-300"
+            >
+              <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span className="hidden md:inline">Delete Selected ({selectedAthletes.size})</span>
+              <span className="md:hidden">{selectedAthletes.size}</span>
+            </button>
+          )}
           {/* View Toggle */}
           <div className="hidden md:flex items-center bg-gray-200 rounded-lg p-1">
             <button
@@ -799,6 +877,9 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                 athletes={filteredAthletes}
                 onStatusChange={handleStatusChange}
                 onEditClick={openAthletePanel}
+                selectedAthletes={selectedAthletes}
+                onSelectAll={handleSelectAll}
+                onSelectAthlete={handleSelectAthlete}
               />
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-4">
@@ -843,6 +924,60 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
           onConfirm={handleSigningConfirm}
           onCancel={() => setSigningAthlete(null)}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Athletes</h3>
+            </div>
+
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete <span className="font-semibold">{selectedAthletes.size} prospect{selectedAthletes.size > 1 ? 's' : ''}</span>?
+              This will also delete all associated communications and documents. This action cannot be undone.
+            </p>
+
+            {deleteError && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-md">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setDeleteError(null)
+                }}
+                disabled={isDeleting}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>Delete {selectedAthletes.size} Prospect{selectedAthletes.size > 1 ? 's' : ''}</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

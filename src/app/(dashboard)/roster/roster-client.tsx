@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ExportButtons } from '@/components/export/export-buttons'
 import { AthleteImportModal } from '@/components/import/athlete-import-modal'
+import { bulkDeleteAthletes } from '@/lib/actions/athletes'
 
 import type { RosterAthlete } from './page'
 
@@ -20,10 +21,51 @@ export function RosterClient({ athletes }: RosterClientProps) {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [sportFilter, setSportFilter] = useState<string>('')
   const [showImportModal, setShowImportModal] = useState(false)
+  const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set())
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleImportSuccess = () => {
     router.refresh()
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedAthletes(new Set(filteredAndSortedAthletes.map(a => a.id)))
+    } else {
+      setSelectedAthletes(new Set())
+    }
+  }
+
+  const handleSelectAthlete = (athleteId: string, checked: boolean) => {
+    const newSelected = new Set(selectedAthletes)
+    if (checked) {
+      newSelected.add(athleteId)
+    } else {
+      newSelected.delete(athleteId)
+    }
+    setSelectedAthletes(newSelected)
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedAthletes.size === 0) return
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    const result = await bulkDeleteAthletes(Array.from(selectedAthletes))
+
+    if (result.success) {
+      setSelectedAthletes(new Set())
+      setShowDeleteModal(false)
+      router.refresh()
+    } else {
+      setDeleteError(result.error)
+    }
+
+    setIsDeleting(false)
   }
 
   const handleSort = (column: SortColumn) => {
@@ -173,6 +215,17 @@ export function RosterClient({ athletes }: RosterClientProps) {
           <p className="text-gray-500 text-sm">Signed athletes under management</p>
         </div>
         <div className="flex items-center gap-3">
+          {selectedAthletes.size > 0 && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="btn-secondary text-sm text-red-600 hover:text-red-700 hover:border-red-300"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete Selected ({selectedAthletes.size})
+            </button>
+          )}
           {athletes.length > 0 && (
             <ExportButtons
               data={exportData}
@@ -244,6 +297,14 @@ export function RosterClient({ athletes }: RosterClientProps) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={filteredAndSortedAthletes.length > 0 && selectedAthletes.size === filteredAndSortedAthletes.length}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="h-4 w-4 text-brand-600 focus:ring-brand-500 rounded"
+                      />
+                    </th>
                     <th onClick={() => handleSort('name')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
                       <div className="flex items-center gap-1">Athlete <SortIcon column="name" /></div>
                     </th>
@@ -275,6 +336,14 @@ export function RosterClient({ athletes }: RosterClientProps) {
                     const socialReach = calculateSocialReach(athlete.social_media)
                     return (
                       <tr key={athlete.id} className="table-row-hover">
+                        <td className="px-4 py-4 w-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedAthletes.has(athlete.id)}
+                            onChange={(e) => handleSelectAthlete(athlete.id, e.target.checked)}
+                            className="h-4 w-4 text-brand-600 focus:ring-brand-500 rounded"
+                          />
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Link
                             href={`/athletes/${athlete.id}`}
@@ -368,6 +437,60 @@ export function RosterClient({ athletes }: RosterClientProps) {
         pipelineStage="signed_client"
         title="Import Roster"
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Athletes</h3>
+            </div>
+
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete <span className="font-semibold">{selectedAthletes.size} athlete{selectedAthletes.size > 1 ? 's' : ''}</span>?
+              This will also delete all associated deals, communications, and documents. This action cannot be undone.
+            </p>
+
+            {deleteError && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-md">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setDeleteError(null)
+                }}
+                disabled={isDeleting}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>Delete {selectedAthletes.size} Athlete{selectedAthletes.size > 1 ? 's' : ''}</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

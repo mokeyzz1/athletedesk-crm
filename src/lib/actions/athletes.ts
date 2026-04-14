@@ -290,6 +290,44 @@ export async function getAthlete(
 }
 
 /**
+ * Bulk delete athletes
+ * - Deletes multiple athletes at once
+ * - Ensures user can only delete athletes in their org
+ */
+export async function bulkDeleteAthletes(
+  athleteIds: string[]
+): Promise<ActionResult<{ deleted: number }>> {
+  try {
+    const { organizationId } = await getAuthContext()
+
+    if (athleteIds.length === 0) {
+      return { success: false, error: 'No athletes selected' }
+    }
+
+    const supabase = await createClient()
+
+    const { error, count } = await supabase
+      .from('athletes')
+      .delete({ count: 'exact' })
+      .in('id', athleteIds)
+      .eq('organization_id', organizationId) // Extra safety
+
+    if (error) {
+      console.error('Bulk delete athletes error:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: { deleted: count || 0 } }
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { success: false, error: err.message }
+    }
+    console.error('Bulk delete athletes unexpected error:', err)
+    return { success: false, error: 'Failed to delete athletes' }
+  }
+}
+
+/**
  * Bulk import athletes
  * - Validates each record
  * - Injects organization_id on all records

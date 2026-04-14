@@ -19,7 +19,8 @@ interface AthleteImportModalProps {
   title?: string
 }
 
-type ImportStep = 'upload' | 'select-sheet' | 'preview' | 'importing' | 'complete'
+type ImportStep = 'upload' | 'select-type' | 'select-sheet' | 'preview' | 'importing' | 'complete'
+type ImportType = 'recruiting' | 'roster'
 
 const SPORTS = [
   'Football', 'Basketball', 'Baseball', 'Soccer', 'Track & Field',
@@ -38,6 +39,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
   const [duplicates, setDuplicates] = useState<Set<number>>(new Set())
   const [skipDuplicates, setSkipDuplicates] = useState(true)
   const [selectedSport, setSelectedSport] = useState<string>('Football')
+  const [importType, setImportType] = useState<ImportType | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importResults, setImportResults] = useState({ success: 0, failed: 0, duplicatesSkipped: 0 })
@@ -54,16 +56,45 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
       const parsed = await parseImportFile(selectedFile)
       setWorkbook(parsed)
 
-      if (parsed.sheetNames.length === 1) {
-        const sheetName = parsed.sheetNames[0]
-        setSelectedSheet(sheetName)
-        await processSheet(parsed.sheets[sheetName])
+      // If pipelineStage is already set (from props), use it to determine import type
+      if (pipelineStage === 'signed_client') {
+        setImportType('roster')
+        if (parsed.sheetNames.length === 1) {
+          const sheetName = parsed.sheetNames[0]
+          setSelectedSheet(sheetName)
+          await processSheet(parsed.sheets[sheetName])
+        } else {
+          setStep('select-sheet')
+        }
+      } else if (pipelineStage === 'prospect_identified') {
+        setImportType('recruiting')
+        if (parsed.sheetNames.length === 1) {
+          const sheetName = parsed.sheetNames[0]
+          setSelectedSheet(sheetName)
+          await processSheet(parsed.sheets[sheetName])
+        } else {
+          setStep('select-sheet')
+        }
       } else {
-        setStep('select-sheet')
+        // Ask user what type of import
+        setStep('select-type')
       }
     } catch (err) {
       setError('Failed to parse file. Please ensure it\'s a valid CSV or Excel file.')
       console.error(err)
+    }
+  }
+
+  const handleTypeSelect = async (type: ImportType) => {
+    setImportType(type)
+    if (workbook) {
+      if (workbook.sheetNames.length === 1) {
+        const sheetName = workbook.sheetNames[0]
+        setSelectedSheet(sheetName)
+        await processSheet(workbook.sheets[sheetName])
+      } else {
+        setStep('select-sheet')
+      }
     }
   }
 
@@ -218,6 +249,8 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     for (let i = 0; i < dataToImport.length; i += batchSize) {
       const batch = dataToImport.slice(i, i + batchSize)
 
+      const isRosterImport = importType === 'roster' || pipelineStage === 'signed_client'
+
       const athletesToInsert: AthleteInsert[] = batch
         .filter(row => row.name)
         .map(row => ({
@@ -237,7 +270,15 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
           sport_specific_stats: row.sport_specific_stats ? (row.sport_specific_stats as Json) : null,
           class_year: (row.class_year as AthleteInsert['class_year']) || 'n_a',
           region: row.region ? String(row.region) : null,
-          outreach_status: (row.outreach_status as AthleteInsert['outreach_status']) || 'not_contacted',
+          outreach_status: isRosterImport
+            ? 'signed'
+            : (row.outreach_status as AthleteInsert['outreach_status']) || 'not_contacted',
+          // Roster profile fields
+          birthday: isRosterImport && row.birthday ? String(row.birthday) : null,
+          hometown: isRosterImport && row.hometown ? String(row.hometown) : null,
+          mailing_address: isRosterImport && row.mailing_address ? String(row.mailing_address) : null,
+          interests: isRosterImport && row.interests ? String(row.interests) : null,
+          dream_partnership: isRosterImport && row.dream_partnership ? String(row.dream_partnership) : null,
         }))
 
       if (athletesToInsert.length > 0) {
@@ -252,11 +293,12 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
         } else {
           successCount += athletesToInsert.length
 
-          if (pipelineStage && insertedAthletes && insertedAthletes.length > 0) {
+          const effectivePipelineStage = pipelineStage || (importType === 'roster' ? 'signed_client' : 'prospect_identified')
+          if (insertedAthletes && insertedAthletes.length > 0) {
             const typedInsertedAthletes = insertedAthletes as { id: string }[]
             const pipelineEntries = typedInsertedAthletes.map(athlete => ({
               athlete_id: athlete.id,
-              pipeline_stage: pipelineStage,
+              pipeline_stage: effectivePipelineStage,
               priority: 'medium' as const,
             }))
 
@@ -290,6 +332,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     setDuplicates(new Set())
     setSkipDuplicates(true)
     setSelectedSport('Football')
+    setImportType(null)
     setError(null)
     setImportProgress({ current: 0, total: 0 })
     setImportResults({ success: 0, failed: 0, duplicatesSkipped: 0 })
@@ -372,6 +415,61 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
               <div className="mt-6 text-sm text-gray-500">
                 <p className="font-medium text-gray-700 mb-2">Supported columns:</p>
                 <p>Name, Email, Phone, School, Sport, Position, Class Year, Region, Status, Instagram, Twitter, Height, Weight, and more.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Type Selection */}
+          {step === 'select-type' && (
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-6">
+                What type of data are you importing?
+              </p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleTypeSelect('recruiting')}
+                  className="w-full p-4 text-left border border-gray-200 rounded-lg hover:border-brand-500 hover:bg-brand-50 transition-colors group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900 group-hover:text-brand-700">Recruiting</p>
+                      <p className="text-sm text-gray-500">
+                        Prospects you&apos;re trying to sign
+                      </p>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleTypeSelect('roster')}
+                  className="w-full p-4 text-left border border-gray-200 rounded-lg hover:border-brand-500 hover:bg-brand-50 transition-colors group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900 group-hover:text-brand-700">Roster</p>
+                      <p className="text-sm text-gray-500">
+                        Athletes already signed with your agency
+                      </p>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
               </div>
             </div>
           )}

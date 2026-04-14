@@ -46,6 +46,12 @@ export interface UpdateAthleteInput {
   outreach_status?: string
   school_state?: string | null
   roster_team_id?: string | null
+  // Roster profile fields
+  birthday?: string | null
+  hometown?: string | null
+  mailing_address?: string | null
+  interests?: string | null
+  dream_partnership?: string | null
 }
 
 export type ActionResult<T> =
@@ -216,6 +222,12 @@ export async function updateAthlete(
     if (safeInput.outreach_status !== undefined) updateData.outreach_status = safeInput.outreach_status
     if (safeInput.school_state !== undefined) updateData.school_state = safeInput.school_state
     if (safeInput.roster_team_id !== undefined) updateData.roster_team_id = safeInput.roster_team_id
+    // Roster profile fields
+    if (safeInput.birthday !== undefined) updateData.birthday = safeInput.birthday
+    if (safeInput.hometown !== undefined) updateData.hometown = safeInput.hometown?.trim() || null
+    if (safeInput.mailing_address !== undefined) updateData.mailing_address = safeInput.mailing_address?.trim() || null
+    if (safeInput.interests !== undefined) updateData.interests = safeInput.interests?.trim() || null
+    if (safeInput.dream_partnership !== undefined) updateData.dream_partnership = safeInput.dream_partnership?.trim() || null
 
     // Update with org check (RLS enforces this, but explicit is safer)
     const { data, error } = await supabase

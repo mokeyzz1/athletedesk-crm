@@ -283,9 +283,46 @@ export const athleteColumnMappings: Record<string, string> = {
   'city': 'location',
   'city, state': 'location',
 
+  // Roster profile fields
+  'birthday': 'birthday',
+  'birth date': 'birthday',
+  'birthdate': 'birthday',
+  'date of birth': 'birthday',
+  'dob': 'birthday',
+  'd.o.b.': 'birthday',
+
+  'hometown': 'hometown',
+  'home town': 'hometown',
+  'home_town': 'hometown',
+  'city/town': 'hometown',
+
+  'mailing address': 'mailing_address',
+  'mailing_address': 'mailing_address',
+  'address': 'mailing_address',
+  'best mailing address': 'mailing_address',
+  'shipping address': 'mailing_address',
+
+  'interests': 'interests',
+  'interest': 'interests',
+  'hobbies': 'interests',
+  'hobby': 'interests',
+  'interest or hobbies outside of your sport': 'interests',
+  'interests or hobbies': 'interests',
+  'hobbies and interests': 'interests',
+
+  'dream partnership': 'dream_partnership',
+  'dream_partnership': 'dream_partnership',
+  'dream parternship': 'dream_partnership',
+  'dream brand': 'dream_partnership',
+  'dream brands': 'dream_partnership',
+  'brand goals': 'dream_partnership',
+
   // Description/Notes (description already mapped above)
   'bio': 'notes',
   'scouting report': 'notes',
+  'favorite food or restaurant': 'notes',
+  'favorite food': 'notes',
+  'favorite restaurant': 'notes',
 
   // Assignment/Groupchat - extract staff name
   'groupchat': 'assignment_text',
@@ -753,6 +790,34 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Normalize
       normalized.eligibility_year = isNaN(year) ? null : year
     } else {
       normalized.eligibility_year = null
+    }
+
+    // Normalize birthday to ISO date string
+    if (normalized.birthday !== undefined && normalized.birthday !== null && normalized.birthday !== '') {
+      const birthdayValue = normalized.birthday
+      let parsedDate: Date | null = null
+
+      // Handle Excel serial date numbers
+      if (typeof birthdayValue === 'number') {
+        // Excel dates are days since 1900-01-01 (with a bug for 1900 leap year)
+        const excelEpoch = new Date(1899, 11, 30) // Dec 30, 1899
+        parsedDate = new Date(excelEpoch.getTime() + birthdayValue * 24 * 60 * 60 * 1000)
+      } else {
+        // Try to parse as date string
+        const dateStr = String(birthdayValue).trim()
+        const parsed = new Date(dateStr)
+        if (!isNaN(parsed.getTime())) {
+          parsedDate = parsed
+        }
+      }
+
+      if (parsedDate && !isNaN(parsedDate.getTime())) {
+        normalized.birthday = parsedDate.toISOString().split('T')[0] // YYYY-MM-DD
+      } else {
+        normalized.birthday = null
+      }
+    } else {
+      normalized.birthday = null
     }
 
     // Merge notes_extra into notes

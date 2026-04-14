@@ -143,6 +143,12 @@ export function AthletePanel({
       // Roster team fields
       school_state: (formData.get('school_state') as string) || null,
       roster_team_id: (formData.get('roster_team_id') as string) || null,
+      // Roster profile fields
+      birthday: (formData.get('birthday') as string) || null,
+      hometown: (formData.get('hometown') as string) || null,
+      mailing_address: (formData.get('mailing_address') as string) || null,
+      interests: (formData.get('interests') as string) || null,
+      dream_partnership: (formData.get('dream_partnership') as string) || null,
     }
 
     // Use server action instead of direct Supabase call
@@ -451,6 +457,70 @@ export function AthletePanel({
                       {rosterTeams.length === 0 && (
                         <p className="mt-1 text-xs text-gray-500">No teams configured. Add teams in Settings.</p>
                       )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Roster Profile Details - Only show for signed athletes */}
+              {athlete.outreach_status === 'signed' && (
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Profile Details</h3>
+                  <p className="text-xs text-gray-500 mb-3">Personal info for client management</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="birthday" className="label">Birthday</label>
+                      <input
+                        type="date"
+                        name="birthday"
+                        id="birthday"
+                        defaultValue={athlete.birthday || ''}
+                        className="mt-1 input w-full"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="hometown" className="label">Hometown</label>
+                      <input
+                        type="text"
+                        name="hometown"
+                        id="hometown"
+                        defaultValue={athlete.hometown || ''}
+                        className="mt-1 input w-full"
+                        placeholder="e.g., Dallas, TX"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label htmlFor="mailing_address" className="label">Mailing Address</label>
+                      <textarea
+                        name="mailing_address"
+                        id="mailing_address"
+                        rows={2}
+                        defaultValue={athlete.mailing_address || ''}
+                        className="mt-1 input w-full"
+                        placeholder="Full mailing address for contracts, merch, etc."
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label htmlFor="interests" className="label">Interests &amp; Hobbies</label>
+                      <input
+                        type="text"
+                        name="interests"
+                        id="interests"
+                        defaultValue={athlete.interests || ''}
+                        className="mt-1 input w-full"
+                        placeholder="e.g., Gaming, Fashion, Music"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label htmlFor="dream_partnership" className="label">Dream Partnership</label>
+                      <input
+                        type="text"
+                        name="dream_partnership"
+                        id="dream_partnership"
+                        defaultValue={athlete.dream_partnership || ''}
+                        className="mt-1 input w-full"
+                        placeholder="Brands the athlete wants to work with"
+                      />
                     </div>
                   </div>
                 </div>

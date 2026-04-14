@@ -240,6 +240,49 @@ export default async function AthletePage({ params }: AthletePageProps) {
             </dl>
           </div>
 
+          {/* Roster Profile Info - Only show for signed athletes */}
+          {athlete.outreach_status === 'signed' && (
+            athlete.birthday || athlete.hometown || athlete.mailing_address || athlete.interests || athlete.dream_partnership
+          ) && (
+            <div className="card">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile Details</h2>
+              <dl className="grid grid-cols-2 gap-4">
+                {athlete.birthday && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Birthday</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {new Date(athlete.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </dd>
+                  </div>
+                )}
+                {athlete.hometown && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Hometown</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{athlete.hometown}</dd>
+                  </div>
+                )}
+                {athlete.mailing_address && (
+                  <div className="col-span-2">
+                    <dt className="text-sm font-medium text-gray-500">Mailing Address</dt>
+                    <dd className="mt-1 text-sm text-gray-900 whitespace-pre-line">{athlete.mailing_address}</dd>
+                  </div>
+                )}
+                {athlete.interests && (
+                  <div className="col-span-2">
+                    <dt className="text-sm font-medium text-gray-500">Interests &amp; Hobbies</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{athlete.interests}</dd>
+                  </div>
+                )}
+                {athlete.dream_partnership && (
+                  <div className="col-span-2">
+                    <dt className="text-sm font-medium text-gray-500">Dream Partnership</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{athlete.dream_partnership}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+
           {/* Social Media */}
           {socialMedia && Object.keys(socialMedia).length > 0 && (
             <div className="card">

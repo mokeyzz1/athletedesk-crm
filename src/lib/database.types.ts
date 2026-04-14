@@ -236,6 +236,12 @@ export interface Database {
           // Handoff tracking
           handoff_to_agent_at: string | null
           handoff_to_marketing_at: string | null
+          // Roster profile fields
+          birthday: string | null
+          hometown: string | null
+          mailing_address: string | null
+          interests: string | null
+          dream_partnership: string | null
         }
         Insert: {
           id?: string
@@ -271,6 +277,12 @@ export interface Database {
           // Handoff tracking
           handoff_to_agent_at?: string | null
           handoff_to_marketing_at?: string | null
+          // Roster profile fields
+          birthday?: string | null
+          hometown?: string | null
+          mailing_address?: string | null
+          interests?: string | null
+          dream_partnership?: string | null
         }
         Update: {
           id?: string
@@ -306,6 +318,12 @@ export interface Database {
           // Handoff tracking
           handoff_to_agent_at?: string | null
           handoff_to_marketing_at?: string | null
+          // Roster profile fields
+          birthday?: string | null
+          hometown?: string | null
+          mailing_address?: string | null
+          interests?: string | null
+          dream_partnership?: string | null
         }
       }
       communications_log: {

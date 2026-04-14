@@ -157,6 +157,7 @@ export default function AdminPage() {
 
   const [deletingOrgId, setDeletingOrgId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null)
 
   const deleteOrganization = async (orgId: string, orgName: string) => {
     if (confirmDelete !== orgId) {
@@ -182,6 +183,25 @@ export default function AdminPage() {
       alert('Failed to delete organization')
     } finally {
       setDeletingOrgId(null)
+    }
+  }
+
+  const deleteInvite = async (inviteId: string) => {
+    setDeletingInviteId(inviteId)
+    try {
+      const response = await fetch(`/api/admin/invites/${inviteId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        loadData()
+      } else {
+        const result = await response.json()
+        alert(`Failed to delete: ${result.error}`)
+      }
+    } catch {
+      alert('Failed to delete invite')
+    } finally {
+      setDeletingInviteId(null)
     }
   }
 
@@ -571,14 +591,25 @@ export default function AdminPage() {
                             {new Date(invite.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            {!isUsed && !isExpired && (
-                              <button
-                                onClick={() => copyToClipboard(`${window.location.origin}/invite/${invite.token}`)}
-                                className="text-sm text-brand-600 hover:underline"
-                              >
-                                Copy link
-                              </button>
-                            )}
+                            <div className="flex items-center justify-end gap-3">
+                              {!isUsed && !isExpired && (
+                                <button
+                                  onClick={() => copyToClipboard(`${window.location.origin}/invite/${invite.token}`)}
+                                  className="text-sm text-brand-600 hover:underline"
+                                >
+                                  Copy link
+                                </button>
+                              )}
+                              {!isUsed && (
+                                <button
+                                  onClick={() => deleteInvite(invite.id)}
+                                  disabled={deletingInviteId === invite.id}
+                                  className="text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+                                >
+                                  {deletingInviteId === invite.id ? 'Deleting...' : 'Delete'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )

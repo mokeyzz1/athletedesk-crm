@@ -17,16 +17,44 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get all region assignments with user details
-  const { data: assignments, error } = await supabase
+  // Get regions from recruiting_regions (source of truth)
+  const { data: regions, error: regionsError } = await supabase
+    .from('recruiting_regions')
+    .select('name')
+    .order('name')
+
+  if (regionsError) {
+    console.error('Error fetching recruiting regions:', regionsError)
+    return NextResponse.json({ error: 'Failed to fetch regions' }, { status: 500 })
+  }
+
+  // Get existing region assignments
+  const { data: existingAssignments } = await supabase
     .from('region_assignments')
     .select('*')
-    .order('region')
 
-  if (error) {
-    console.error('Error fetching region assignments:', error)
-    return NextResponse.json({ error: 'Failed to fetch region assignments' }, { status: 500 })
-  }
+  // Create a map of existing assignments by region name
+  const assignmentMap = new Map(
+    (existingAssignments || []).map((a: { region: string }) => [a.region, a])
+  )
+
+  // Merge: for each recruiting_region, use existing assignment or create empty one
+  const assignments = (regions || []).map((r: { name: string }) => {
+    const existing = assignmentMap.get(r.name)
+    if (existing) {
+      return existing
+    }
+    // Return empty assignment structure for regions without assignments yet
+    return {
+      region: r.name,
+      agent_ids: [],
+      marketing_ids: [],
+      primary_agent_id: null,
+      primary_marketing_id: null,
+      default_agent_id: null,
+      default_marketing_id: null,
+    }
+  })
 
   // Get all agents and marketing users for the dropdowns
   const { data: agents } = await supabase
@@ -42,7 +70,7 @@ export async function GET() {
     .order('name')
 
   return NextResponse.json({
-    assignments: assignments || [],
+    assignments,
     agents: agents || [],
     marketingUsers: marketingUsers || [],
   })

@@ -32,7 +32,7 @@ export async function DELETE(
     .from('organization_invites')
     .select('id, accepted_at')
     .eq('id', id)
-    .single()
+    .single() as { data: { id: string; accepted_at: string | null } | null }
 
   if (!invite) {
     return NextResponse.json({ error: 'Invite not found' }, { status: 404 })

@@ -35,10 +35,12 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
   const [rawData, setRawData] = useState<Record<string, unknown>[]>([])
   const [previewData, setPreviewData] = useState<Record<string, unknown>[]>([])
   const [skippedRows, setSkippedRows] = useState<{ row: number; reason: string; value: string }[]>([])
+  const [duplicates, setDuplicates] = useState<Set<number>>(new Set())
+  const [skipDuplicates, setSkipDuplicates] = useState(true)
   const [selectedSport, setSelectedSport] = useState<string>('Football')
   const [error, setError] = useState<string | null>(null)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
-  const [importResults, setImportResults] = useState({ success: 0, failed: 0 })
+  const [importResults, setImportResults] = useState({ success: 0, failed: 0, duplicatesSkipped: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -88,13 +90,69 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const processSheet = (data: Record<string, unknown>[]) => {
+  const processSheet = async (data: Record<string, unknown>[]) => {
     setRawData(data)
     const mapped = mapColumns(data, athleteColumnMappings)
     const result = normalizeAthleteData(mapped)
     setPreviewData(result.data)
     setSkippedRows(result.skippedRows)
+
+    // Check for duplicates against existing athletes
+    await checkForDuplicates(result.data)
+
     setStep('preview')
+  }
+
+  const checkForDuplicates = async (data: Record<string, unknown>[]) => {
+    const duplicateIndices = new Set<number>()
+
+    // Get all emails and names from the import data
+    const emails = data
+      .map((row, idx) => ({ email: row.email ? String(row.email).toLowerCase().trim() : null, idx }))
+      .filter(item => item.email)
+    const names = data
+      .map((row, idx) => ({ name: row.name ? String(row.name).toLowerCase().trim() : null, idx }))
+      .filter(item => item.name)
+
+    // Check emails in batches
+    if (emails.length > 0) {
+      const emailValues = emails.map(e => e.email as string)
+      const { data: existingByEmail } = await supabase
+        .from('athletes')
+        .select('email')
+        .not('email', 'is', null)
+
+      if (existingByEmail) {
+        const existingEmails = new Set(
+          (existingByEmail as { email: string }[]).map(a => a.email?.toLowerCase().trim())
+        )
+        emails.forEach(({ email, idx }) => {
+          if (email && existingEmails.has(email)) {
+            duplicateIndices.add(idx)
+          }
+        })
+      }
+    }
+
+    // Check names in batches
+    if (names.length > 0) {
+      const { data: existingByName } = await supabase
+        .from('athletes')
+        .select('name')
+
+      if (existingByName) {
+        const existingNames = new Set(
+          (existingByName as { name: string }[]).map(a => a.name?.toLowerCase().trim())
+        )
+        names.forEach(({ name, idx }) => {
+          if (name && existingNames.has(name)) {
+            duplicateIndices.add(idx)
+          }
+        })
+      }
+    }
+
+    setDuplicates(duplicateIndices)
   }
 
   const handleSheetSelect = (sheetName: string) => {
@@ -122,7 +180,15 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
   const handleImport = async () => {
     setStep('importing')
-    setImportProgress({ current: 0, total: previewData.length })
+
+    // Filter out duplicates if skip is enabled
+    const dataToImport = skipDuplicates
+      ? previewData.filter((_, idx) => !duplicates.has(idx))
+      : previewData
+
+    const duplicatesSkipped = skipDuplicates ? duplicates.size : 0
+
+    setImportProgress({ current: 0, total: dataToImport.length })
 
     const uniqueRegions = Array.from(new Set(
       previewData
@@ -149,8 +215,8 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     let failedCount = 0
 
     const batchSize = 10
-    for (let i = 0; i < previewData.length; i += batchSize) {
-      const batch = previewData.slice(i, i + batchSize)
+    for (let i = 0; i < dataToImport.length; i += batchSize) {
+      const batch = dataToImport.slice(i, i + batchSize)
 
       const athletesToInsert: AthleteInsert[] = batch
         .filter(row => row.name)
@@ -206,10 +272,10 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
       }
 
       failedCount += batch.length - athletesToInsert.length
-      setImportProgress({ current: Math.min(i + batchSize, previewData.length), total: previewData.length })
+      setImportProgress({ current: Math.min(i + batchSize, dataToImport.length), total: dataToImport.length })
     }
 
-    setImportResults({ success: successCount, failed: failedCount })
+    setImportResults({ success: successCount, failed: failedCount, duplicatesSkipped })
     setStep('complete')
   }
 
@@ -221,10 +287,12 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     setRawData([])
     setPreviewData([])
     setSkippedRows([])
+    setDuplicates(new Set())
+    setSkipDuplicates(true)
     setSelectedSport('Football')
     setError(null)
     setImportProgress({ current: 0, total: 0 })
-    setImportResults({ success: 0, failed: 0 })
+    setImportResults({ success: 0, failed: 0, duplicatesSkipped: 0 })
     if (fileInputRef.current) fileInputRef.current.value = ''
     onClose()
   }
@@ -419,6 +487,36 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                 )}
               </div>
 
+              {/* Duplicate Warning */}
+              {duplicates.size > 0 && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">
+                          {duplicates.size} duplicate{duplicates.size > 1 ? 's' : ''} found
+                        </p>
+                        <p className="text-xs text-amber-700 mt-0.5">
+                          Athletes with matching name or email already exist
+                        </p>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={skipDuplicates}
+                        onChange={(e) => setSkipDuplicates(e.target.checked)}
+                        className="h-4 w-4 text-brand-600 focus:ring-brand-500 rounded"
+                      />
+                      <span className="text-xs text-amber-800">Skip duplicates</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               {/* Column Mapping (collapsed by default) */}
               <details className="mb-4">
                 <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
@@ -450,10 +548,11 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {previewData.slice(0, 8).map((row, idx) => (
-                        <tr key={idx} className={!row.name ? 'bg-red-50' : ''}>
+                        <tr key={idx} className={!row.name ? 'bg-red-50' : duplicates.has(idx) ? 'bg-amber-50' : ''}>
                           <td className="px-3 py-2 text-gray-900">
                             {String(row.name || '—')}
                             {!row.name && <span className="ml-1 text-xs text-red-500">(missing)</span>}
+                            {duplicates.has(idx) && <span className="ml-1 text-xs text-amber-600">(duplicate)</span>}
                           </td>
                           <td className="px-3 py-2 text-gray-600">{String(row.school || '—')}</td>
                           <td className="px-3 py-2 text-gray-600">{String(row.class_year || '—').replace(/_/g, "'")}</td>
@@ -508,7 +607,8 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
               <p className="text-gray-900 font-medium">Import complete</p>
               <p className="text-sm text-gray-500 mt-1">
                 {importResults.success} imported
-                {importResults.failed > 0 && <span>, {importResults.failed} skipped</span>}
+                {importResults.duplicatesSkipped > 0 && <span>, {importResults.duplicatesSkipped} duplicates skipped</span>}
+                {importResults.failed > 0 && <span>, {importResults.failed} failed</span>}
               </p>
             </div>
           )}
@@ -526,7 +626,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
               onClick={handleImport}
               className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700"
             >
-              Import {validCount} athletes
+              Import {skipDuplicates ? validCount - duplicates.size : validCount} athletes
             </button>
           )}
           {step === 'complete' && (

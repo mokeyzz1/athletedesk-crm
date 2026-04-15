@@ -182,7 +182,7 @@ describe('Athlete Server Actions', () => {
         eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: { id: 'athlete-123' },
                 error: null,
               }),
@@ -191,8 +191,20 @@ describe('Athlete Server Actions', () => {
         }),
       })
 
+      const mockSelect = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { name: 'Old Name', assigned_scout_id: null, assigned_agent_id: null, assigned_marketing_lead_id: null },
+              error: null,
+            }),
+          }),
+        }),
+      })
+
       vi.mocked(createClient).mockResolvedValue({
         from: vi.fn().mockReturnValue({
+          select: mockSelect,
           update: mockUpdate,
         }),
       } as never)
@@ -209,36 +221,50 @@ describe('Athlete Server Actions', () => {
     })
 
     it('includes organization_id in WHERE clause', async () => {
-      const mockEqId = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: { id: 'athlete-123' },
-              error: null,
-            }),
+      const mockEqOrg = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: { id: 'athlete-123' },
+            error: null,
           }),
         }),
+      })
+
+      const mockEqId = vi.fn().mockReturnValue({
+        eq: mockEqOrg,
       })
 
       const mockUpdate = vi.fn().mockReturnValue({
         eq: mockEqId,
       })
 
+      const mockSelectEqOrg = vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { name: 'Old Name', assigned_scout_id: null, assigned_agent_id: null, assigned_marketing_lead_id: null },
+          error: null,
+        }),
+      })
+
+      const mockSelectEqId = vi.fn().mockReturnValue({
+        eq: mockSelectEqOrg,
+      })
+
+      const mockSelect = vi.fn().mockReturnValue({
+        eq: mockSelectEqId,
+      })
+
       vi.mocked(createClient).mockResolvedValue({
         from: vi.fn().mockReturnValue({
+          select: mockSelect,
           update: mockUpdate,
         }),
       } as never)
 
       await updateAthlete('athlete-123', { name: 'Updated' })
 
-      // First eq should be for id
+      // Verify update chain includes both id and organization_id
       expect(mockEqId).toHaveBeenCalledWith('id', 'athlete-123')
-      // Second eq should be for organization_id
-      expect(mockEqId.mock.results[0].value.eq).toHaveBeenCalledWith(
-        'organization_id',
-        mockOrganizationId
-      )
+      expect(mockEqOrg).toHaveBeenCalledWith('organization_id', mockOrganizationId)
     })
   })
 

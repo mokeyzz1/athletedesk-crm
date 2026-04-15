@@ -184,7 +184,8 @@ export async function updateAthlete(
       .from('athletes')
       .select('name, assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id, scout_ids, agent_ids, marketing_ids')
       .eq('id', athleteId)
-      .single() as { data: {
+      .eq('organization_id', organizationId)
+      .maybeSingle() as { data: {
         name: string
         assigned_scout_id: string | null
         assigned_agent_id: string | null
@@ -236,11 +237,15 @@ export async function updateAthlete(
       .eq('id', athleteId)
       .eq('organization_id', organizationId) // Extra safety
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Update athlete error:', error)
       return { success: false, error: error.message }
+    }
+
+    if (!data) {
+      return { success: false, error: 'Athlete not found or you do not have permission to edit them' }
     }
 
     // Create notifications for new assignments

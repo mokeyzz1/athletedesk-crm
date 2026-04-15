@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import type { User, TaskComment } from '@/lib/database.types'
 import { MentionInput } from './mention-input'
@@ -147,9 +148,11 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
                     {/* Avatar */}
                     <div className="flex-shrink-0">
                       {comment.author.avatar_url ? (
-                        <img
+                        <Image
                           src={comment.author.avatar_url}
                           alt=""
+                          width={32}
+                          height={32}
                           className="h-8 w-8 rounded-full"
                         />
                       ) : (

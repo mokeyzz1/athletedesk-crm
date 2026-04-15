@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -345,7 +346,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {staff.avatar_url ? (
-                            <img src={staff.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                            <Image src={staff.avatar_url} alt="" width={32} height={32} className="w-8 h-8 rounded-full" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-xs font-medium text-white">
                               {staff.name.split(' ').map(n => n[0]).join('')}
@@ -405,7 +406,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center gap-3">
                 {selectedStaff.avatar_url ? (
-                  <img src={selectedStaff.avatar_url} alt="" className="w-14 h-14 rounded-full" />
+                  <Image src={selectedStaff.avatar_url} alt="" width={56} height={56} className="w-14 h-14 rounded-full" />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-brand-500 flex items-center justify-center text-lg font-bold text-white">
                     {selectedStaff.name.split(' ').map(n => n[0]).join('')}

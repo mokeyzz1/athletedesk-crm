@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -58,11 +59,19 @@ export function MobileHeader({ user }: MobileHeaderProps) {
         </div>
 
         {/* User avatar */}
-        <img
-          src={user.avatar_url || ''}
-          alt={user.name}
-          className="w-8 h-8 rounded-full"
-        />
+        {user.avatar_url ? (
+          <Image
+            src={user.avatar_url}
+            alt={user.name}
+            width={32}
+            height={32}
+            className="w-8 h-8 rounded-full"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-xs font-medium text-white">
+            {user.name.split(' ').map(n => n[0]).join('')}
+          </div>
+        )}
       </div>
 
       {/* Drawer backdrop */}
@@ -129,11 +138,19 @@ export function MobileHeader({ user }: MobileHeaderProps) {
         {/* User section */}
         <div className="border-t border-brand-700 p-4">
           <div className="flex items-center gap-3 mb-3">
-            <img
-              src={user.avatar_url || ''}
-              alt={user.name}
-              className="w-10 h-10 rounded-full"
-            />
+            {user.avatar_url ? (
+              <Image
+                src={user.avatar_url}
+                alt={user.name}
+                width={40}
+                height={40}
+                className="w-10 h-10 rounded-full"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center text-sm font-medium text-white">
+                {user.name.split(' ').map(n => n[0]).join('')}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{user.name}</p>
               <p className="text-xs text-brand-300 truncate">{user.email}</p>

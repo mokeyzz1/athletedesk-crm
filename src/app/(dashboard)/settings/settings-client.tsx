@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -728,9 +729,11 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <div className="flex items-start gap-4">
                     {profile?.avatar_url ? (
-                      <img
+                      <Image
                         src={profile.avatar_url}
-                        alt={profile.name}
+                        alt={profile.name || ''}
+                        width={64}
+                        height={64}
                         className="w-16 h-16 rounded-full"
                       />
                     ) : (
@@ -1031,9 +1034,11 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     {/* Gmail */}
                     <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        <img
+                        <Image
                           src="https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_48dp.png"
                           alt="Gmail"
+                          width={32}
+                          height={32}
                           className="w-8 h-8"
                         />
                       </div>
@@ -1090,9 +1095,11 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     {/* Google Calendar - uses same auth as Gmail */}
                     <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        <img
+                        <Image
                           src="https://www.gstatic.com/images/branding/product/2x/calendar_2020q4_48dp.png"
                           alt="Google Calendar"
+                          width={32}
+                          height={32}
                           className="w-8 h-8"
                         />
                       </div>

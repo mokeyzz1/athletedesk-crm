@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
@@ -255,11 +256,19 @@ export default function TeamManagementPage() {
               <tr key={user.id} className="table-row-hover">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <img
-                      className="h-10 w-10 rounded-full"
-                      src={user.avatar_url || ''}
-                      alt={user.name}
-                    />
+                    {user.avatar_url ? (
+                      <Image
+                        className="h-10 w-10 rounded-full"
+                        src={user.avatar_url}
+                        alt={user.name}
+                        width={40}
+                        height={40}
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-brand-500 flex items-center justify-center text-sm font-medium text-white">
+                        {user.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                    )}
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
                         {user.name}

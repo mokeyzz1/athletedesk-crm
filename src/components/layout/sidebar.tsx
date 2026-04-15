@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -431,9 +432,11 @@ export function Sidebar({ user }: SidebarProps) {
                           >
                             <div className="flex items-start gap-3">
                               {notif.type === 'mention' && notif.avatarUrl ? (
-                                <img
+                                <Image
                                   src={notif.avatarUrl}
                                   alt=""
+                                  width={32}
+                                  height={32}
                                   className="h-8 w-8 rounded-full mt-0.5"
                                 />
                               ) : (
@@ -611,11 +614,19 @@ export function Sidebar({ user }: SidebarProps) {
                   className={`w-full flex items-center ${isCollapsed ? 'justify-center' : ''} rounded-md hover:bg-brand-800 p-2 transition-colors`}
                   title={isCollapsed ? user.name : undefined}
                 >
-                  <img
-                    className="h-8 w-8 rounded-full flex-shrink-0"
-                    src={user.avatar_url || ''}
-                    alt={user.name}
-                  />
+                  {user.avatar_url ? (
+                    <Image
+                      className="h-8 w-8 rounded-full flex-shrink-0"
+                      src={user.avatar_url}
+                      alt={user.name}
+                      width={32}
+                      height={32}
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-brand-500 flex items-center justify-center text-xs font-medium text-white flex-shrink-0">
+                      {user.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                  )}
                   {!isCollapsed && (
                     <div className="ml-3 text-left flex-1 min-w-0">
                       <p className="text-sm font-medium text-white truncate">{user.name}</p>

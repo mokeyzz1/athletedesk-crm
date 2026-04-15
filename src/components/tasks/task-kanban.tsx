@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import type { Task, User, Athlete } from '@/lib/database.types'
 
@@ -192,9 +193,11 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
                   {task.assigned_user && (
                     <div className="mt-2 flex items-center gap-1.5">
                       {task.assigned_user.avatar_url ? (
-                        <img
+                        <Image
                           src={task.assigned_user.avatar_url}
                           alt=""
+                          width={20}
+                          height={20}
                           className="w-5 h-5 rounded-full"
                         />
                       ) : (

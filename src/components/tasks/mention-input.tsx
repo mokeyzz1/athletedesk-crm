@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import Image from 'next/image'
 import type { User } from '@/lib/database.types'
 
 interface MentionInputProps {
@@ -147,9 +148,11 @@ export function MentionInput({ users, onSubmit, placeholder, disabled }: Mention
               }`}
             >
               {user.avatar_url ? (
-                <img
+                <Image
                   src={user.avatar_url}
                   alt=""
+                  width={24}
+                  height={24}
                   className="h-6 w-6 rounded-full"
                 />
               ) : (

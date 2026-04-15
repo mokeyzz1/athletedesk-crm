@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface Contract {
   id: string
@@ -22,11 +22,7 @@ export function AthleteContracts({ athleteId }: AthleteContractsProps) {
   const [loading, setLoading] = useState(true)
   const [hasDocuSign, setHasDocuSign] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-  }, [athleteId])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     try {
       // Check if DocuSign is connected
@@ -48,7 +44,11 @@ export function AthleteContracts({ athleteId }: AthleteContractsProps) {
       console.error('Failed to fetch contracts:', error)
     }
     setLoading(false)
-  }
+  }, [athleteId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string; label: string }> = {

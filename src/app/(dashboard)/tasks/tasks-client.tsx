@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Task, User, Athlete } from '@/lib/database.types'
@@ -477,9 +478,11 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             {task.assigned_user?.avatar_url && (
-                              <img
+                              <Image
                                 src={task.assigned_user.avatar_url}
                                 alt=""
+                                width={24}
+                                height={24}
                                 className="w-6 h-6 rounded-full"
                               />
                             )}

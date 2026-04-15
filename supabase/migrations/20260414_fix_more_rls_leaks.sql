@@ -14,3 +14,7 @@ DROP POLICY IF EXISTS "Service can insert notifications" ON notifications;
 CREATE POLICY "Users can insert org notifications" ON notifications
   FOR INSERT TO authenticated
   WITH CHECK (organization_id = get_current_organization_id());
+
+-- Remove duplicate INSERT policies without org check
+DROP POLICY IF EXISTS "Scouts and agents can insert pipeline entries" ON recruiting_pipeline;
+DROP POLICY IF EXISTS "Admins can insert recruiting regions" ON recruiting_regions;

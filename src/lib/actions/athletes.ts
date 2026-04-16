@@ -344,11 +344,8 @@ export async function selfAssignAthlete(
   assignmentRole?: 'scout' | 'agent' | 'marketing'
 ): Promise<ActionResult<Athlete>> {
   try {
-    const context = await getAuthContext()
-    const { role, roles, isSuperAdmin, organizationId } = context
+    const { role, roles } = await getAuthContext()
     const targetRole = assignmentRole || (role as 'scout' | 'agent' | 'marketing')
-
-    console.log('Self-assign debug:', { athleteId, assignmentRole, targetRole, role, roles, isSuperAdmin, organizationId })
 
     if (
       !['scout', 'agent', 'marketing'].includes(targetRole)
@@ -358,8 +355,12 @@ export async function selfAssignAthlete(
     }
 
     const supabase = await createClient()
+    const callSelfAssign = supabase.rpc.bind(supabase) as unknown as (
+      fn: 'self_assign_athlete',
+      args: { p_athlete_id: string; p_assignment_role: 'scout' | 'agent' | 'marketing' }
+    ) => Promise<{ data: Athlete | null; error: { message: string } | null }>
 
-    const { data, error } = await supabase.rpc('self_assign_athlete', {
+    const { data, error } = await callSelfAssign('self_assign_athlete', {
       p_athlete_id: athleteId,
       p_assignment_role: targetRole,
     })
@@ -371,7 +372,7 @@ export async function selfAssignAthlete(
 
     if (!data) {
       console.error('Self-assign athlete returned null data, no error')
-      return { success: false, error: `No data returned. Debug: athleteId=${athleteId}, targetRole=${targetRole}, orgId=${organizationId}, isSuperAdmin=${isSuperAdmin}` }
+      return { success: false, error: 'No data returned from assignment' }
     }
 
     return { success: true, data: data as Athlete }

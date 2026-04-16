@@ -358,12 +358,8 @@ export async function selfAssignAthlete(
     }
 
     const supabase = await createClient()
-    const callSelfAssign = supabase.rpc as unknown as (
-      fn: 'self_assign_athlete',
-      args: { p_athlete_id: string; p_assignment_role: 'scout' | 'agent' | 'marketing' }
-    ) => Promise<{ data: Athlete | null; error: { message: string } | null }>
 
-    const { data, error } = await callSelfAssign('self_assign_athlete', {
+    const { data, error } = await supabase.rpc('self_assign_athlete', {
       p_athlete_id: athleteId,
       p_assignment_role: targetRole,
     })

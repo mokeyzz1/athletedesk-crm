@@ -5,7 +5,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { REGIONS } from '@/lib/database.types'
 
 interface StaffProductivity {
   id: string
@@ -47,12 +46,13 @@ interface ProductivityClientProps {
   staffProductivity: StaffProductivity[]
   staffAthleteMap: Record<string, AssignedAthlete[]>
   allAthletes: AthleteForAssignment[]
+  availableRegions: string[]
 }
 
 type TimeRange = 'week' | 'month' | 'all'
 type AssignmentRole = 'scout' | 'agent' | 'marketing'
 
-export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthletes }: ProductivityClientProps) {
+export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthletes, availableRegions }: ProductivityClientProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('week')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [regionFilter, setRegionFilter] = useState<string>('all')
@@ -68,8 +68,11 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   const router = useRouter()
   const supabase = createClient()
 
-  // Get all unique regions across staff
-  const allRegions = Array.from(new Set(staffProductivity.flatMap(s => s.assigned_regions || [])))
+  // Use org recruiting regions as source of truth, preserving any legacy assigned values.
+  const allRegions = Array.from(new Set([
+    ...availableRegions,
+    ...staffProductivity.flatMap(s => s.assigned_regions || []),
+  ])).sort()
 
   const getEmails = (staff: StaffProductivity) =>
     timeRange === 'week' ? staff.emailsThisWeek :
@@ -297,7 +300,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
               className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             >
               <option value="all">All Regions</option>
-              {REGIONS.map(region => (
+              {allRegions.map(region => (
                 <option key={region} value={region}>{region}</option>
               ))}
             </select>
@@ -635,7 +638,10 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
               </p>
 
               <div className="space-y-2 mb-6">
-                {REGIONS.map(region => (
+                {allRegions.length === 0 && (
+                  <p className="text-sm text-gray-500">No recruiting regions have been created yet.</p>
+                )}
+                {allRegions.map(region => (
                   <label
                     key={region}
                     className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${

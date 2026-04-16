@@ -333,6 +333,52 @@ export async function updateAthlete(
 }
 
 /**
+ * Let staff assign themselves to the matching athlete role.
+ * - Scouts can only assign themselves as scout
+ * - Agents can only assign themselves as agent
+ * - Marketing can only assign themselves as marketing lead
+ * - Existing assignments cannot be overwritten here; admins can reassign in edit flows
+ */
+export async function selfAssignAthlete(
+  athleteId: string
+): Promise<ActionResult<Athlete>> {
+  try {
+    const { role } = await getAuthContext()
+
+    if (!['scout', 'agent', 'marketing'].includes(role)) {
+      return { success: false, error: 'Your role cannot self-assign athletes' }
+    }
+
+    const supabase = await createClient()
+    const callSelfAssign = supabase.rpc as unknown as (
+      fn: 'self_assign_athlete',
+      args: { p_athlete_id: string }
+    ) => Promise<{ data: Athlete | null; error: { message: string } | null }>
+
+    const { data, error } = await callSelfAssign('self_assign_athlete', {
+      p_athlete_id: athleteId,
+    })
+
+    if (error) {
+      console.error('Self-assign athlete RPC error:', error)
+      return { success: false, error: error.message }
+    }
+
+    if (!data) {
+      return { success: false, error: 'Failed to assign athlete' }
+    }
+
+    return { success: true, data: data as Athlete }
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { success: false, error: err.message }
+    }
+    console.error('Self-assign athlete unexpected error:', err)
+    return { success: false, error: 'Failed to assign athlete' }
+  }
+}
+
+/**
  * Delete an athlete
  * - Ensures user can only delete athletes in their org
  */

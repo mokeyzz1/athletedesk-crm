@@ -15,6 +15,7 @@ import { DeleteAthleteButton } from './delete-athlete-button'
 import { PipelineStatusCard } from './pipeline-status-card'
 import { getAthleteEmailCount } from '@/lib/queries/email-stats'
 import { formatDate } from '@/lib/helpers'
+import { SelfAssignButton } from '@/components/athletes/self-assign-button'
 
 interface AthletePageProps {
   params: Promise<{ id: string }>
@@ -52,6 +53,13 @@ export default async function AthletePage({ params }: AthletePageProps) {
   const { id } = await params
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('auth_user_id', user?.id || '')
+    .maybeSingle() as { data: { id: string; role: string } | null }
+
   const { data } = await supabase
     .from('athletes')
     .select(`
@@ -87,6 +95,9 @@ export default async function AthletePage({ params }: AthletePageProps) {
 
   const socialMedia = athlete.social_media as SocialMediaData | null
   const totalFollowing = socialMedia ? calculateTotalFollowing(socialMedia) : 0
+  const canSelfAssignScout = currentUser?.role === 'scout' && !athlete.assigned_scout_id
+  const canSelfAssignAgent = currentUser?.role === 'agent' && !athlete.assigned_agent_id
+  const canSelfAssignMarketing = currentUser?.role === 'marketing' && !athlete.assigned_marketing_lead_id
 
   // Build activity timeline
   const activities: ActivityItem[] = [
@@ -467,18 +478,27 @@ export default async function AthletePage({ params }: AthletePageProps) {
                 <p className="text-sm text-gray-900">
                   {athlete.assigned_scout?.name ?? 'Unassigned'}
                 </p>
+                {canSelfAssignScout && (
+                  <SelfAssignButton athleteId={id} roleLabel="Scout" />
+                )}
               </div>
               <div>
                 <span className="text-sm text-gray-500">Agent</span>
                 <p className="text-sm text-gray-900">
                   {athlete.assigned_agent?.name ?? 'Unassigned'}
                 </p>
+                {canSelfAssignAgent && (
+                  <SelfAssignButton athleteId={id} roleLabel="Agent" />
+                )}
               </div>
               <div>
                 <span className="text-sm text-gray-500">Marketing Lead</span>
                 <p className="text-sm text-gray-900">
                   {athlete.assigned_marketing?.name ?? 'Unassigned'}
                 </p>
+                {canSelfAssignMarketing && (
+                  <SelfAssignButton athleteId={id} roleLabel="Marketing Lead" />
+                )}
               </div>
             </div>
           </div>

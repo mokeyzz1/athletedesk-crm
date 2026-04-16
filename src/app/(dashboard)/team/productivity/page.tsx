@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import type { User } from '@/lib/database.types'
+import type { RecruitingRegion, User } from '@/lib/database.types'
 import { ProductivityClient } from './productivity-client'
 import { isOverdue } from '@/lib/helpers'
 
@@ -69,11 +69,12 @@ export default async function ProductivityPage() {
     assigned_marketing_lead_id: string | null
   }
 
-  const [usersResult, commsResult, tasksResult, athletesResult] = await Promise.all([
+  const [usersResult, commsResult, tasksResult, athletesResult, regionsResult] = await Promise.all([
     supabase.from('users').select('*').order('name'),
     supabase.from('communications_log').select('staff_member_id, type, communication_date, athlete_id').gte('communication_date', threeMonthsAgo.toISOString()),
     supabase.from('tasks').select('assigned_to, status, due_date, updated_at'),
     supabase.from('athletes').select('id, name, sport, assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id'),
+    supabase.from('recruiting_regions').select('name').order('name'),
   ])
 
   const staffList = (usersResult.data || []) as User[]
@@ -81,6 +82,7 @@ export default async function ProductivityPage() {
   const comms = (commsResult.data || []) as CommRow[]
   const tasks = (tasksResult.data || []) as TaskRow[]
   const allAthletes = (athletesResult.data || []) as AthleteRow[]
+  const availableRegions = ((regionsResult.data as Pick<RecruitingRegion, 'name'>[] | null) || []).map(r => r.name)
 
   // PRE-BUILD LOOKUP MAPS for O(1) access instead of O(n) filtering
 
@@ -199,6 +201,7 @@ export default async function ProductivityPage() {
       staffProductivity={productivity}
       staffAthleteMap={staffAthleteMap}
       allAthletes={unassignedAthletes}
+      availableRegions={availableRegions}
     />
   )
 }

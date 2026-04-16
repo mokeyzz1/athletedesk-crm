@@ -4,8 +4,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import type { User, UserRole } from '@/lib/database.types'
-import { REGIONS } from '@/lib/database.types'
+import type { User, UserRole, RecruitingRegion } from '@/lib/database.types'
 
 export default function TeamManagementPage() {
   const router = useRouter()
@@ -24,6 +23,7 @@ export default function TeamManagementPage() {
   const [deletingUser, setDeletingUser] = useState<string | null>(null)
   const [editingRegionsUser, setEditingRegionsUser] = useState<User | null>(null)
   const [selectedRegions, setSelectedRegions] = useState<string[]>([])
+  const [recruitingRegions, setRecruitingRegions] = useState<string[]>([])
   const [savingRegions, setSavingRegions] = useState(false)
 
   useEffect(() => {
@@ -49,12 +49,19 @@ export default function TeamManagementPage() {
 
       setCurrentUser(profile)
 
-      const { data: allUsersData } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const [usersResult, regionsResult] = await Promise.all([
+        supabase
+          .from('users')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('recruiting_regions')
+          .select('name')
+          .order('name'),
+      ])
 
-      setUsers((allUsersData as User[]) || [])
+      setUsers((usersResult.data as User[]) || [])
+      setRecruitingRegions(((regionsResult.data as Pick<RecruitingRegion, 'name'>[]) || []).map(r => r.name))
       setIsLoading(false)
     }
 
@@ -467,7 +474,10 @@ export default function TeamManagementPage() {
             </p>
 
             <div className="space-y-2 mb-6">
-              {REGIONS.map(region => (
+              {recruitingRegions.length === 0 && (
+                <p className="text-sm text-gray-500">No recruiting regions have been created yet.</p>
+              )}
+              {recruitingRegions.map(region => (
                 <label
                   key={region}
                   className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${

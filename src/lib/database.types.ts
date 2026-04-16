@@ -226,6 +226,9 @@ export interface Database {
           assigned_scout_id: string | null
           assigned_agent_id: string | null
           assigned_marketing_lead_id: string | null
+          scout_ids: string[]
+          agent_ids: string[]
+          marketing_ids: string[]
           profile_image_url: string | null
           social_media: Json
           notes: string | null
@@ -267,6 +270,9 @@ export interface Database {
           assigned_scout_id?: string | null
           assigned_agent_id?: string | null
           assigned_marketing_lead_id?: string | null
+          scout_ids?: string[]
+          agent_ids?: string[]
+          marketing_ids?: string[]
           profile_image_url?: string | null
           social_media?: Json
           notes?: string | null
@@ -308,6 +314,9 @@ export interface Database {
           assigned_scout_id?: string | null
           assigned_agent_id?: string | null
           assigned_marketing_lead_id?: string | null
+          scout_ids?: string[]
+          agent_ids?: string[]
+          marketing_ids?: string[]
           profile_image_url?: string | null
           social_media?: Json
           notes?: string | null
@@ -1228,6 +1237,10 @@ export interface Database {
       accept_invite: {
         Args: { invite_token: string; accepting_user_id: string }
         Returns: boolean
+      }
+      self_assign_athlete: {
+        Args: { p_athlete_id: string }
+        Returns: Database['public']['Tables']['athletes']['Row']
       }
     }
     Enums: {

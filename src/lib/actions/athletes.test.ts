@@ -25,9 +25,10 @@ vi.mock('./errors', () => ({
 // Mock Supabase
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
+  createServiceClient: vi.fn(),
 }))
 
-import { createAthlete, updateAthlete, deleteAthlete, bulkCreateAthletes } from './athletes'
+import { createAthlete, updateAthlete, deleteAthlete, bulkCreateAthletes, selfAssignAthlete } from './athletes'
 import { getAuthContext } from './auth'
 import { AuthError } from './errors'
 import { createClient } from '@/lib/supabase/server'
@@ -306,6 +307,89 @@ describe('Athlete Server Actions', () => {
       expect(result.success).toBe(true)
       if (result.success) {
         expect(result.data.id).toBe('athlete-123')
+      }
+    })
+  })
+
+  describe('selfAssignAthlete', () => {
+    it('calls secure RPC for staff self-assignment', async () => {
+      vi.mocked(getAuthContext).mockResolvedValue({
+        userId: mockUserId,
+        organizationId: mockOrganizationId,
+        role: 'scout',
+        email: 'scout@example.com',
+      })
+
+      const mockRpc = vi.fn().mockResolvedValue({
+        data: { id: 'athlete-123', assigned_scout_id: mockUserId },
+        error: null,
+      })
+
+      vi.mocked(createClient).mockResolvedValue({
+        rpc: mockRpc,
+      } as never)
+
+      const result = await selfAssignAthlete('athlete-123')
+
+      expect(result.success).toBe(true)
+      expect(mockRpc).toHaveBeenCalledWith('self_assign_athlete', {
+        p_athlete_id: 'athlete-123',
+      })
+    })
+
+    it('blocks roles that cannot self-assign before calling RPC', async () => {
+      vi.mocked(getAuthContext).mockResolvedValue({
+        userId: mockUserId,
+        organizationId: mockOrganizationId,
+        role: 'admin',
+        email: 'admin@example.com',
+      })
+
+      const mockRpc = vi.fn()
+      vi.mocked(createClient).mockResolvedValue({
+        rpc: mockRpc,
+      } as never)
+
+      const result = await selfAssignAthlete('athlete-123')
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toBe('Your role cannot self-assign athletes')
+      }
+      expect(mockRpc).not.toHaveBeenCalled()
+    })
+
+    it('returns RPC errors such as already assigned', async () => {
+      vi.mocked(getAuthContext).mockResolvedValue({
+        userId: mockUserId,
+        organizationId: mockOrganizationId,
+        role: 'agent',
+        email: 'agent@example.com',
+      })
+
+      vi.mocked(createClient).mockResolvedValue({
+        rpc: vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'Agent is already assigned' },
+        }),
+      } as never)
+
+      const result = await selfAssignAthlete('athlete-123')
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toBe('Agent is already assigned')
+      }
+    })
+
+    it('returns auth errors', async () => {
+      vi.mocked(getAuthContext).mockRejectedValue(new AuthError('Not authenticated'))
+
+      const result = await selfAssignAthlete('athlete-123')
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error).toBe('Not authenticated')
       }
     })
   })

@@ -1245,7 +1245,7 @@ export interface Database {
         Returns: boolean
       }
       self_assign_athlete: {
-        Args: { p_athlete_id: string }
+        Args: { p_athlete_id: string; p_assignment_role?: UserRole }
         Returns: Database['public']['Tables']['athletes']['Row']
       }
     }

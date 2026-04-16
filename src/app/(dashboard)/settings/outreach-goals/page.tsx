@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { User } from '@/lib/database.types'
 import { OutreachGoalsClient } from './outreach-goals-client'
+import { userHasRole } from '@/lib/roles'
 
 export interface OutreachGoal {
   id: string
@@ -30,7 +31,7 @@ export default async function OutreachGoalsPage() {
     .single()
 
   const typedCurrentUser = currentUser as User | null
-  if (!typedCurrentUser || typedCurrentUser.role !== 'admin') {
+  if (!userHasRole(typedCurrentUser, 'admin')) {
     redirect('/settings')
   }
 
@@ -45,11 +46,12 @@ export default async function OutreachGoalsPage() {
   // Get all staff members for dropdown
   const { data: staffData } = await supabase
     .from('users')
-    .select('id, name, role')
+    .select('id, name, role, primary_role')
     .order('name')
 
-  type StaffMember = { id: string; name: string; role: string }
-  const staff = (staffData || []) as StaffMember[]
+  type StaffMember = { id: string; name: string; role: string; primary_role: string | null }
+  const staff = ((staffData || []) as StaffMember[])
+    .map(member => ({ ...member, role: member.primary_role || member.role }))
 
   return <OutreachGoalsClient goals={goals} staff={staff} />
 }

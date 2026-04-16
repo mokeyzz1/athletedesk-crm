@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { AnalyticsClient } from './analytics-client'
 import type { OutreachStatus, UserRole, PipelineStage, DealType, PaymentStatus } from '@/lib/database.types'
+import { userHasAnyRole } from '@/lib/roles'
 
 // Types for query results
 type StatusCount = { outreach_status: OutreachStatus }
 type ClassYearRow = { class_year: string | null }
 type RegionRow = { region: string | null; outreach_status: OutreachStatus }
 type StaffCommRow = { staff_member_id: string }
-type UserRow = { id: string; name: string; role: UserRole }
+type UserRow = { id: string; name: string; role: UserRole; roles: UserRole[] | null }
 type AssignmentRow = { assigned_scout_id: string | null; assigned_agent_id: string | null; assigned_marketing_lead_id: string | null }
 type ActivityRow = { staff_member_id: string; communication_date: string }
 type RevenueRow = { deal_value: number | null; deal_type: DealType; payment_status: PaymentStatus; deal_date: string }
@@ -115,7 +116,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
     supabase.from('athletes').select('*', { count: 'exact', head: true }).gte('last_contacted_date', startOfLastWeek.toISOString().split('T')[0]).lt('last_contacted_date', startOfThisWeek.toISOString().split('T')[0]),
     // 2. TEAM PERFORMANCE
     supabase.from('communications_log').select('staff_member_id').gte('communication_date', periodStart.toISOString()),
-    supabase.from('users').select('id, name, role').in('role', ['admin', 'agent', 'scout', 'marketing']),
+    supabase.from('users').select('id, name, role, roles'),
     supabase.from('athletes').select('assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id'),
     // Last activity: only fetch recent (1 week) for performance - older = inactive anyway
     supabase.from('communications_log').select('staff_member_id, communication_date').gte('communication_date', oneWeekAgo.toISOString()).order('communication_date', { ascending: false }),
@@ -135,7 +136,8 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const contactedThisPeriod = contactedThisPeriodResult.count
   const contactedLastPeriod = contactedLastPeriodResult.count
   const staffComms = staffCommsResult.data as StaffCommRow[] | null
-  const users = usersResult.data as UserRow[] | null
+  const users = ((usersResult.data as UserRow[] | null) || [])
+    .filter(user => userHasAnyRole(user, ['admin', 'agent', 'scout', 'marketing']))
   const assignmentData = assignmentResult.data as AssignmentRow[] | null
   const lastActivity = lastActivityResult.data as ActivityRow[] | null
   const goalsData = goalsResult.data as GoalRow[] | null
@@ -233,7 +235,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         contactedLastWeek: contactedLastPeriod || 0,
       }}
       teamData={{
-        users: users || [],
+        users,
         commsPerStaff,
         assignmentsPerUser,
         lastActivityPerUser,

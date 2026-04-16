@@ -45,6 +45,7 @@ describe('Athlete Server Actions', () => {
       userId: mockUserId,
       organizationId: mockOrganizationId,
       role: 'admin',
+      roles: ['admin'],
       email: 'test@example.com',
     })
   })
@@ -317,6 +318,7 @@ describe('Athlete Server Actions', () => {
         userId: mockUserId,
         organizationId: mockOrganizationId,
         role: 'scout',
+        roles: ['scout'],
         email: 'scout@example.com',
       })
 
@@ -334,6 +336,7 @@ describe('Athlete Server Actions', () => {
       expect(result.success).toBe(true)
       expect(mockRpc).toHaveBeenCalledWith('self_assign_athlete', {
         p_athlete_id: 'athlete-123',
+        p_assignment_role: 'scout',
       })
     })
 
@@ -342,6 +345,7 @@ describe('Athlete Server Actions', () => {
         userId: mockUserId,
         organizationId: mockOrganizationId,
         role: 'admin',
+        roles: ['admin'],
         email: 'admin@example.com',
       })
 
@@ -364,6 +368,7 @@ describe('Athlete Server Actions', () => {
         userId: mockUserId,
         organizationId: mockOrganizationId,
         role: 'agent',
+        roles: ['agent'],
         email: 'agent@example.com',
       })
 

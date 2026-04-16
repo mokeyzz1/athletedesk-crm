@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { User, EmailTemplate, RosterTeam, RecruitingRegion, Organization } from '@/lib/database.types'
+import { userHasRole } from '@/lib/roles'
 import { SettingsClient } from './settings-client'
 
 export default async function SettingsPage() {
@@ -18,7 +19,7 @@ export default async function SettingsPage() {
   let organization: Organization | null = null
   let isOwner = false
 
-  if (profile?.role === 'admin' && profile.organization_id) {
+  if (userHasRole(profile, 'admin') && profile?.organization_id) {
     const { data: orgData } = await supabase
       .from('organizations')
       .select('*')

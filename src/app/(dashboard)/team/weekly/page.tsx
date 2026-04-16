@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { User } from '@/lib/database.types'
 import { WeeklyClient } from './weekly-client'
+import { userHasRole } from '@/lib/roles'
 
 export interface DayActivity {
   date: string
@@ -41,7 +42,7 @@ export default async function WeeklyPage() {
     .single()
 
   const typedCurrentUser = currentUser as User | null
-  if (!typedCurrentUser || typedCurrentUser.role !== 'admin') {
+  if (!userHasRole(typedCurrentUser, 'admin')) {
     redirect('/dashboard')
   }
 

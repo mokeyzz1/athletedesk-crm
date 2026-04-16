@@ -9,10 +9,11 @@ import { useRouter } from 'next/navigation'
 import type { Task, User, Athlete } from '@/lib/database.types'
 import { TaskPanel } from '@/components/tasks/task-panel'
 import { TaskKanban } from '@/components/tasks/task-kanban'
+import { getUserRoles, userHasAnyRole } from '@/lib/roles'
 
 interface TaskWithRelations extends Task {
-  assigned_user: { id: string; name: string; avatar_url: string | null; role: string } | null
-  creator: { id: string; name: string; role: string } | null
+  assigned_user: { id: string; name: string; avatar_url: string | null; role: string; roles: string[] | null } | null
+  creator: { id: string; name: string; role: string; roles: string[] | null } | null
   athletes: { id: string; name: string } | null
 }
 
@@ -155,7 +156,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
 
-  const canCreateTasks = currentUser.role === 'admin' || currentUser.role === 'agent'
+  const canCreateTasks = userHasAnyRole(currentUser, ['admin', 'agent'])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -168,7 +169,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
 
   // Helper to check if a task is marketing-related
   const isMarketingTask = (task: TaskWithRelations) => {
-    return task.assigned_user?.role === 'marketing' || task.creator?.role === 'marketing'
+    return getUserRoles(task.assigned_user).includes('marketing') || getUserRoles(task.creator).includes('marketing')
   }
 
   const filteredTasks = useMemo(() => {

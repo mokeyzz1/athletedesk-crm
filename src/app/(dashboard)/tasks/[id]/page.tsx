@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { User, Athlete, Task, TaskUpdate } from '@/lib/database.types'
 import { TaskComments } from '@/components/tasks/task-comments'
+import { getPrimaryRole, userHasRole } from '@/lib/roles'
 
 interface TaskWithRelations extends Task {
   assigned_user: { id: string; name: string; avatar_url: string | null } | null
@@ -90,12 +91,12 @@ export default function TaskDetailPage() {
   }, [supabase, router, taskId])
 
   const canEdit = currentUser && task && (
-    currentUser.role === 'admin' ||
+    userHasRole(currentUser, 'admin') ||
     task.assigned_to === currentUser.id
   )
 
   const canDelete = currentUser && task && (
-    currentUser.role === 'admin' ||
+    userHasRole(currentUser, 'admin') ||
     task.created_by === currentUser.id
   )
 
@@ -268,12 +269,12 @@ export default function TaskDetailPage() {
                     id="assigned_to"
                     required
                     defaultValue={task.assigned_to}
-                    disabled={!canEdit || currentUser?.role !== 'admin'}
+                    disabled={!canEdit || !userHasRole(currentUser, 'admin')}
                     className="mt-1 input w-full disabled:bg-gray-100"
                   >
                     {users.map(user => (
                       <option key={user.id} value={user.id}>
-                        {user.name} ({user.role})
+                        {user.name} ({getPrimaryRole(user)})
                       </option>
                     ))}
                   </select>

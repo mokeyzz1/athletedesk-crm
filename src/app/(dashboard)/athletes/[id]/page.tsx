@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import type { Athlete, CommunicationLog, RecruitingPipeline, FinancialTracking, BrandOutreach, Document } from '@/lib/database.types'
+import type { Athlete, CommunicationLog, RecruitingPipeline, FinancialTracking, BrandOutreach, Document, UserRole } from '@/lib/database.types'
 import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } from '@/lib/sport-fields'
 import { FaInstagram, FaXTwitter, FaTiktok, FaYoutube } from 'react-icons/fa6'
 import { AthleteDocuments } from './athlete-documents'
@@ -16,6 +16,7 @@ import { PipelineStatusCard } from './pipeline-status-card'
 import { getAthleteEmailCount } from '@/lib/queries/email-stats'
 import { formatDate } from '@/lib/helpers'
 import { SelfAssignButton } from '@/components/athletes/self-assign-button'
+import { userHasRole } from '@/lib/roles'
 
 interface AthletePageProps {
   params: Promise<{ id: string }>
@@ -56,9 +57,9 @@ export default async function AthletePage({ params }: AthletePageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   const { data: currentUser } = await supabase
     .from('users')
-    .select('id, role')
+    .select('id, role, roles')
     .eq('auth_user_id', user?.id || '')
-    .maybeSingle() as { data: { id: string; role: string } | null }
+    .maybeSingle() as { data: { id: string; role: UserRole; roles: UserRole[] | null } | null }
 
   const { data } = await supabase
     .from('athletes')
@@ -95,9 +96,9 @@ export default async function AthletePage({ params }: AthletePageProps) {
 
   const socialMedia = athlete.social_media as SocialMediaData | null
   const totalFollowing = socialMedia ? calculateTotalFollowing(socialMedia) : 0
-  const canSelfAssignScout = currentUser?.role === 'scout' && !athlete.assigned_scout_id
-  const canSelfAssignAgent = currentUser?.role === 'agent' && !athlete.assigned_agent_id
-  const canSelfAssignMarketing = currentUser?.role === 'marketing' && !athlete.assigned_marketing_lead_id
+  const canSelfAssignScout = userHasRole(currentUser, 'scout') && !athlete.assigned_scout_id
+  const canSelfAssignAgent = userHasRole(currentUser, 'agent') && !athlete.assigned_agent_id
+  const canSelfAssignMarketing = userHasRole(currentUser, 'marketing') && !athlete.assigned_marketing_lead_id
 
   // Build activity timeline
   const activities: ActivityItem[] = [
@@ -479,7 +480,7 @@ export default async function AthletePage({ params }: AthletePageProps) {
                   {athlete.assigned_scout?.name ?? 'Unassigned'}
                 </p>
                 {canSelfAssignScout && (
-                  <SelfAssignButton athleteId={id} roleLabel="Scout" />
+                  <SelfAssignButton athleteId={id} roleLabel="Scout" assignmentRole="scout" />
                 )}
               </div>
               <div>
@@ -488,7 +489,7 @@ export default async function AthletePage({ params }: AthletePageProps) {
                   {athlete.assigned_agent?.name ?? 'Unassigned'}
                 </p>
                 {canSelfAssignAgent && (
-                  <SelfAssignButton athleteId={id} roleLabel="Agent" />
+                  <SelfAssignButton athleteId={id} roleLabel="Agent" assignmentRole="agent" />
                 )}
               </div>
               <div>
@@ -497,7 +498,7 @@ export default async function AthletePage({ params }: AthletePageProps) {
                   {athlete.assigned_marketing?.name ?? 'Unassigned'}
                 </p>
                 {canSelfAssignMarketing && (
-                  <SelfAssignButton athleteId={id} roleLabel="Marketing Lead" />
+                  <SelfAssignButton athleteId={id} roleLabel="Marketing Lead" assignmentRole="marketing" />
                 )}
               </div>
             </div>

@@ -118,6 +118,8 @@ export async function POST(request: Request) {
         google_sso_id: pendingUser.google_sso_id,
         avatar_url: pendingUser.avatar_url,
         role: assignedRole,
+        roles: [assignedRole],
+        primary_role: assignedRole,
         organization_id: organizationId,
         is_super_admin: false,
       } as never)

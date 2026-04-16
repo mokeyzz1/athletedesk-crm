@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { EmailClient } from './email-client'
 import type { User } from '@/lib/database.types'
+import { userHasRole } from '@/lib/roles'
 
 export default async function EmailPage() {
   const supabase = await createClient()
@@ -38,7 +39,7 @@ export default async function EmailPage() {
     .select('id, name, email, sport')
     .order('name')
 
-  if (currentUser.role !== 'admin') {
+  if (!userHasRole(currentUser, 'admin')) {
     athletesQuery = athletesQuery.or(
       `assigned_scout_id.eq.${currentUser.id},assigned_agent_id.eq.${currentUser.id},assigned_marketing_lead_id.eq.${currentUser.id}`
     )
@@ -49,7 +50,7 @@ export default async function EmailPage() {
 
   // For admin, get all staff members
   let staffMembers: { id: string; name: string; gmail_email: string | null }[] = []
-  if (currentUser.role === 'admin') {
+  if (userHasRole(currentUser, 'admin')) {
     const { data: staffData } = await supabase
       .from('users')
       .select('id, name, gmail_email')

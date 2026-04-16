@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { User, UserRole, RecruitingRegion } from '@/lib/database.types'
-import { updateUserRegions, updateUserRole as updateUserRoleAction } from '@/lib/actions/users'
+import { updateUserRegions, updateUserRoles } from '@/lib/actions/users'
+import { getPrimaryRole, getUserRoles, userHasRole } from '@/lib/roles'
+
+const ALL_ROLES: UserRole[] = ['admin', 'agent', 'scout', 'marketing', 'intern']
 
 export default function TeamManagementPage() {
   const router = useRouter()
@@ -13,7 +16,10 @@ export default function TeamManagementPage() {
   const [users, setUsers] = useState<User[]>([])
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [editingUser, setEditingUser] = useState<string | null>(null)
+  const [editingRolesUser, setEditingRolesUser] = useState<User | null>(null)
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([])
+  const [primaryRole, setPrimaryRole] = useState<UserRole>('intern')
+  const [savingRoles, setSavingRoles] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<UserRole>('intern')
@@ -44,7 +50,7 @@ export default function TeamManagementPage() {
 
       const profile = profileData as User | null
 
-      if (!profile || profile.role !== 'admin') {
+      if (!userHasRole(profile, 'admin')) {
         router.push('/settings')
         return
       }
@@ -70,16 +76,46 @@ export default function TeamManagementPage() {
     fetchData()
   }, [supabase, router])
 
-  const updateUserRole = async (userId: string, newRole: UserRole) => {
+  const openRolesModal = (user: User) => {
+    setEditingRolesUser(user)
+    const userRoles = getUserRoles(user)
+    setSelectedRoles(userRoles)
+    setPrimaryRole(getPrimaryRole(user) || userRoles[0] || 'intern')
+  }
+
+  const toggleRole = (role: UserRole) => {
+    setSelectedRoles(prev => {
+      if (prev.includes(role)) {
+        // Removing role - if it's the primary, auto-pick another
+        const newRoles = prev.filter(r => r !== role)
+        if (role === primaryRole && newRoles.length > 0) {
+          setPrimaryRole(newRoles[0])
+        }
+        return newRoles
+      } else {
+        return [...prev, role]
+      }
+    })
+  }
+
+  const saveRoles = async () => {
+    if (!editingRolesUser || selectedRoles.length === 0) return
+
+    setSavingRoles(true)
     setTeamError('')
-    const result = await updateUserRoleAction(userId, newRole)
+    const result = await updateUserRoles(editingRolesUser.id, selectedRoles, primaryRole)
 
     if (result.success) {
-      setUsers(users.map(u => u.id === userId ? { ...u, ...result.data } : u))
-      setEditingUser(null)
+      setUsers(users.map(u =>
+        u.id === editingRolesUser.id
+          ? { ...u, ...result.data }
+          : u
+      ))
+      setEditingRolesUser(null)
     } else {
       setTeamError(result.error)
     }
+    setSavingRoles(false)
   }
 
   const sendInvite = async () => {
@@ -295,25 +331,16 @@ export default function TeamManagementPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {editingUser === user.id ? (
-                    <select
-                      defaultValue={user.role}
-                      onChange={(e) => updateUserRole(user.id, e.target.value as UserRole)}
-                      onBlur={() => setEditingUser(null)}
-                      autoFocus
-                      className="input text-sm py-1"
-                    >
-                      <option value="admin">Admin</option>
-                      <option value="agent">Agent</option>
-                      <option value="scout">Scout</option>
-                      <option value="marketing">Marketing</option>
-                      <option value="intern">Intern</option>
-                    </select>
-                  ) : (
-                    <span className={`${getRoleBadge(user.role)} capitalize`}>
-                      {user.role}
+                  <div className="flex items-center gap-1.5">
+                    <span className={`${getRoleBadge(getPrimaryRole(user))} capitalize`}>
+                      {getPrimaryRole(user)}
                     </span>
-                  )}
+                    {getUserRoles(user).length > 1 && (
+                      <span className="text-xs text-gray-500">
+                        +{getUserRoles(user).length - 1} more
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-1">
@@ -335,10 +362,10 @@ export default function TeamManagementPage() {
                   {user.id !== currentUser?.id && (
                     <div className="flex items-center justify-end gap-3">
                       <button
-                        onClick={() => setEditingUser(user.id)}
+                        onClick={() => openRolesModal(user)}
                         className="text-brand-600 hover:text-brand-900"
                       >
-                        Edit Role
+                        Edit Roles
                       </button>
                       <button
                         onClick={() => openRegionsModal(user)}
@@ -465,6 +492,90 @@ export default function TeamManagementPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Roles Modal */}
+      {editingRolesUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Edit Roles
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Select roles for {editingRolesUser.name}. Click the star to set primary role.
+            </p>
+
+            <div className="space-y-2 mb-6">
+              {ALL_ROLES.map(role => {
+                const isSelected = selectedRoles.includes(role)
+                const isPrimary = primaryRole === role
+                return (
+                  <div
+                    key={role}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <label className="flex items-center flex-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleRole(role)}
+                        className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+                      />
+                      <span className="ml-3 text-sm font-medium text-gray-900 capitalize">{role}</span>
+                    </label>
+                    {isSelected && (
+                      <button
+                        onClick={() => setPrimaryRole(role)}
+                        className={`p-1 rounded transition-colors ${
+                          isPrimary
+                            ? 'text-yellow-500'
+                            : 'text-gray-300 hover:text-yellow-400'
+                        }`}
+                        title={isPrimary ? 'Primary role' : 'Set as primary'}
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {selectedRoles.length === 0 && (
+              <p className="text-sm text-red-600 mb-4">At least one role is required.</p>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setEditingRolesUser(null)}
+                className="btn-secondary"
+                disabled={savingRoles}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveRoles}
+                disabled={savingRoles || selectedRoles.length === 0}
+                className="btn-primary"
+              >
+                {savingRoles ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  'Save Roles'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

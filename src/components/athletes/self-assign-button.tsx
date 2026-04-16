@@ -7,9 +7,10 @@ import { selfAssignAthlete } from '@/lib/actions/athletes'
 interface SelfAssignButtonProps {
   athleteId: string
   roleLabel: string
+  assignmentRole: 'scout' | 'agent' | 'marketing'
 }
 
-export function SelfAssignButton({ athleteId, roleLabel }: SelfAssignButtonProps) {
+export function SelfAssignButton({ athleteId, roleLabel, assignmentRole }: SelfAssignButtonProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -17,7 +18,7 @@ export function SelfAssignButton({ athleteId, roleLabel }: SelfAssignButtonProps
   const handleClick = () => {
     setError(null)
     startTransition(async () => {
-      const result = await selfAssignAthlete(athleteId)
+      const result = await selfAssignAthlete(athleteId, assignmentRole)
 
       if (!result.success) {
         setError(result.error)

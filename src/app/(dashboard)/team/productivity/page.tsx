@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import type { RecruitingRegion, User } from '@/lib/database.types'
 import { ProductivityClient } from './productivity-client'
 import { isOverdue } from '@/lib/helpers'
+import { getPrimaryRole, userHasRole } from '@/lib/roles'
 
 interface StaffProductivity {
   id: string
@@ -40,7 +41,7 @@ export default async function ProductivityPage() {
     .single()
 
   const typedCurrentUser = currentUser as User | null
-  if (!typedCurrentUser || typedCurrentUser.role !== 'admin') {
+  if (!userHasRole(typedCurrentUser, 'admin')) {
     redirect('/dashboard')
   }
 
@@ -169,7 +170,7 @@ export default async function ProductivityPage() {
       id: staff.id,
       name: staff.name,
       email: staff.email,
-      role: staff.role,
+      role: getPrimaryRole(staff),
       avatar_url: staff.avatar_url,
       assigned_regions: staff.assigned_regions || [],
       emailsThisWeek,

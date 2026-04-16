@@ -8,6 +8,7 @@ import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
+import { userHasRole } from '@/lib/roles'
 
 export default function EditAthletePage() {
   const router = useRouter()
@@ -122,9 +123,9 @@ export default function EditAthletePage() {
     router.push(`/athletes/${id}`)
   }
 
-  const scouts = users.filter(u => u.role === 'scout' || u.role === 'admin')
-  const agents = users.filter(u => u.role === 'agent' || u.role === 'admin')
-  const marketingLeads = users.filter(u => u.role === 'marketing' || u.role === 'admin')
+  const scouts = users.filter(u => userHasRole(u, 'scout'))
+  const agents = users.filter(u => userHasRole(u, 'agent'))
+  const marketingLeads = users.filter(u => userHasRole(u, 'marketing'))
 
   if (isLoading) {
     return (

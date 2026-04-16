@@ -7,6 +7,7 @@ import { DateDisplay, TimeAgo } from '@/components/ui/date-display'
 import { REGIONS } from '@/lib/database.types'
 import { getGoalProgressForUser, getTeamGoalsSummary } from '@/lib/queries/goal-progress'
 import { getLocalDateString, isDueToday as checkDueToday, isOverdue as checkOverdue, parseDate } from '@/lib/helpers'
+import { getPrimaryRole, userHasRole } from '@/lib/roles'
 
 // Disable caching to ensure fresh data on each request
 export const dynamic = 'force-dynamic'
@@ -18,14 +19,14 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const { data: userData } = await supabase
     .from('users')
-    .select('id, name, role')
+    .select('id, name, role, roles, primary_role')
     .eq('auth_user_id', user?.id || '')
-    .single() as { data: { id: string; name: string; role: string } | null }
+    .single() as { data: User | null }
 
   const userName = userData?.name || 'there'
   const currentUserId = userData?.id || ''
-  const userRole = userData?.role || ''
-  const isAdmin = userRole === 'admin'
+  const userRole = getPrimaryRole(userData)
+  const isAdmin = userHasRole(userData, 'admin')
 
   // Date calculations
   const today = new Date()

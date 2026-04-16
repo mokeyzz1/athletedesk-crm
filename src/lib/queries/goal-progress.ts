@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { getUserRoles } from '@/lib/roles'
+import type { UserRole } from '@/lib/database.types'
 
 export interface GoalProgress {
   goalId: string
@@ -42,6 +44,7 @@ interface UserRow {
   id: string
   name: string
   role: string
+  roles: string[] | null
 }
 
 export async function getGoalProgressForUser(userId: string): Promise<GoalProgress[]> {
@@ -50,7 +53,7 @@ export async function getGoalProgressForUser(userId: string): Promise<GoalProgre
   // Get user details
   const { data: userData } = await supabase
     .from('users')
-    .select('id, name, role')
+    .select('id, name, role, roles')
     .eq('id', userId)
     .single()
 
@@ -71,7 +74,7 @@ export async function getGoalProgressForUser(userId: string): Promise<GoalProgre
     // Specific staff member
     if (goal.staff_id === userId) return true
     // Role-based
-    if (goal.target_role === user.role && !goal.staff_id) return true
+    if (goal.target_role && getUserRoles(user).includes(goal.target_role as UserRole) && !goal.staff_id) return true
     // All staff (no specific staff or role)
     if (!goal.staff_id && !goal.target_role) return true
     return false
@@ -136,7 +139,7 @@ export async function getAllUsersGoalProgress(): Promise<UserGoalProgress[]> {
   // Get all users
   const { data: usersData } = await supabase
     .from('users')
-    .select('id, name, role')
+    .select('id, name, role, roles')
     .order('name')
 
   const users = (usersData || []) as UserRow[]
@@ -172,7 +175,7 @@ export async function getAllUsersGoalProgress(): Promise<UserGoalProgress[]> {
     // Find applicable goals for this user
     const applicableGoals = goals.filter(goal => {
       if (goal.staff_id === user.id) return true
-      if (goal.target_role === user.role && !goal.staff_id) return true
+      if (goal.target_role && getUserRoles(user).includes(goal.target_role as UserRole) && !goal.staff_id) return true
       if (!goal.staff_id && !goal.target_role) return true
       return false
     })

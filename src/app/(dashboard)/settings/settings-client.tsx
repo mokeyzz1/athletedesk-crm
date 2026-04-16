@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { User, EmailTemplate, RosterTeam, RecruitingRegion, Organization, IntegrationProvider } from '@/lib/database.types'
 import { US_STATES } from '@/lib/database.types'
+import { getPrimaryRole, userHasRole } from '@/lib/roles'
 
 interface Integration {
   id: string
@@ -250,7 +251,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
   const [isEditingOrgName, setIsEditingOrgName] = useState(false)
   const [isSavingOrg, setIsSavingOrg] = useState(false)
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = userHasRole(profile, 'admin')
   const router = useRouter()
   const supabase = createClient()
 
@@ -744,8 +745,8 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     <div className="flex-1">
                       <h3 className="text-lg font-medium text-gray-900">{profile?.name}</h3>
                       <p className="text-sm text-gray-500">{profile?.email}</p>
-                      <span className={`inline-flex mt-2 px-2 py-0.5 text-xs font-medium rounded capitalize ${getRoleBadgeColor(profile?.role || '')}`}>
-                        {profile?.role}
+                      <span className={`inline-flex mt-2 px-2 py-0.5 text-xs font-medium rounded capitalize ${getRoleBadgeColor(getPrimaryRole(profile))}`}>
+                        {getPrimaryRole(profile)}
                       </span>
                     </div>
                   </div>

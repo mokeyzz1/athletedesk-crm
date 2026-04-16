@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { User, Athlete, TaskInsert } from '@/lib/database.types'
+import { userHasAnyRole } from '@/lib/roles'
 
 export default function NewTaskPage() {
   const router = useRouter()
@@ -32,7 +33,7 @@ export default function NewTaskPage() {
           setCurrentUser(typedUser)
 
           // Check if user can create tasks
-          if (typedUser.role !== 'admin' && typedUser.role !== 'agent') {
+          if (!userHasAnyRole(typedUser, ['admin', 'agent'])) {
             router.push('/tasks')
             return
           }

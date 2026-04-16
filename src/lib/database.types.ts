@@ -130,6 +130,8 @@ export interface Database {
           name: string
           email: string
           role: UserRole
+          roles: UserRole[]           // Multi-role support
+          primary_role: UserRole      // Display/primary role
           auth_user_id: string | null  // Primary auth lookup (provider-neutral)
           google_sso_id: string | null  // Legacy: Google-specific, kept for tracking
           avatar_url: string | null
@@ -158,6 +160,8 @@ export interface Database {
           name: string
           email: string
           role?: UserRole
+          roles?: UserRole[]           // Multi-role support
+          primary_role?: UserRole      // Display/primary role
           auth_user_id?: string | null
           google_sso_id?: string | null
           avatar_url?: string | null
@@ -185,6 +189,8 @@ export interface Database {
           name?: string
           email?: string
           role?: UserRole
+          roles?: UserRole[]           // Multi-role support
+          primary_role?: UserRole      // Display/primary role
           auth_user_id?: string | null
           google_sso_id?: string | null
           avatar_url?: string | null

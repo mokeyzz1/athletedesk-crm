@@ -14,6 +14,8 @@ type TeamUser = Pick<
   | 'name'
   | 'email'
   | 'role'
+  | 'roles'
+  | 'primary_role'
   | 'avatar_url'
   | 'created_at'
   | 'updated_at'
@@ -23,7 +25,7 @@ type TeamUser = Pick<
 async function requireAdminContext() {
   const context = await getAuthContext()
 
-  if (context.role !== 'admin') {
+  if (!context.roles.includes('admin')) {
     throw new AuthError('Only admins can manage team members')
   }
 
@@ -50,10 +52,14 @@ export async function updateUserRole(
     const serviceClient = createServiceClient()
     const { data, error } = await serviceClient
       .from('users')
-      .update({ role } as never)
+      .update({
+        role,
+        primary_role: role,
+        roles: [role],
+      } as never)
       .eq('id', targetUserId)
       .eq('organization_id', organizationId)
-      .select('id, organization_id, name, email, role, avatar_url, created_at, updated_at, assigned_regions')
+      .select('id, organization_id, name, email, role, roles, primary_role, avatar_url, created_at, updated_at, assigned_regions')
       .single()
 
     if (error) {
@@ -108,7 +114,7 @@ export async function updateUserRegions(
       .update({ assigned_regions: cleanRegions } as never)
       .eq('id', targetUserId)
       .eq('organization_id', organizationId)
-      .select('id, organization_id, name, email, role, avatar_url, created_at, updated_at, assigned_regions')
+      .select('id, organization_id, name, email, role, roles, primary_role, avatar_url, created_at, updated_at, assigned_regions')
       .single()
 
     if (error) {
@@ -125,5 +131,60 @@ export async function updateUserRegions(
     }
     console.error('Update user regions unexpected error:', err)
     return { success: false, error: 'Failed to update user regions' }
+  }
+}
+
+export async function updateUserRoles(
+  targetUserId: string,
+  roles: UserRole[],
+  primaryRole: UserRole
+): Promise<ActionResult<TeamUser>> {
+  try {
+    const { organizationId, userId } = await requireAdminContext()
+
+    // Validate: roles must not be empty
+    if (!roles.length) {
+      return { success: false, error: 'At least one role is required' }
+    }
+
+    // Validate: primaryRole must be in roles
+    if (!roles.includes(primaryRole)) {
+      return { success: false, error: 'Primary role must be one of the selected roles' }
+    }
+
+    // Prevent admin from removing their own admin role
+    if (targetUserId === userId && !roles.includes('admin')) {
+      return { success: false, error: 'You cannot remove your own admin role' }
+    }
+
+    const serviceClient = createServiceClient()
+
+    // Sync all three fields: role (for RLS), primary_role, and roles
+    const { data, error } = await serviceClient
+      .from('users')
+      .update({
+        role: primaryRole,
+        primary_role: primaryRole,
+        roles: roles,
+      } as never)
+      .eq('id', targetUserId)
+      .eq('organization_id', organizationId)
+      .select('id, organization_id, name, email, role, roles, primary_role, avatar_url, created_at, updated_at, assigned_regions')
+      .single()
+
+    if (error) {
+      console.error('Update user roles error:', error)
+      return { success: false, error: error.message }
+    }
+
+    revalidateTeamAdminPaths()
+
+    return { success: true, data: data as TeamUser }
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { success: false, error: err.message }
+    }
+    console.error('Update user roles unexpected error:', err)
+    return { success: false, error: 'Failed to update user roles' }
   }
 }

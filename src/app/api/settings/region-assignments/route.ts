@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { userHasRole } from '@/lib/roles'
+import type { UserRole } from '@/lib/database.types'
 
 interface RegionAssignmentUpdate {
   region: string
@@ -64,8 +66,7 @@ export async function GET() {
   // Get all agents and marketing users for the dropdowns
   const { data: agents, error: agentsError } = await supabase
     .from('users')
-    .select('id, name, role, assigned_regions')
-    .in('role', ['agent', 'admin'])
+    .select('id, name, role, roles, assigned_regions')
     .order('name')
 
   if (agentsError) {
@@ -75,8 +76,7 @@ export async function GET() {
 
   const { data: marketingUsers, error: marketingError } = await supabase
     .from('users')
-    .select('id, name, role, assigned_regions')
-    .in('role', ['marketing', 'admin'])
+    .select('id, name, role, roles, assigned_regions')
     .order('name')
 
   if (marketingError) {
@@ -86,8 +86,8 @@ export async function GET() {
 
   return NextResponse.json({
     assignments,
-    agents: agents || [],
-    marketingUsers: marketingUsers || [],
+    agents: (agents || []).filter(agent => userHasRole(agent, 'agent')),
+    marketingUsers: (marketingUsers || []).filter(marketingUser => userHasRole(marketingUser, 'marketing')),
   })
 }
 
@@ -102,13 +102,13 @@ export async function PATCH(request: NextRequest) {
   // Check if user is admin and get their organization_id
   const { data: currentUserData } = await supabase
     .from('users')
-    .select('role, organization_id')
+    .select('role, roles, organization_id')
     .eq('auth_user_id', user.id)
     .single()
 
-  const currentUser = currentUserData as { role: string; organization_id: string } | null
+  const currentUser = currentUserData as { role: UserRole; roles: UserRole[] | null; organization_id: string } | null
 
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || !userHasRole(currentUser, 'admin')) {
     return NextResponse.json({ error: 'Only admins can manage region assignments' }, { status: 403 })
   }
 

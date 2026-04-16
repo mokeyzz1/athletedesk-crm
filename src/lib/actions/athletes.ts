@@ -340,23 +340,29 @@ export async function updateAthlete(
  * - Existing assignments cannot be overwritten here; admins can reassign in edit flows
  */
 export async function selfAssignAthlete(
-  athleteId: string
+  athleteId: string,
+  assignmentRole?: 'scout' | 'agent' | 'marketing'
 ): Promise<ActionResult<Athlete>> {
   try {
-    const { role } = await getAuthContext()
+    const { role, roles } = await getAuthContext()
+    const targetRole = assignmentRole || (role as 'scout' | 'agent' | 'marketing')
 
-    if (!['scout', 'agent', 'marketing'].includes(role)) {
+    if (
+      !['scout', 'agent', 'marketing'].includes(targetRole)
+      || (!roles.includes('admin') && !roles.includes(targetRole))
+    ) {
       return { success: false, error: 'Your role cannot self-assign athletes' }
     }
 
     const supabase = await createClient()
     const callSelfAssign = supabase.rpc as unknown as (
       fn: 'self_assign_athlete',
-      args: { p_athlete_id: string }
+      args: { p_athlete_id: string; p_assignment_role: 'scout' | 'agent' | 'marketing' }
     ) => Promise<{ data: Athlete | null; error: { message: string } | null }>
 
     const { data, error } = await callSelfAssign('self_assign_athlete', {
       p_athlete_id: athleteId,
+      p_assignment_role: targetRole,
     })
 
     if (error) {

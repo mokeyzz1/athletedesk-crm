@@ -60,11 +60,11 @@ export async function updateUserRole(
       .eq('id', targetUserId)
       .eq('organization_id', organizationId)
       .select('id, organization_id, name, email, role, roles, primary_role, avatar_url, created_at, updated_at, assigned_regions')
-      .single()
+      .maybeSingle()
 
-    if (error) {
+    if (error || !data) {
       console.error('Update user role error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error?.message || 'Team member not found in the current organization' }
     }
 
     revalidateTeamAdminPaths()
@@ -115,11 +115,11 @@ export async function updateUserRegions(
       .eq('id', targetUserId)
       .eq('organization_id', organizationId)
       .select('id, organization_id, name, email, role, roles, primary_role, avatar_url, created_at, updated_at, assigned_regions')
-      .single()
+      .maybeSingle()
 
-    if (error) {
+    if (error || !data) {
       console.error('Update user regions error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error?.message || 'Team member not found in the current organization' }
     }
 
     revalidateTeamAdminPaths()
@@ -170,11 +170,11 @@ export async function updateUserRoles(
       .eq('id', targetUserId)
       .eq('organization_id', organizationId)
       .select('id, organization_id, name, email, role, roles, primary_role, avatar_url, created_at, updated_at, assigned_regions')
-      .single()
+      .maybeSingle()
 
-    if (error) {
+    if (error || !data) {
       console.error('Update user roles error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error?.message || 'Team member not found in the current organization' }
     }
 
     revalidateTeamAdminPaths()

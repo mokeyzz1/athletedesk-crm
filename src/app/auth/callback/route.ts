@@ -151,6 +151,8 @@ async function handleAuthenticatedUser(
       google_sso_id: isGoogleProvider ? authUserId : null,
       avatar_url: user.user_metadata?.avatar_url,
       role: 'admin',
+      roles: ['admin'],
+      primary_role: 'admin',
       is_super_admin: true,
       organization_id: null,
     } as never)

@@ -11,6 +11,7 @@ export interface AuthContext {
   role: string       // Primary role (backward compat)
   roles: string[]    // All user roles
   email: string
+  isSuperAdmin: boolean
 }
 
 /**
@@ -30,27 +31,46 @@ export async function getAuthContext(): Promise<AuthContext> {
   // Uses auth_user_id as the primary lookup key (provider-neutral)
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('id, organization_id, role, roles, primary_role')
+    .select('id, organization_id, viewing_organization_id, is_super_admin, role, roles, primary_role')
     .eq('auth_user_id', user.id)
-    .single() as { data: { id: string; organization_id: string | null; role: string; roles: string[] | null; primary_role: string | null } | null; error: unknown }
+    .single() as {
+      data: {
+        id: string
+        organization_id: string | null
+        viewing_organization_id: string | null
+        is_super_admin: boolean
+        role: string
+        roles: string[] | null
+        primary_role: string | null
+      } | null
+      error: unknown
+    }
 
   if (userError || !userData) {
     throw new AuthError('User not found in database')
   }
 
-  if (!userData.organization_id) {
+  const effectiveOrganizationId = userData.is_super_admin && userData.viewing_organization_id
+    ? userData.viewing_organization_id
+    : userData.organization_id
+
+  if (!effectiveOrganizationId) {
     throw new AuthError('User not associated with an organization')
   }
 
   // Fallback: use role if roles array not yet populated
   const roles = userData.roles?.length ? userData.roles : [userData.role]
+  if (userData.is_super_admin && !roles.includes('admin')) {
+    roles.push('admin')
+  }
 
   return {
     userId: userData.id,
-    organizationId: userData.organization_id,
+    organizationId: effectiveOrganizationId,
     role: userData.primary_role || userData.role,
     roles,
     email: user.email || '',
+    isSuperAdmin: userData.is_super_admin,
   }
 }
 
@@ -74,4 +94,3 @@ export async function requireRole(allowedRoles: string[]): Promise<AuthContext> 
 
   return context
 }
-

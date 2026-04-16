@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { updateUserRegions } from '@/lib/actions/users'
 
 interface StaffProductivity {
   id: string
@@ -65,6 +66,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   const [assigning, setAssigning] = useState(false)
   const [selectedRegions, setSelectedRegions] = useState<string[]>([])
   const [savingRegions, setSavingRegions] = useState(false)
+  const [regionError, setRegionError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -177,6 +179,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   const openRegionModal = () => {
     if (selectedStaff) {
       setSelectedRegions(selectedStaff.assigned_regions || [])
+      setRegionError(null)
       setShowRegionModal(true)
     }
   }
@@ -192,15 +195,15 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   const saveRegions = async () => {
     if (!selectedStaff) return
     setSavingRegions(true)
+    setRegionError(null)
 
-    const { error } = await supabase
-      .from('users')
-      .update({ assigned_regions: selectedRegions } as never)
-      .eq('id', selectedStaff.id)
+    const result = await updateUserRegions(selectedStaff.id, selectedRegions)
 
-    if (!error) {
+    if (result.success) {
       router.refresh()
       setShowRegionModal(false)
+    } else {
+      setRegionError(result.error)
     }
     setSavingRegions(false)
   }
@@ -638,6 +641,11 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
               </p>
 
               <div className="space-y-2 mb-6">
+                {regionError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+                    {regionError}
+                  </div>
+                )}
                 {allRegions.length === 0 && (
                   <p className="text-sm text-gray-500">No recruiting regions have been created yet.</p>
                 )}

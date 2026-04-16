@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { User, UserRole, RecruitingRegion } from '@/lib/database.types'
+import { updateUserRegions, updateUserRole as updateUserRoleAction } from '@/lib/actions/users'
 
 export default function TeamManagementPage() {
   const router = useRouter()
@@ -25,6 +26,7 @@ export default function TeamManagementPage() {
   const [selectedRegions, setSelectedRegions] = useState<string[]>([])
   const [recruitingRegions, setRecruitingRegions] = useState<string[]>([])
   const [savingRegions, setSavingRegions] = useState(false)
+  const [teamError, setTeamError] = useState('')
 
   useEffect(() => {
     async function fetchData() {
@@ -69,14 +71,14 @@ export default function TeamManagementPage() {
   }, [supabase, router])
 
   const updateUserRole = async (userId: string, newRole: UserRole) => {
-    const { error } = await supabase
-      .from('users')
-      .update({ role: newRole } as never)
-      .eq('id', userId)
+    setTeamError('')
+    const result = await updateUserRoleAction(userId, newRole)
 
-    if (!error) {
-      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u))
+    if (result.success) {
+      setUsers(users.map(u => u.id === userId ? result.data : u))
       setEditingUser(null)
+    } else {
+      setTeamError(result.error)
     }
   }
 
@@ -153,18 +155,18 @@ export default function TeamManagementPage() {
     if (!editingRegionsUser) return
 
     setSavingRegions(true)
-    const { error } = await supabase
-      .from('users')
-      .update({ assigned_regions: selectedRegions } as never)
-      .eq('id', editingRegionsUser.id)
+    setTeamError('')
+    const result = await updateUserRegions(editingRegionsUser.id, selectedRegions)
 
-    if (!error) {
+    if (result.success) {
       setUsers(users.map(u =>
         u.id === editingRegionsUser.id
-          ? { ...u, assigned_regions: selectedRegions }
+          ? result.data
           : u
       ))
       setEditingRegionsUser(null)
+    } else {
+      setTeamError(result.error)
     }
     setSavingRegions(false)
   }
@@ -209,6 +211,11 @@ export default function TeamManagementPage() {
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      {teamError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {teamError}
+        </div>
+      )}
       {/* Role Legend */}
       <div className="card">
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Role Permissions</h3>

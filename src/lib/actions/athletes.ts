@@ -344,8 +344,11 @@ export async function selfAssignAthlete(
   assignmentRole?: 'scout' | 'agent' | 'marketing'
 ): Promise<ActionResult<Athlete>> {
   try {
-    const { role, roles } = await getAuthContext()
+    const context = await getAuthContext()
+    const { role, roles, isSuperAdmin, organizationId } = context
     const targetRole = assignmentRole || (role as 'scout' | 'agent' | 'marketing')
+
+    console.log('Self-assign debug:', { athleteId, assignmentRole, targetRole, role, roles, isSuperAdmin, organizationId })
 
     if (
       !['scout', 'agent', 'marketing'].includes(targetRole)
@@ -367,11 +370,12 @@ export async function selfAssignAthlete(
 
     if (error) {
       console.error('Self-assign athlete RPC error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message || 'RPC failed' }
     }
 
     if (!data) {
-      return { success: false, error: 'Failed to assign athlete' }
+      console.error('Self-assign athlete returned null data, no error')
+      return { success: false, error: `No data returned. Debug: athleteId=${athleteId}, targetRole=${targetRole}, orgId=${organizationId}, isSuperAdmin=${isSuperAdmin}` }
     }
 
     return { success: true, data: data as Athlete }

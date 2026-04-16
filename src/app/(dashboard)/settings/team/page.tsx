@@ -75,7 +75,7 @@ export default function TeamManagementPage() {
     const result = await updateUserRoleAction(userId, newRole)
 
     if (result.success) {
-      setUsers(users.map(u => u.id === userId ? result.data : u))
+      setUsers(users.map(u => u.id === userId ? { ...u, ...result.data } : u))
       setEditingUser(null)
     } else {
       setTeamError(result.error)
@@ -161,7 +161,7 @@ export default function TeamManagementPage() {
     if (result.success) {
       setUsers(users.map(u =>
         u.id === editingRegionsUser.id
-          ? result.data
+          ? { ...u, ...result.data }
           : u
       ))
       setEditingRegionsUser(null)

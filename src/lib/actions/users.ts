@@ -1,10 +1,24 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { User, UserRole } from '@/lib/database.types'
 import { getAuthContext } from './auth'
 import { AuthError } from './errors'
 import type { ActionResult } from './athletes'
+
+type TeamUser = Pick<
+  User,
+  | 'id'
+  | 'organization_id'
+  | 'name'
+  | 'email'
+  | 'role'
+  | 'avatar_url'
+  | 'created_at'
+  | 'updated_at'
+  | 'assigned_regions'
+>
 
 async function requireAdminContext() {
   const context = await getAuthContext()
@@ -16,10 +30,16 @@ async function requireAdminContext() {
   return context
 }
 
+function revalidateTeamAdminPaths() {
+  revalidatePath('/settings')
+  revalidatePath('/settings/team')
+  revalidatePath('/team/productivity')
+}
+
 export async function updateUserRole(
   targetUserId: string,
   role: UserRole
-): Promise<ActionResult<User>> {
+): Promise<ActionResult<TeamUser>> {
   try {
     const { organizationId, userId } = await requireAdminContext()
 
@@ -33,7 +53,7 @@ export async function updateUserRole(
       .update({ role } as never)
       .eq('id', targetUserId)
       .eq('organization_id', organizationId)
-      .select()
+      .select('id, organization_id, name, email, role, avatar_url, created_at, updated_at, assigned_regions')
       .single()
 
     if (error) {
@@ -41,7 +61,9 @@ export async function updateUserRole(
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: data as User }
+    revalidateTeamAdminPaths()
+
+    return { success: true, data: data as TeamUser }
   } catch (err) {
     if (err instanceof AuthError) {
       return { success: false, error: err.message }
@@ -54,7 +76,7 @@ export async function updateUserRole(
 export async function updateUserRegions(
   targetUserId: string,
   regions: string[]
-): Promise<ActionResult<User>> {
+): Promise<ActionResult<TeamUser>> {
   try {
     const { organizationId } = await requireAdminContext()
     const cleanRegions = Array.from(new Set(regions.map(r => r.trim()).filter(Boolean)))
@@ -86,7 +108,7 @@ export async function updateUserRegions(
       .update({ assigned_regions: cleanRegions } as never)
       .eq('id', targetUserId)
       .eq('organization_id', organizationId)
-      .select()
+      .select('id, organization_id, name, email, role, avatar_url, created_at, updated_at, assigned_regions')
       .single()
 
     if (error) {
@@ -94,7 +116,9 @@ export async function updateUserRegions(
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: data as User }
+    revalidateTeamAdminPaths()
+
+    return { success: true, data: data as TeamUser }
   } catch (err) {
     if (err instanceof AuthError) {
       return { success: false, error: err.message }

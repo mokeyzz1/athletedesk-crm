@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { getLocalDateString } from '@/lib/helpers'
 import type { DayActivity } from './page'
 
 interface WeeklyClientProps {
@@ -9,7 +10,7 @@ interface WeeklyClientProps {
 }
 
 export function WeeklyClient({ days, weekLabel }: WeeklyClientProps) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
 
   const getPriorityBadge = (priority: string) => {
     const classes: Record<string, string> = {

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { DateDisplay } from '@/components/ui/date-display'
+import { isOverdue as checkOverdue } from '@/lib/helpers'
 import type { Task, User, Athlete } from '@/lib/database.types'
 
 interface TaskWithRelations extends Task {
@@ -99,22 +101,9 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
 
   const isOverdue = (task: TaskWithRelations) => {
     if (!task.due_date || task.status === 'done') return false
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return new Date(task.due_date) < today
+    return checkOverdue(task.due_date)
   }
 
-  const formatDueDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-
-    if (date.getTime() === today.getTime()) return 'Today'
-    if (date.getTime() === tomorrow.getTime()) return 'Tomorrow'
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
 
   return (
     <div className="flex gap-3 h-full overflow-x-auto pb-4">
@@ -184,7 +173,7 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
                           ? 'bg-red-50 text-red-700'
                           : 'bg-gray-100 text-gray-600'
                       }`}>
-                        {formatDueDate(task.due_date)}
+                        <DateDisplay date={task.due_date} short showTodayLabel />
                       </span>
                     )}
                   </div>

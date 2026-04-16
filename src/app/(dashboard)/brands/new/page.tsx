@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, Suspense } from 'react'
+import { getLocalDateString } from '@/lib/helpers'
 import type { User, Athlete, OutreachMethod, BrandOutreachInsert, DealStage } from '@/lib/database.types'
 import { DEAL_STAGES } from '@/lib/database.types'
 
@@ -193,7 +194,7 @@ function NewBrandOutreachForm() {
                 name="date_contacted"
                 id="date_contacted"
                 required
-                defaultValue={new Date().toISOString().split('T')[0]}
+                defaultValue={getLocalDateString()}
                 className="mt-1 input"
               />
             </div>

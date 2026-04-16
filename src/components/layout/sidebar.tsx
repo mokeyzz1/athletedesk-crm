@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { DateDisplay } from '@/components/ui/date-display'
+import { getLocalDateString } from '@/lib/helpers'
 import type { User } from '@/lib/database.types'
 import { SearchModal } from './search-modal'
 
@@ -153,9 +155,7 @@ export function Sidebar({ user }: SidebarProps) {
   useEffect(() => {
     const fetchNotifications = async () => {
       const notifs: Notification[] = []
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const todayStr = today.toISOString().split('T')[0]
+      const todayStr = getLocalDateString()
 
       try {
         const { data: overdueFollowups } = await supabase
@@ -474,7 +474,7 @@ export function Sidebar({ user }: SidebarProps) {
                                     notif.type === 'followup_overdue' ? 'text-red-600 font-medium' : 'text-gray-400'
                                   }`}>
                                     {notif.type === 'followup_overdue' ? 'Overdue: ' : ''}
-                                    {new Date(notif.date).toLocaleDateString()}
+                                    <DateDisplay date={notif.date} short />
                                   </p>
                                 )}
                               </div>

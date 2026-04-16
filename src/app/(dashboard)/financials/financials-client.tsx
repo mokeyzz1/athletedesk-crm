@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { DateDisplay } from '@/components/ui/date-display'
+import { parseDate } from '@/lib/helpers'
 import type { FinancialTracking, Athlete, DealType, DealStage, PaymentStatus } from '@/lib/database.types'
 import { DEAL_TYPES, DEAL_STAGES } from '@/lib/database.types'
 import { ExportButtons } from '@/components/export/export-buttons'
@@ -205,8 +207,8 @@ export function FinancialsClient({ financials: initialFinancials }: FinancialsCl
           bVal = b.payment_status
           break
         case 'date':
-          aVal = new Date(a.deal_date).getTime()
-          bVal = new Date(b.deal_date).getTime()
+          aVal = parseDate(a.deal_date)?.getTime() ?? 0
+          bVal = parseDate(b.deal_date)?.getTime() ?? 0
           break
       }
 
@@ -386,7 +388,7 @@ export function FinancialsClient({ financials: initialFinancials }: FinancialsCl
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(deal.deal_date).toLocaleDateString()}
+                    <DateDisplay date={deal.deal_date} short />
                   </td>
                 </tr>
               ))}

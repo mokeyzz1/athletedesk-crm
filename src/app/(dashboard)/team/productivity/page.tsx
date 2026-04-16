@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { User } from '@/lib/database.types'
 import { ProductivityClient } from './productivity-client'
+import { isOverdue } from '@/lib/helpers'
 
 interface StaffProductivity {
   id: string
@@ -158,7 +159,7 @@ export default async function ProductivityPage() {
         tasksCompleted++
       } else {
         tasksPending++
-        if (t.due_date && new Date(t.due_date) < today) tasksOverdue++
+        if (t.due_date && isOverdue(t.due_date)) tasksOverdue++
       }
     })
 

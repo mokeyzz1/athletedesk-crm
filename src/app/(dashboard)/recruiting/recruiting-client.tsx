@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
+import { DateDisplay } from '@/components/ui/date-display'
+import { getLocalDateString } from '@/lib/helpers'
 import type { OutreachStatus, ClassYear, RosterTeam } from '@/lib/database.types'
 import { OUTREACH_STATUSES, CLASS_YEARS, REGIONS, US_STATES } from '@/lib/database.types'
 import { bulkDeleteAthletes } from '@/lib/actions/athletes'
@@ -184,7 +186,7 @@ function AthleteCard({
 
       {athlete.last_contacted_date && (
         <div className="text-xs text-gray-400 mt-2">
-          Last contact: {new Date(athlete.last_contacted_date).toLocaleDateString()}
+          Last contact: <DateDisplay date={athlete.last_contacted_date} short />
         </div>
       )}
 
@@ -468,7 +470,7 @@ function TableView({
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                   {athlete.last_contacted_date
-                    ? new Date(athlete.last_contacted_date).toLocaleDateString()
+                    ? <DateDisplay date={athlete.last_contacted_date} short />
                     : '-'}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-right">
@@ -608,7 +610,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
     } else {
       setAthletes(prev => prev.map(a =>
         a.id === athleteId
-          ? { ...a, outreach_status: newStatus, last_contacted_date: newStatus !== 'not_contacted' ? new Date().toISOString().split('T')[0] : a.last_contacted_date }
+          ? { ...a, outreach_status: newStatus, last_contacted_date: newStatus !== 'not_contacted' ? getLocalDateString() : a.last_contacted_date }
           : a
       ))
     }

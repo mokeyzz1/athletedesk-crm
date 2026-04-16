@@ -8,6 +8,8 @@ import type { CommunicationLog, Athlete, CommunicationType } from '@/lib/databas
 import { ExportButtons } from '@/components/export/export-buttons'
 import { createClient } from '@/lib/supabase/client'
 import type { EmailStatsOverview } from '@/lib/queries/email-stats'
+import { DateDisplay } from '@/components/ui/date-display'
+import { isOverdue, parseDate } from '@/lib/helpers'
 
 interface CommunicationWithRelations extends CommunicationLog {
   athletes: { id: string; name: string } | null
@@ -126,16 +128,13 @@ export function CommunicationsClient({ communications: initialCommunications, at
   const { overdueFollowUps, pendingFollowUps, allCommunications } = useMemo(() => {
     if (!communications) return { overdueFollowUps: [], pendingFollowUps: [], allCommunications: [] }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
     const overdue = communications.filter(c =>
-      c.follow_up_date && !c.follow_up_completed && new Date(c.follow_up_date) < today
-    ).sort((a, b) => new Date(a.follow_up_date!).getTime() - new Date(b.follow_up_date!).getTime())
+      c.follow_up_date && !c.follow_up_completed && isOverdue(c.follow_up_date)
+    ).sort((a, b) => (parseDate(a.follow_up_date!)?.getTime() ?? 0) - (parseDate(b.follow_up_date!)?.getTime() ?? 0))
 
     const pending = communications.filter(c =>
-      c.follow_up_date && !c.follow_up_completed && new Date(c.follow_up_date) >= today
-    ).sort((a, b) => new Date(a.follow_up_date!).getTime() - new Date(b.follow_up_date!).getTime())
+      c.follow_up_date && !c.follow_up_completed && !isOverdue(c.follow_up_date)
+    ).sort((a, b) => (parseDate(a.follow_up_date!)?.getTime() ?? 0) - (parseDate(b.follow_up_date!)?.getTime() ?? 0))
 
     const sorted = [...communications].sort((a, b) => {
       let aVal: string | number = ''
@@ -163,8 +162,8 @@ export function CommunicationsClient({ communications: initialCommunications, at
           bVal = (b.users?.name || '').toLowerCase()
           break
         case 'followup':
-          aVal = a.follow_up_date ? new Date(a.follow_up_date).getTime() : 0
-          bVal = b.follow_up_date ? new Date(b.follow_up_date).getTime() : 0
+          aVal = a.follow_up_date ? parseDate(a.follow_up_date)?.getTime() ?? 0 : 0
+          bVal = b.follow_up_date ? parseDate(b.follow_up_date)?.getTime() ?? 0 : 0
           break
       }
 
@@ -233,7 +232,7 @@ export function CommunicationsClient({ communications: initialCommunications, at
         </td>
         <td className="px-4 py-3 whitespace-nowrap">
           <div className={`text-sm font-medium ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
-            {new Date(comm.follow_up_date!).toLocaleDateString()}
+            <DateDisplay date={comm.follow_up_date} short showTodayLabel />
           </div>
           {isOverdue && (
             <span className="text-xs text-red-500 font-medium">Overdue</span>
@@ -475,7 +474,7 @@ export function CommunicationsClient({ communications: initialCommunications, at
                         return (
                           <tr key={comm.id} className="table-row-hover">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(comm.communication_date).toLocaleDateString()}
+                              <DateDisplay date={comm.communication_date} short />
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <Link
@@ -502,9 +501,11 @@ export function CommunicationsClient({ communications: initialCommunications, at
                             <td className="px-6 py-4 whitespace-nowrap">
                               {comm.follow_up_date ? (
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-sm ${comm.follow_up_completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                                    {new Date(comm.follow_up_date).toLocaleDateString()}
-                                  </span>
+                                  <DateDisplay
+                                    date={comm.follow_up_date}
+                                    short
+                                    className={`text-sm ${comm.follow_up_completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}
+                                  />
                                   {comm.follow_up_completed ? (
                                     <span className="badge-green text-xs">Done</span>
                                   ) : (

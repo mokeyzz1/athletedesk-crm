@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { getLocalDateString, parseDate } from './helpers'
 
 export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
@@ -805,14 +806,14 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Normalize
       } else {
         // Try to parse as date string
         const dateStr = String(birthdayValue).trim()
-        const parsed = new Date(dateStr)
-        if (!isNaN(parsed.getTime())) {
+        const parsed = parseDate(dateStr)
+        if (parsed && !isNaN(parsed.getTime())) {
           parsedDate = parsed
         }
       }
 
       if (parsedDate && !isNaN(parsedDate.getTime())) {
-        normalized.birthday = parsedDate.toISOString().split('T')[0] // YYYY-MM-DD
+        normalized.birthday = getLocalDateString(parsedDate) // YYYY-MM-DD
       } else {
         normalized.birthday = null
       }

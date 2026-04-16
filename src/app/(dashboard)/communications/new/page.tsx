@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { getLocalDateString } from '@/lib/helpers'
 import type { User, Athlete, CommunicationType, CommunicationLogInsert } from '@/lib/database.types'
 import { EmailTemplateSelector } from '@/components/email-template-selector'
 
@@ -144,7 +145,7 @@ export default function NewCommunicationPage() {
               name="communication_date"
               id="communication_date"
               required
-              defaultValue={new Date().toISOString().split('T')[0]}
+              defaultValue={getLocalDateString()}
               className="mt-1 input"
             />
           </div>

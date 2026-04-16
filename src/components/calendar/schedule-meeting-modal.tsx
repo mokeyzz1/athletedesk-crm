@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getTomorrowDateString } from '@/lib/helpers'
 
 interface ScheduleMeetingModalProps {
   athleteId: string
@@ -45,9 +46,7 @@ export function ScheduleMeetingModal({
     checkCalendar()
 
     // Set default date to tomorrow
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    setDate(tomorrow.toISOString().split('T')[0])
+    setDate(getTomorrowDateString())
   }, [])
 
   const handleConnectCalendar = () => {

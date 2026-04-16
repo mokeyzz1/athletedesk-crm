@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { getLocalDateString } from '@/lib/helpers'
 import type { Athlete, FinancialTrackingInsert, DealType, DealStage } from '@/lib/database.types'
 import { DEAL_TYPES, DEAL_STAGES } from '@/lib/database.types'
 
@@ -162,7 +163,7 @@ export default function NewFinancialPage() {
                 name="deal_date"
                 id="deal_date"
                 required
-                defaultValue={new Date().toISOString().split('T')[0]}
+                defaultValue={getLocalDateString()}
                 className="mt-1 input"
               />
             </div>

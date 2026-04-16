@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { DateDisplay } from '@/components/ui/date-display'
+import { isOverdue as checkOverdue, isDueToday, parseDate } from '@/lib/helpers'
 import { useRouter } from 'next/navigation'
 import type { Task, User, Athlete } from '@/lib/database.types'
 import { TaskPanel } from '@/components/tasks/task-panel'
@@ -122,9 +124,12 @@ function AthleteBoardView({
                 </div>
                 <div className="flex items-center gap-3 ml-4">
                   {task.due_date && (
-                    <span className={`text-xs ${isOverdue(task) ? 'text-red-600' : 'text-gray-500'}`}>
-                      {new Date(task.due_date).toLocaleDateString()}
-                    </span>
+                    <DateDisplay
+                      date={task.due_date}
+                      short
+                      showTodayLabel
+                      className={`text-xs ${isOverdue(task) ? 'text-red-600' : 'text-gray-500'}`}
+                    />
                   )}
                   <span className={`text-xs px-2 py-0.5 rounded font-medium capitalize ${getPriorityBadge(task.priority)}`}>
                     {task.priority}
@@ -161,13 +166,6 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
     }
   }
 
-  // Memoize today's date to avoid recreating on every render
-  const today = useMemo(() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    return d
-  }, [])
-
   // Helper to check if a task is marketing-related
   const isMarketingTask = (task: TaskWithRelations) => {
     return task.assigned_user?.role === 'marketing' || task.creator?.role === 'marketing'
@@ -180,14 +178,14 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
       }
       if (activeFilter === 'overdue') {
         if (!task.due_date || task.status === 'done') return false
-        return new Date(task.due_date) < today
+        return checkOverdue(task.due_date)
       }
       if (activeFilter === 'marketing') {
         return isMarketingTask(task)
       }
       return true
     })
-  }, [tasks, activeFilter, currentUser.id, today])
+  }, [tasks, activeFilter, currentUser.id])
 
   const sortedTasks = useMemo(() => {
     return [...filteredTasks].sort((a, b) => {
@@ -208,8 +206,8 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
           bVal = (b.athletes?.name || '').toLowerCase()
           break
         case 'due_date':
-          aVal = a.due_date ? new Date(a.due_date).getTime() : Infinity
-          bVal = b.due_date ? new Date(b.due_date).getTime() : Infinity
+          aVal = a.due_date ? parseDate(a.due_date)?.getTime() ?? Infinity : Infinity
+          bVal = b.due_date ? parseDate(b.due_date)?.getTime() ?? Infinity : Infinity
           break
         case 'priority':
           const priorityOrder = { high: 0, medium: 1, low: 2 }
@@ -259,21 +257,19 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
     return status.replace(/_/g, ' ')
   }
 
-  const isOverdue = (task: TaskWithRelations) => {
+  const isTaskOverdue = (task: TaskWithRelations) => {
     if (!task.due_date || task.status === 'done') return false
-    return new Date(task.due_date) < today
+    return checkOverdue(task.due_date)
   }
 
-  const isDueToday = (task: TaskWithRelations) => {
+  const isTaskDueToday = (task: TaskWithRelations) => {
     if (!task.due_date) return false
-    const dueDate = new Date(task.due_date)
-    dueDate.setHours(0, 0, 0, 0)
-    return dueDate.getTime() === today.getTime()
+    return isDueToday(task.due_date)
   }
 
   // Counts for tabs
   const myTasksCount = tasks.filter(t => t.assigned_to === currentUser.id && t.status !== 'done').length
-  const overdueCount = tasks.filter(t => isOverdue(t)).length
+  const overdueCount = tasks.filter(t => isTaskOverdue(t)).length
   const marketingCount = tasks.filter(t => isMarketingTask(t) && t.status !== 'done').length
 
   const handleTaskUpdated = () => {
@@ -431,7 +427,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                 getPriorityBadge={getPriorityBadge}
                 getStatusBadge={getStatusBadge}
                 formatStatus={formatStatus}
-                isOverdue={isOverdue}
+                isOverdue={isTaskOverdue}
               />
             ) : (
               <div className="card overflow-hidden p-0">
@@ -503,17 +499,17 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                         <td className="px-6 py-4 whitespace-nowrap">
                           {task.due_date ? (
                             <span className={`text-sm ${
-                              isOverdue(task) ? 'text-red-600 font-medium' :
-                              isDueToday(task) ? 'text-yellow-600 font-medium' :
+                              isTaskOverdue(task) ? 'text-red-600 font-medium' :
+                              isTaskDueToday(task) ? 'text-yellow-600 font-medium' :
                               'text-gray-900'
                             }`}>
-                              {new Date(task.due_date).toLocaleDateString()}
-                              {isOverdue(task) && (
+                              <DateDisplay date={task.due_date} short showTodayLabel />
+                              {isTaskOverdue(task) && (
                                 <span className="ml-2 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
                                   Overdue
                                 </span>
                               )}
-                              {isDueToday(task) && !isOverdue(task) && (
+                              {isTaskDueToday(task) && !isTaskOverdue(task) && (
                                 <span className="ml-2 text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">
                                   Today
                                 </span>

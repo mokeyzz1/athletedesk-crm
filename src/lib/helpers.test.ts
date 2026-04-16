@@ -10,6 +10,7 @@ import {
   truncate,
   formatCurrency,
   parseOutreachStatus,
+  getLocalDateString,
 } from './helpers'
 
 describe('formatPhoneNumber', () => {
@@ -52,14 +53,14 @@ describe('calculateAge', () => {
   it('calculates age correctly', () => {
     const tenYearsAgo = new Date()
     tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10)
-    const birthDate = tenYearsAgo.toISOString().split('T')[0]
+    const birthDate = getLocalDateString(tenYearsAgo)
     expect(calculateAge(birthDate)).toBe(10)
   })
 
   it('handles birthday not yet occurred this year', () => {
     const today = new Date()
     const futureMonth = new Date(today.getFullYear() - 20, today.getMonth() + 1, 15)
-    const birthDate = futureMonth.toISOString().split('T')[0]
+    const birthDate = getLocalDateString(futureMonth)
     // Should be 19 since birthday hasn't happened yet
     expect(calculateAge(birthDate)).toBe(19)
   })

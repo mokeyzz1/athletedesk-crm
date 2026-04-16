@@ -4,6 +4,8 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { DateDisplay } from '@/components/ui/date-display'
+import { parseDate } from '@/lib/helpers'
 import type { BrandOutreach, Athlete, OutreachMethod, ResponseStatus } from '@/lib/database.types'
 import { ExportButtons } from '@/components/export/export-buttons'
 import { createClient } from '@/lib/supabase/client'
@@ -188,8 +190,8 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
           bVal = b.deal_value || 0
           break
         case 'date':
-          aVal = new Date(a.date_contacted).getTime()
-          bVal = new Date(b.date_contacted).getTime()
+          aVal = parseDate(a.date_contacted)?.getTime() ?? 0
+          bVal = parseDate(b.date_contacted)?.getTime() ?? 0
           break
         case 'staff':
           aVal = (a.users?.name || '').toLowerCase()
@@ -357,7 +359,7 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
                           {formatCurrency(item.deal_value)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(item.date_contacted).toLocaleDateString()}
+                          <DateDisplay date={item.date_contacted} short />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <button
@@ -433,7 +435,7 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
                             {formatCurrency(item.deal_value)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(item.date_contacted).toLocaleDateString()}
+                            <DateDisplay date={item.date_contacted} short />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
                             <button

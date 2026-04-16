@@ -14,6 +14,7 @@ import { EditAthleteButton } from '@/components/athletes/edit-athlete-button'
 import { DeleteAthleteButton } from './delete-athlete-button'
 import { PipelineStatusCard } from './pipeline-status-card'
 import { getAthleteEmailCount } from '@/lib/queries/email-stats'
+import { formatDate } from '@/lib/helpers'
 
 interface AthletePageProps {
   params: Promise<{ id: string }>
@@ -251,7 +252,7 @@ export default async function AthletePage({ params }: AthletePageProps) {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Birthday</dt>
                     <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(athlete.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      {formatDate(athlete.birthday)}
                     </dd>
                   </div>
                 )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { DateDisplay } from '@/components/ui/date-display'
 import type { User, Athlete, Task, TaskUpdate } from '@/lib/database.types'
 import { TaskComments } from './task-comments'
 
@@ -200,7 +201,7 @@ export function TaskPanel({
             <form onSubmit={handleSubmit} className="p-4 space-y-5">
               {/* Created by info */}
               <p className="text-xs text-gray-500">
-                Created by {task.creator?.name || 'Unknown'} on {new Date(task.created_at).toLocaleDateString()}
+                Created by {task.creator?.name || 'Unknown'} on <DateDisplay date={task.created_at} short />
               </p>
 
               {/* Title */}

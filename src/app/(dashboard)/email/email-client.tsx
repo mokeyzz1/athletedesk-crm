@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { formatDate as formatDateHelper } from '@/lib/helpers'
 import { User, EmailTemplate } from '@/lib/database.types'
 
 interface Email {
@@ -187,13 +188,13 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
     if (days === 0) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
     } else if (days === 1) {
       return 'Yesterday'
     } else if (days < 7) {
-      return date.toLocaleDateString([], { weekday: 'short' })
+      return date.toLocaleDateString(undefined, { weekday: 'short' })
     } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+      return formatDateHelper(dateStr, { short: true })
     }
   }
 

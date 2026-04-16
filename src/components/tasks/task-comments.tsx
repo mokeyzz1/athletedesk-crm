@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { TimeAgo } from '@/components/ui/date-display'
 import type { User, TaskComment } from '@/lib/database.types'
 import { MentionInput } from './mention-input'
 
@@ -80,21 +81,6 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
     setComments(prev => [...prev, newComment])
   }
 
-  const formatTimeAgo = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString()
-  }
 
   const renderCommentWithMentions = (content: string) => {
     // Split by @mention pattern (@ followed by words)
@@ -167,9 +153,7 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
                     <div className="flex-1 min-w-0">
                       <div className="text-sm">
                         <span className="font-medium text-gray-900">{comment.author.name}</span>
-                        <span className="text-gray-500 ml-2">
-                          {formatTimeAgo(comment.created_at)}
-                        </span>
+                        <TimeAgo date={comment.created_at} className="text-gray-500 ml-2" />
                       </div>
                       <div className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
                         {renderCommentWithMentions(comment.content)}

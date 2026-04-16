@@ -3,8 +3,10 @@ import Link from 'next/link'
 import type { DashboardSummary, PendingFollowUp, Athlete, FinancialTracking, BrandOutreach, Task, OutreachStatus, User } from '@/lib/database.types'
 import { Greeting } from '@/components/greeting'
 import { UpcomingMeetingsCard } from '@/components/calendar/upcoming-meetings-card'
+import { DateDisplay, TimeAgo } from '@/components/ui/date-display'
 import { REGIONS } from '@/lib/database.types'
 import { getGoalProgressForUser, getTeamGoalsSummary } from '@/lib/queries/goal-progress'
+import { getLocalDateString, isDueToday as checkDueToday, isOverdue as checkOverdue, parseDate } from '@/lib/helpers'
 
 // Disable caching to ensure fresh data on each request
 export const dynamic = 'force-dynamic'
@@ -28,10 +30,10 @@ export default async function DashboardPage() {
   // Date calculations
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = getLocalDateString(today)
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+  const tomorrowStr = getLocalDateString(tomorrow)
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
@@ -171,21 +173,6 @@ export default async function DashboardPage() {
     })),
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 6)
 
-  const formatTimeAgo = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString()
-  }
 
   // Extract results from parallel fetch
   const activeDealsData = activeDealsResult.data as { deal_value: number }[] | null
@@ -504,9 +491,8 @@ export default async function DashboardPage() {
           {userTasks && userTasks.length > 0 ? (
             <ul className="space-y-1">
               {userTasks.map((task) => {
-                const dueDate = task.due_date ? new Date(task.due_date) : null
-                const isOverdue = dueDate && dueDate < today && task.status !== 'done'
-                const isDueToday = dueDate && dueDate.toDateString() === today.toDateString()
+                const isOverdue = task.due_date ? checkOverdue(task.due_date) && task.status !== 'done' : false
+                const isDueToday = task.due_date ? checkDueToday(task.due_date) : false
                 return (
                   <li key={task.id}>
                     <Link
@@ -526,7 +512,7 @@ export default async function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      {dueDate && (
+                      {task.due_date && (
                         <span className={`text-xs px-2 py-0.5 rounded font-medium ml-2 whitespace-nowrap ${
                           isOverdue ? 'bg-red-100 text-red-700' :
                           isDueToday ? 'bg-yellow-100 text-yellow-700' :
@@ -534,7 +520,7 @@ export default async function DashboardPage() {
                         }`}>
                           {isOverdue ? 'Overdue' :
                            isDueToday ? 'Today' :
-                           dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                           <DateDisplay date={task.due_date} short />}
                         </span>
                       )}
                     </Link>
@@ -566,7 +552,10 @@ export default async function DashboardPage() {
           {followUps && followUps.length > 0 ? (
             <ul className="space-y-1">
               {followUps.map((followUp) => {
-                const daysUntil = Math.ceil((new Date(followUp.follow_up_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                const followUpDate = parseDate(followUp.follow_up_date)
+                const daysUntil = followUpDate
+                  ? Math.ceil((followUpDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                  : 0
                 const isOverdue = daysUntil < 0
                 const isUrgent = daysUntil >= 0 && daysUntil <= 1
                 const isSoon = daysUntil >= 2 && daysUntil <= 3
@@ -709,9 +698,7 @@ export default async function DashboardPage() {
                       <p className="font-medium text-gray-900 text-sm truncate capitalize">{activity.title}</p>
                       <p className="text-xs text-gray-500 truncate">{activity.subtitle}</p>
                     </div>
-                    <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
-                      {formatTimeAgo(activity.timestamp)}
-                    </span>
+                    <TimeAgo date={activity.timestamp} className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0" />
                   </Link>
                 </li>
               ))}

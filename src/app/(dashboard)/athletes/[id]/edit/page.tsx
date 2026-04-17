@@ -21,6 +21,7 @@ export default function EditAthletePage() {
   const [error, setError] = useState<string | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [athlete, setAthlete] = useState<Athlete | null>(null)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
 
   // Form state for dynamic fields
   const [selectedSport, setSelectedSport] = useState('')
@@ -29,6 +30,19 @@ export default function EditAthletePage() {
 
   useEffect(() => {
     async function fetchData() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('auth_user_id', user.id)
+          .single()
+
+        if (userData) {
+          setCurrentUser(userData as User)
+        }
+      }
+
       const { data: athleteData } = await supabase
         .from('athletes')
         .select('*')
@@ -85,7 +99,8 @@ export default function EditAthletePage() {
       Object.entries(socialMedia).filter(([, v]) => v !== '' && v !== null && v !== undefined && v !== 0)
     )
 
-    const updateData = {
+    const canManageAssignments = userHasRole(currentUser, 'admin')
+    const updateData: Record<string, unknown> = {
       name: formData.get('name') as string,
       email: (formData.get('email') as string) || null,
       phone: (formData.get('phone') as string) || null,
@@ -97,9 +112,6 @@ export default function EditAthletePage() {
       recruiting_status: formData.get('recruiting_status') as RecruitingStatus,
       transfer_portal_status: formData.get('transfer_portal_status') as TransferPortalStatus,
       marketability_score: formData.get('marketability_score') ? parseInt(formData.get('marketability_score') as string) : null,
-      assigned_scout_id: (formData.get('assigned_scout_id') as string) || null,
-      assigned_agent_id: (formData.get('assigned_agent_id') as string) || null,
-      assigned_marketing_lead_id: (formData.get('assigned_marketing_lead_id') as string) || null,
       notes: (formData.get('notes') as string) || null,
       sport_specific_stats: Object.keys(filteredStats).length > 0 ? filteredStats as Json : null,
       social_media: Object.keys(filteredSocialMedia).length > 0 ? filteredSocialMedia as Json : null,
@@ -107,6 +119,12 @@ export default function EditAthletePage() {
       class_year: formData.get('class_year') as ClassYear,
       region: (formData.get('region') as string) || null,
       outreach_status: formData.get('outreach_status') as OutreachStatus,
+    }
+
+    if (canManageAssignments) {
+      updateData.assigned_scout_id = (formData.get('assigned_scout_id') as string) || null
+      updateData.assigned_agent_id = (formData.get('assigned_agent_id') as string) || null
+      updateData.assigned_marketing_lead_id = (formData.get('assigned_marketing_lead_id') as string) || null
     }
 
     const { error: updateError } = await supabase
@@ -126,6 +144,7 @@ export default function EditAthletePage() {
   const scouts = users.filter(u => userHasRole(u, 'scout'))
   const agents = users.filter(u => userHasRole(u, 'agent'))
   const marketingLeads = users.filter(u => userHasRole(u, 'marketing'))
+  const canManageAssignments = userHasRole(currentUser, 'admin')
 
   if (isLoading) {
     return (
@@ -389,53 +408,55 @@ export default function EditAthletePage() {
         </div>
 
         {/* Assignments */}
-        <div className="border-t border-gray-200 pt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Staff Assignments</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="assigned_scout_id" className="label">Assigned Scout</label>
-              <select
-                name="assigned_scout_id"
-                id="assigned_scout_id"
-                defaultValue={athlete.assigned_scout_id || ''}
-                className="mt-1 input"
-              >
-                <option value="">Unassigned</option>
-                {scouts.map(user => (
-                  <option key={user.id} value={user.id}>{user.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="assigned_agent_id" className="label">Assigned Agent</label>
-              <select
-                name="assigned_agent_id"
-                id="assigned_agent_id"
-                defaultValue={athlete.assigned_agent_id || ''}
-                className="mt-1 input"
-              >
-                <option value="">Unassigned</option>
-                {agents.map(user => (
-                  <option key={user.id} value={user.id}>{user.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="assigned_marketing_lead_id" className="label">Marketing Lead</label>
-              <select
-                name="assigned_marketing_lead_id"
-                id="assigned_marketing_lead_id"
-                defaultValue={athlete.assigned_marketing_lead_id || ''}
-                className="mt-1 input"
-              >
-                <option value="">Unassigned</option>
-                {marketingLeads.map(user => (
-                  <option key={user.id} value={user.id}>{user.name}</option>
-                ))}
-              </select>
+        {canManageAssignments && (
+          <div className="border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Staff Assignments</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="assigned_scout_id" className="label">Assigned Scout</label>
+                <select
+                  name="assigned_scout_id"
+                  id="assigned_scout_id"
+                  defaultValue={athlete.assigned_scout_id || ''}
+                  className="mt-1 input"
+                >
+                  <option value="">Unassigned</option>
+                  {scouts.map(user => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="assigned_agent_id" className="label">Assigned Agent</label>
+                <select
+                  name="assigned_agent_id"
+                  id="assigned_agent_id"
+                  defaultValue={athlete.assigned_agent_id || ''}
+                  className="mt-1 input"
+                >
+                  <option value="">Unassigned</option>
+                  {agents.map(user => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="assigned_marketing_lead_id" className="label">Marketing Lead</label>
+                <select
+                  name="assigned_marketing_lead_id"
+                  id="assigned_marketing_lead_id"
+                  defaultValue={athlete.assigned_marketing_lead_id || ''}
+                  className="mt-1 input"
+                >
+                  <option value="">Unassigned</option>
+                  {marketingLeads.map(user => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Notes */}
         <div className="border-t border-gray-200 pt-6">

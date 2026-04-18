@@ -7,6 +7,7 @@ import { DateDisplay } from '@/components/ui/date-display'
 import { isOverdue as checkOverdue } from '@/lib/helpers'
 import type { Task, User, Athlete } from '@/lib/database.types'
 import { userHasRole } from '@/lib/roles'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 interface TaskWithRelations extends Task {
   assigned_user: { id: string; name: string; avatar_url: string | null } | null
@@ -76,10 +77,26 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
     }
 
     // Update task status
-    await supabase
+    const { error } = await supabase
       .from('tasks')
       .update({ status: newStatus } as never)
       .eq('id', taskId)
+
+    if (!error) {
+      await logClientActivityEvent({
+        entityType: task.athlete_id ? 'athlete' : 'task',
+        entityId: task.athlete_id || task.id,
+        eventType: newStatus === 'done' ? 'task.completed' : 'task.status_changed',
+        title: newStatus === 'done' ? `Task completed: ${task.title}` : `Task status changed: ${task.title}`,
+        metadata: {
+          task_id: task.id,
+          previous_status: task.status,
+          new_status: newStatus,
+          athlete_id: task.athlete_id,
+          source: 'task_kanban',
+        },
+      })
+    }
 
     setDraggedTaskId(null)
     setDragOverColumn(null)

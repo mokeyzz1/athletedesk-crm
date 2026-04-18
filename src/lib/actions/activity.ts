@@ -26,6 +26,19 @@ export type ActivityEventType =
   | 'deal.updated'
   | 'deal.deleted'
   | 'deal.payment_status_changed'
+  | 'task.created'
+  | 'task.updated'
+  | 'task.deleted'
+  | 'task.status_changed'
+  | 'task.completed'
+  | 'task.reassigned'
+  | 'task.priority_changed'
+  | 'pipeline.stage_changed'
+  | 'pipeline.priority_changed'
+  | 'brand.created'
+  | 'brand.updated'
+  | 'brand.deleted'
+  | 'brand.status_changed'
 
 export interface LogActivityEventInput {
   entityType: 'athlete' | string

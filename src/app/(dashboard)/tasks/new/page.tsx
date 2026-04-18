@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { User, Athlete, TaskInsert } from '@/lib/database.types'
 import { userHasAnyRole } from '@/lib/roles'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 export default function NewTaskPage() {
   const router = useRouter()
@@ -86,15 +87,34 @@ export default function NewTaskPage() {
       status: (formData.get('status') as 'todo' | 'in_progress' | 'done') || 'todo',
     }
 
-    const { error: insertError } = await supabase
+    const { data: task, error: insertError } = await supabase
       .from('tasks')
       .insert(taskData as never)
+      .select('id')
+      .single()
 
     if (insertError) {
       setError(insertError.message)
       setIsSubmitting(false)
       return
     }
+
+    const athlete = athletes.find(a => a.id === taskData.athlete_id)
+    await logClientActivityEvent({
+      entityType: taskData.athlete_id ? 'athlete' : 'task',
+      entityId: taskData.athlete_id || ((task as { id: string } | null)?.id || ''),
+      eventType: 'task.created',
+      title: `Task created: ${taskData.title}`,
+      metadata: {
+        task_id: (task as { id: string } | null)?.id,
+        assigned_to: taskData.assigned_to,
+        athlete_id: taskData.athlete_id,
+        athlete_name: athlete?.name,
+        priority: taskData.priority,
+        status: taskData.status,
+        source: 'tasks_new',
+      },
+    })
 
     router.push('/tasks')
   }

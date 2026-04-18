@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { User, Athlete, Task, TaskUpdate } from '@/lib/database.types'
 import { TaskComments } from '@/components/tasks/task-comments'
 import { getPrimaryRole, userHasRole } from '@/lib/roles'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 interface TaskWithRelations extends Task {
   assigned_user: { id: string; name: string; avatar_url: string | null } | null
@@ -130,6 +131,34 @@ export default function TaskDetailPage() {
       return
     }
 
+    let eventType: 'task.completed' | 'task.reassigned' | 'task.priority_changed' | 'task.status_changed' | 'task.updated' = 'task.updated'
+    if (task.status !== updateData.status) {
+      eventType = updateData.status === 'done' ? 'task.completed' : 'task.status_changed'
+    } else if (task.assigned_to !== updateData.assigned_to) {
+      eventType = 'task.reassigned'
+    } else if (task.priority !== updateData.priority) {
+      eventType = 'task.priority_changed'
+    }
+
+    await logClientActivityEvent({
+      entityType: updateData.athlete_id ? 'athlete' : 'task',
+      entityId: updateData.athlete_id || task.id,
+      eventType,
+      title: eventType === 'task.completed' ? `Task completed: ${updateData.title}` : `Task updated: ${updateData.title}`,
+      metadata: {
+        task_id: task.id,
+        previous_status: task.status,
+        new_status: updateData.status,
+        previous_assigned_to: task.assigned_to,
+        new_assigned_to: updateData.assigned_to,
+        previous_priority: task.priority,
+        new_priority: updateData.priority,
+        previous_athlete_id: task.athlete_id,
+        new_athlete_id: updateData.athlete_id,
+        source: 'task_detail_page',
+      },
+    })
+
     router.push('/tasks')
   }
 
@@ -147,6 +176,23 @@ export default function TaskDetailPage() {
       setError(deleteError.message)
       setIsDeleting(false)
       return
+    }
+
+    if (task) {
+      await logClientActivityEvent({
+        entityType: task.athlete_id ? 'athlete' : 'task',
+        entityId: task.athlete_id || task.id,
+        eventType: 'task.deleted',
+        title: `Task deleted: ${task.title}`,
+        metadata: {
+          task_id: task.id,
+          assigned_to: task.assigned_to,
+          athlete_id: task.athlete_id,
+          priority: task.priority,
+          status: task.status,
+          source: 'task_detail_page',
+        },
+      })
     }
 
     router.push('/tasks')

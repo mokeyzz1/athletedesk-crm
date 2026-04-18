@@ -175,6 +175,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Failed to update athlete' }, { status: 500 })
   }
 
+  const activityEvents: LogActivityEventInput[] = []
+
   // Create tasks for handoffs
   for (const handoff of handoffActions) {
     if (!handoff.assignedUser) continue
@@ -190,7 +192,7 @@ export async function PATCH(
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 3) // Due in 3 days
 
-    await supabase
+    const { data: task } = await supabase
       .from('tasks')
       .insert({
         title: taskTitle,
@@ -202,6 +204,22 @@ export async function PATCH(
         priority: 'high',
         status: 'todo',
       } as never)
+      .select('id')
+      .single()
+
+    activityEvents.push({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: 'task.created',
+      title: `Task created: ${taskTitle}`,
+      metadata: {
+        task_id: (task as { id: string } | null)?.id,
+        assigned_to: handoff.assignedUser.id,
+        priority: 'high',
+        status: 'todo',
+        source: 'automatic_handoff',
+      },
+    })
   }
 
   await notifyAthleteAssignments({
@@ -214,8 +232,6 @@ export async function PATCH(
         role: handoff.type,
       })),
   })
-
-  const activityEvents: LogActivityEventInput[] = []
 
   if (oldStatus !== newStatus) {
     activityEvents.push({

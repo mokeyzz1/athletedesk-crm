@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
 import type { PipelineStage } from '@/lib/database.types'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 interface PipelineData {
   id: string
@@ -62,6 +63,19 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
         return { pipelines: newPipelines }
       })
       console.error('Failed to update priority:', error)
+    } else {
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: athleteId,
+        eventType: 'pipeline.priority_changed',
+        title: `Pipeline priority changed to ${newPriority}`,
+        metadata: {
+          pipeline_id: pipeline.id,
+          previous_priority: oldPriority,
+          new_priority: newPriority,
+          source: 'pipeline_store',
+        },
+      })
     }
   },
 
@@ -95,6 +109,19 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
       console.error('Failed to update stage:', error)
       return
     }
+
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: 'pipeline.stage_changed',
+      title: `Pipeline stage changed to ${newStage.replace(/_/g, ' ')}`,
+      metadata: {
+        pipeline_id: pipeline.id,
+        previous_stage: oldStage,
+        new_stage: newStage,
+        source: 'pipeline_store',
+      },
+    })
 
     // Auto-sync: signed pipeline changes should use the status API so handoffs,
     // assignment notifications, and signed status stay consistent across screens.

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, Athlete, Json, ClassYear, OutreachStatus } from '@/lib/database.types'
 import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
@@ -145,6 +146,14 @@ export default function EditAthletePage() {
   const agents = users.filter(u => userHasRole(u, 'agent'))
   const marketingLeads = users.filter(u => userHasRole(u, 'marketing'))
   const canManageAssignments = userHasRole(currentUser, 'admin')
+  const isAssignedToCurrentUser = Boolean(
+    currentUser && athlete && (
+      athlete.assigned_scout_id === currentUser.id ||
+      athlete.assigned_agent_id === currentUser.id ||
+      athlete.assigned_marketing_lead_id === currentUser.id
+    )
+  )
+  const canEditAthlete = canManageAssignments || isAssignedToCurrentUser
 
   if (isLoading) {
     return (
@@ -173,6 +182,31 @@ export default function EditAthletePage() {
           <div className="max-w-3xl mx-auto">
             <div className="card text-center py-12">
               <p className="text-gray-500">Athlete not found</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!canEditAthlete) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Edit Athlete</h1>
+              <p className="text-gray-600">{athlete.name}</p>
+            </div>
+
+            <div className="card text-center py-12">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Assignment Required</h2>
+              <p className="text-gray-500 max-w-lg mx-auto">
+                You need to be assigned to this athlete before editing their profile. Use the athlete profile page to claim an open Scout, Agent, or Marketing Lead slot.
+              </p>
+              <Link href={`/athletes/${id}`} className="btn-primary mt-6 inline-flex">
+                Back to Athlete Profile
+              </Link>
             </div>
           </div>
         </div>

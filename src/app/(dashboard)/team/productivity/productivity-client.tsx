@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { updateUserRegions } from '@/lib/actions/users'
+import { notifyAthleteAssignments } from '@/lib/actions/athletes'
 
 interface StaffProductivity {
   id: string
@@ -143,6 +144,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   const assignAthlete = async (athleteId: string) => {
     if (!selectedStaff) return
     setAssigning(true)
+    const athlete = allAthletes.find((item) => item.id === athleteId)
 
     const updateField = assignRole === 'scout' ? 'assigned_scout_id' :
                        assignRole === 'agent' ? 'assigned_agent_id' :
@@ -154,6 +156,13 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
       .eq('id', athleteId)
 
     if (!error) {
+      if (athlete) {
+        await notifyAthleteAssignments({
+          athleteId,
+          athleteName: athlete.name,
+          assignments: [{ userId: selectedStaff.id, role: assignRole }],
+        })
+      }
       router.refresh()
       setShowAssignModal(false)
       setAssignSearch('')

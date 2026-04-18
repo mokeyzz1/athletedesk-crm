@@ -9,6 +9,7 @@ import { SportSelect, SportSpecificFields } from '@/components/forms/sport-speci
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
 import { userHasRole } from '@/lib/roles'
+import { notifyAthleteAssignments } from '@/lib/actions/athletes'
 
 interface DuplicateWarning {
   type: 'name' | 'email'
@@ -171,6 +172,16 @@ export default function NewAthletePage() {
     }
 
     const athlete = data as Athlete
+    await notifyAthleteAssignments({
+      athleteId: athlete.id,
+      athleteName: athlete.name,
+      assignments: [
+        { userId: athleteData.assigned_scout_id, role: 'scout' },
+        { userId: athleteData.assigned_agent_id, role: 'agent' },
+        { userId: athleteData.assigned_marketing_lead_id, role: 'marketing' },
+      ],
+    })
+
     router.push(`/athletes/${athlete.id}`)
   }
 

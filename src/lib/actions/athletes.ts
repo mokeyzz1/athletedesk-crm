@@ -58,6 +58,19 @@ export type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string }
 
+type AssignmentRole = 'scout' | 'agent' | 'marketing'
+
+interface AthleteAssignmentNotification {
+  userId: string | null | undefined
+  role: AssignmentRole
+}
+
+const ASSIGNMENT_ROLE_LABELS: Record<AssignmentRole, string> = {
+  scout: 'Scout',
+  agent: 'Agent',
+  marketing: 'Marketing Lead',
+}
+
 // ============================================================================
 // Validation
 // ============================================================================
@@ -94,6 +107,119 @@ function validateUpdateAthlete(data: UpdateAthleteInput): string | null {
     }
   }
   return null
+}
+
+async function insertNotifications(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  notifications: Array<Record<string, string | null>>
+) {
+  if (notifications.length === 0) return
+
+  const { error } = await supabase.from('notifications').insert(notifications as never[])
+  if (error) {
+    console.error('Create assignment notifications error:', error)
+  }
+}
+
+function uniqueAssignments(assignments: AthleteAssignmentNotification[]) {
+  const seen = new Set<string>()
+
+  return assignments.filter((assignment) => {
+    if (!assignment.userId) return false
+
+    const key = `${assignment.userId}:${assignment.role}`
+    if (seen.has(key)) return false
+
+    seen.add(key)
+    return true
+  })
+}
+
+/**
+ * Notify staff when they are assigned to an athlete.
+ * This is intentionally non-blocking for callers; notification failures are logged.
+ */
+export async function notifyAthleteAssignments(input: {
+  athleteId: string
+  athleteName: string
+  assignments: AthleteAssignmentNotification[]
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { organizationId, userId: actorId } = await getAuthContext()
+    const supabase = await createClient()
+
+    const notifications = uniqueAssignments(input.assignments)
+      .filter((assignment) => assignment.userId !== actorId)
+      .map((assignment) => ({
+        organization_id: organizationId,
+        user_id: assignment.userId as string,
+        type: 'assignment',
+        title: `You were assigned to ${input.athleteName}`,
+        message: `You have been assigned as ${ASSIGNMENT_ROLE_LABELS[assignment.role]} for this athlete.`,
+        href: `/athletes/${input.athleteId}`,
+        actor_id: actorId,
+        entity_type: 'athlete',
+        entity_id: input.athleteId,
+      }))
+
+    await insertNotifications(supabase, notifications)
+    return { success: true }
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { success: false, error: err.message }
+    }
+    console.error('Notify athlete assignments unexpected error:', err)
+    return { success: false, error: 'Failed to create assignment notifications' }
+  }
+}
+
+async function notifyAdminsOfAthleteClaim(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  actorId: string,
+  athleteId: string,
+  athleteName: string,
+  assignmentRole: AssignmentRole
+) {
+  const { data: actor } = await supabase
+    .from('users')
+    .select('name')
+    .eq('id', actorId)
+    .maybeSingle() as unknown as { data: { name: string | null } | null }
+
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, role, roles, is_super_admin')
+    .eq('organization_id', organizationId) as unknown as {
+      data: Array<{
+        id: string
+        role: string | null
+        roles: string[] | null
+        is_super_admin: boolean | null
+      }> | null
+    }
+
+  const actorName = actor?.name || 'A team member'
+  const adminIds = (users || [])
+    .filter((user) => (
+      user.id !== actorId
+      && (user.role === 'admin' || user.roles?.includes('admin') || user.is_super_admin)
+    ))
+    .map((user) => user.id)
+
+  const notifications = Array.from(new Set(adminIds)).map((adminId) => ({
+    organization_id: organizationId,
+    user_id: adminId,
+    type: 'assignment',
+    title: `${actorName} claimed ${athleteName}`,
+    message: `${actorName} assigned themself as ${ASSIGNMENT_ROLE_LABELS[assignmentRole]}.`,
+    href: `/athletes/${athleteId}`,
+    actor_id: actorId,
+    entity_type: 'athlete',
+    entity_id: athleteId,
+  }))
+
+  await insertNotifications(supabase, notifications)
 }
 
 // ============================================================================
@@ -316,10 +442,7 @@ export async function updateAthlete(
       checkArrayAssignment(currentAthlete.agent_ids, safeInput.agent_ids, 'Agent')
       checkArrayAssignment(currentAthlete.marketing_ids, safeInput.marketing_ids, 'Marketing')
 
-      // Insert notifications
-      if (notifications.length > 0) {
-        await supabase.from('notifications').insert(notifications as never[])
-      }
+      await insertNotifications(supabase, notifications)
     }
 
     return { success: true, data: data as Athlete }
@@ -344,7 +467,7 @@ export async function selfAssignAthlete(
   assignmentRole?: 'scout' | 'agent' | 'marketing'
 ): Promise<ActionResult<Athlete>> {
   try {
-    const { role, roles } = await getAuthContext()
+    const { organizationId, userId, role, roles } = await getAuthContext()
     const targetRole = assignmentRole || (role as 'scout' | 'agent' | 'marketing')
 
     if (
@@ -373,6 +496,19 @@ export async function selfAssignAthlete(
     if (!data) {
       console.error('Self-assign athlete returned null data, no error')
       return { success: false, error: 'No data returned from assignment' }
+    }
+
+    try {
+      await notifyAdminsOfAthleteClaim(
+        supabase,
+        organizationId,
+        userId,
+        athleteId,
+        (data as Athlete).name || 'this athlete',
+        targetRole
+      )
+    } catch (notificationError) {
+      console.error('Self-assign notification error:', notificationError)
     }
 
     return { success: true, data: data as Athlete }

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import * as docusign from '@/lib/integrations/docusign'
 import { hasIntegration } from '@/lib/integrations/token-refresh'
+import { logActivityEvent } from '@/lib/actions/activity'
 
 // GET - List contracts for an athlete
 export async function GET(request: Request) {
@@ -109,6 +110,22 @@ export async function POST(request: Request) {
   if (dbError) {
     console.error('Failed to store contract:', dbError)
     // Still return success since DocuSign succeeded
+  }
+
+  if (contract) {
+    await logActivityEvent({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: 'contract.sent',
+      title: `Contract sent: ${title}`,
+      metadata: {
+        contract_id: (contract as { id?: string }).id,
+        envelope_id: envelope.envelopeId,
+        recipient_email: recipientEmail,
+        recipient_name: recipientName,
+        source: 'contracts_api',
+      },
+    })
   }
 
   return NextResponse.json({

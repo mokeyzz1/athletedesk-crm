@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { Athlete, FinancialTracking, DealType, DealStage, PaymentStatus } from '@/lib/database.types'
 import { DEAL_TYPES, DEAL_STAGES } from '@/lib/database.types'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 const PAYMENT_STATUSES: { value: PaymentStatus; label: string }[] = [
   { value: 'pending', label: 'Pending' },
@@ -76,6 +77,8 @@ export default function EditFinancialPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (!deal) return
+
     setIsSubmitting(true)
     setError(null)
 
@@ -123,10 +126,32 @@ export default function EditFinancialPage() {
       return
     }
 
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: updateData.athlete_id,
+      eventType: deal.payment_status !== updateData.payment_status
+        ? 'deal.payment_status_changed'
+        : 'deal.updated',
+      title: deal.payment_status !== updateData.payment_status
+        ? `Deal payment status changed: ${updateData.deal_name}`
+        : `Deal updated: ${updateData.deal_name}`,
+      metadata: {
+        deal_id: dealId,
+        previous_athlete_id: deal.athlete_id,
+        previous_payment_status: deal.payment_status,
+        new_payment_status: updateData.payment_status,
+        previous_deal_value: deal.deal_value,
+        new_deal_value: updateData.deal_value,
+        source: 'financials_edit_page',
+      },
+    })
+
     router.push('/financials')
   }
 
   const handleDelete = async () => {
+    if (!deal) return
+
     setIsDeleting(true)
     const { error: deleteError } = await supabase
       .from('financial_tracking')
@@ -138,6 +163,19 @@ export default function EditFinancialPage() {
       setIsDeleting(false)
       return
     }
+
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: deal.athlete_id,
+      eventType: 'deal.deleted',
+      title: `Deal deleted: ${deal.deal_name}`,
+      metadata: {
+        deal_id: dealId,
+        deal_value: deal.deal_value,
+        payment_status: deal.payment_status,
+        source: 'financials_edit_page',
+      },
+    })
 
     router.push('/financials')
   }

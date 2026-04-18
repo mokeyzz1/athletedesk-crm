@@ -87,6 +87,7 @@ export async function POST(request: Request) {
       athlete_id: string
       title: string
       status: string
+      organization_id: string
     }
 
     // Update contract status
@@ -111,6 +112,24 @@ export async function POST(request: Request) {
     }
 
     console.log(`Updated contract ${contract.id} status to: ${status}`)
+
+    if (contract.status !== status) {
+      await supabase.from('activity_events').insert({
+        organization_id: contract.organization_id,
+        actor_id: null,
+        entity_type: 'athlete',
+        entity_id: contract.athlete_id,
+        event_type: 'contract.status_changed',
+        title: `Contract status changed: ${contract.title}`,
+        metadata: {
+          contract_id: contract.id,
+          previous_status: contract.status,
+          new_status: status,
+          envelope_id: envelopeId,
+          source: 'docusign_webhook',
+        },
+      })
+    }
 
     // If signed, create a notification/log entry
     if (status === 'signed') {

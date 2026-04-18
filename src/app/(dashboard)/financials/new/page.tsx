@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { getLocalDateString } from '@/lib/helpers'
 import type { Athlete, FinancialTrackingInsert, DealType, DealStage } from '@/lib/database.types'
 import { DEAL_TYPES, DEAL_STAGES } from '@/lib/database.types'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 export default function NewFinancialPage() {
   const router = useRouter()
@@ -75,15 +76,34 @@ export default function NewFinancialPage() {
       notes: (formData.get('notes') as string) || null,
     }
 
-    const { error: insertError } = await supabase
+    const { data: dealData, error: insertError } = await supabase
       .from('financial_tracking')
       .insert(financialData as never)
+      .select('id')
+      .single()
 
     if (insertError) {
       setError(insertError.message)
       setIsSubmitting(false)
       return
     }
+
+    const athlete = athletes.find(a => a.id === financialData.athlete_id)
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: financialData.athlete_id,
+      eventType: 'deal.created',
+      title: `Deal created: ${financialData.deal_name}`,
+      metadata: {
+        deal_id: (dealData as { id: string } | null)?.id,
+        deal_value: financialData.deal_value,
+        deal_type: financialData.deal_type,
+        deal_stage: financialData.deal_stage,
+        payment_status: financialData.payment_status,
+        athlete_name: athlete?.name,
+        source: 'financials_new',
+      },
+    })
 
     router.push('/financials')
   }

@@ -47,6 +47,12 @@ export type ActivityEventType =
   | 'document.uploaded'
   | 'document.deleted'
   | 'document.status_changed'
+  | 'contract.sent'
+  | 'contract.status_changed'
+  | 'deal.created'
+  | 'deal.updated'
+  | 'deal.deleted'
+  | 'deal.payment_status_changed'
 
 // Region constants (not an enum in DB, just common values)
 export const REGIONS = [

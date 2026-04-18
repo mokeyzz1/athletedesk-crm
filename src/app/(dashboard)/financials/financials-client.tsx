@@ -9,6 +9,7 @@ import { parseDate } from '@/lib/helpers'
 import type { FinancialTracking, Athlete, DealType, DealStage, PaymentStatus } from '@/lib/database.types'
 import { DEAL_TYPES, DEAL_STAGES } from '@/lib/database.types'
 import { ExportButtons } from '@/components/export/export-buttons'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 const PAYMENT_STATUSES: { value: PaymentStatus; label: string }[] = [
   { value: 'pending', label: 'Pending' },
@@ -138,6 +139,26 @@ export function FinancialsClient({ financials: initialFinancials }: FinancialsCl
       return
     }
 
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: updateData.athlete_id,
+      eventType: selectedDeal.payment_status !== updateData.payment_status
+        ? 'deal.payment_status_changed'
+        : 'deal.updated',
+      title: selectedDeal.payment_status !== updateData.payment_status
+        ? `Deal payment status changed: ${updateData.deal_name}`
+        : `Deal updated: ${updateData.deal_name}`,
+      metadata: {
+        deal_id: selectedDeal.id,
+        previous_athlete_id: selectedDeal.athlete_id,
+        previous_payment_status: selectedDeal.payment_status,
+        new_payment_status: updateData.payment_status,
+        previous_deal_value: selectedDeal.deal_value,
+        new_deal_value: updateData.deal_value,
+        source: 'financials_panel',
+      },
+    })
+
     // Update local state
     const athleteData = athletes.find(a => a.id === updateData.athlete_id)
     setFinancials(prev => prev?.map(f =>
@@ -164,6 +185,19 @@ export function FinancialsClient({ financials: initialFinancials }: FinancialsCl
       setIsDeleting(false)
       return
     }
+
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: selectedDeal.athlete_id,
+      eventType: 'deal.deleted',
+      title: `Deal deleted: ${selectedDeal.deal_name}`,
+      metadata: {
+        deal_id: selectedDeal.id,
+        deal_value: selectedDeal.deal_value,
+        payment_status: selectedDeal.payment_status,
+        source: 'financials_panel',
+      },
+    })
 
     // Update local state
     setFinancials(prev => prev?.filter(f => f.id !== selectedDeal.id) || null)

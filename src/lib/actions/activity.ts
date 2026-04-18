@@ -20,6 +20,12 @@ export type ActivityEventType =
   | 'document.uploaded'
   | 'document.deleted'
   | 'document.status_changed'
+  | 'contract.sent'
+  | 'contract.status_changed'
+  | 'deal.created'
+  | 'deal.updated'
+  | 'deal.deleted'
+  | 'deal.payment_status_changed'
 
 export interface LogActivityEventInput {
   entityType: 'athlete' | string

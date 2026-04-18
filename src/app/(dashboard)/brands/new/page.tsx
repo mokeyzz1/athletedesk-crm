@@ -6,6 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { getLocalDateString } from '@/lib/helpers'
 import type { User, Athlete, OutreachMethod, BrandOutreachInsert, DealStage } from '@/lib/database.types'
 import { DEAL_STAGES } from '@/lib/database.types'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 function NewBrandOutreachForm() {
   const router = useRouter()
@@ -75,15 +76,33 @@ function NewBrandOutreachForm() {
       deal_stage: formData.get('deal_stage') as DealStage,
     }
 
-    const { error: insertError } = await supabase
+    const { data: outreach, error: insertError } = await supabase
       .from('brand_outreach')
       .insert(outreachData as never)
+      .select('id')
+      .single()
 
     if (insertError) {
       setError(insertError.message)
       setIsSubmitting(false)
       return
     }
+
+    const athlete = athletes.find(a => a.id === outreachData.athlete_id)
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: outreachData.athlete_id,
+      eventType: 'brand.created',
+      title: `Brand outreach created: ${outreachData.brand_name}`,
+      metadata: {
+        brand_outreach_id: (outreach as { id: string } | null)?.id,
+        brand_name: outreachData.brand_name,
+        outreach_method: outreachData.outreach_method,
+        deal_stage: outreachData.deal_stage,
+        athlete_name: athlete?.name,
+        source: 'brands_new',
+      },
+    })
 
     router.push('/brands')
   }

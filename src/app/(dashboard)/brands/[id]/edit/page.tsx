@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { User, Athlete, OutreachMethod, BrandOutreach, ResponseStatus, DealStage } from '@/lib/database.types'
 import { DEAL_STAGES } from '@/lib/database.types'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 export default function EditBrandOutreachPage() {
   const router = useRouter()
@@ -59,6 +60,8 @@ export default function EditBrandOutreachPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (!outreach) return
+
     setIsSubmitting(true)
     setError(null)
 
@@ -91,10 +94,30 @@ export default function EditBrandOutreachPage() {
       return
     }
 
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: updateData.athlete_id,
+      eventType: outreach.response_status !== updateData.response_status
+        ? 'brand.status_changed'
+        : 'brand.updated',
+      title: outreach.response_status !== updateData.response_status
+        ? `Brand status changed: ${updateData.brand_name}`
+        : `Brand outreach updated: ${updateData.brand_name}`,
+      metadata: {
+        brand_outreach_id: id,
+        previous_athlete_id: outreach.athlete_id,
+        previous_status: outreach.response_status,
+        new_status: updateData.response_status,
+        brand_name: updateData.brand_name,
+        source: 'brands_edit_page',
+      },
+    })
+
     router.push('/brands')
   }
 
   const handleDelete = async () => {
+    if (!outreach) return
     if (!confirm('Are you sure you want to delete this brand outreach record?')) return
 
     const { error: deleteError } = await supabase
@@ -106,6 +129,19 @@ export default function EditBrandOutreachPage() {
       setError(deleteError.message)
       return
     }
+
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: outreach.athlete_id,
+      eventType: 'brand.deleted',
+      title: `Brand outreach deleted: ${outreach.brand_name}`,
+      metadata: {
+        brand_outreach_id: id,
+        brand_name: outreach.brand_name,
+        response_status: outreach.response_status,
+        source: 'brands_edit_page',
+      },
+    })
 
     router.push('/brands')
   }

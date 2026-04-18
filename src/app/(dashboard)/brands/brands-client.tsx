@@ -10,6 +10,7 @@ import type { BrandOutreach, Athlete, OutreachMethod, ResponseStatus } from '@/l
 import { ExportButtons } from '@/components/export/export-buttons'
 import { createClient } from '@/lib/supabase/client'
 import { ApolloSearchModal } from '@/components/apollo/apollo-search-modal'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 interface BrandOutreachWithRelations extends BrandOutreach {
   athletes: { id: string; name: string } | null
@@ -75,6 +76,7 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
   }
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
+    const item = outreach?.find(outreachItem => outreachItem.id === id)
     setStatusDropdown(null)
 
     // Optimistic update
@@ -91,6 +93,20 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
     if (error) {
       console.error('Failed to update status:', error)
       router.refresh()
+    } else if (item) {
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: item.athlete_id,
+        eventType: 'brand.status_changed',
+        title: `Brand status changed: ${item.brand_name}`,
+        metadata: {
+          brand_outreach_id: item.id,
+          brand_name: item.brand_name,
+          previous_status: item.response_status,
+          new_status: newStatus,
+          source: 'brands_list',
+        },
+      })
     }
   }
 
@@ -141,6 +157,24 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
       setOutreach(prev => prev?.map(item =>
         item.id === editingItem.id ? { ...item, ...updateData } : item
       ) || null)
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: updateData.athlete_id,
+        eventType: editingItem.response_status !== updateData.response_status
+          ? 'brand.status_changed'
+          : 'brand.updated',
+        title: editingItem.response_status !== updateData.response_status
+          ? `Brand status changed: ${updateData.brand_name}`
+          : `Brand outreach updated: ${updateData.brand_name}`,
+        metadata: {
+          brand_outreach_id: editingItem.id,
+          previous_athlete_id: editingItem.athlete_id,
+          previous_status: editingItem.response_status,
+          new_status: updateData.response_status,
+          brand_name: updateData.brand_name,
+          source: 'brands_list',
+        },
+      })
       setEditingItem(null)
     }
     setIsSaving(false)
@@ -159,6 +193,18 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
       console.error('Failed to delete:', error)
     } else {
       setOutreach(prev => prev?.filter(item => item.id !== editingItem.id) || null)
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: editingItem.athlete_id,
+        eventType: 'brand.deleted',
+        title: `Brand outreach deleted: ${editingItem.brand_name}`,
+        metadata: {
+          brand_outreach_id: editingItem.id,
+          brand_name: editingItem.brand_name,
+          response_status: editingItem.response_status,
+          source: 'brands_list',
+        },
+      })
       setEditingItem(null)
     }
   }

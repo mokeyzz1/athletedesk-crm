@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { updateUserRegions } from '@/lib/actions/users'
-import { notifyAthleteAssignments, notifyAthleteUnassignments } from '@/lib/actions/athletes'
+import { assignAthleteStaff, unassignAthleteStaff } from '@/lib/actions/athletes'
 
 interface StaffProductivity {
   id: string
@@ -68,6 +68,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   const [selectedRegions, setSelectedRegions] = useState<string[]>([])
   const [savingRegions, setSavingRegions] = useState(false)
   const [regionError, setRegionError] = useState<string | null>(null)
+  const [assignmentError, setAssignmentError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -144,56 +145,33 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   const assignAthlete = async (athleteId: string) => {
     if (!selectedStaff) return
     setAssigning(true)
-    const athlete = allAthletes.find((item) => item.id === athleteId)
+    setAssignmentError(null)
 
-    const updateField = assignRole === 'scout' ? 'assigned_scout_id' :
-                       assignRole === 'agent' ? 'assigned_agent_id' :
-                       'assigned_marketing_lead_id'
+    const result = await assignAthleteStaff(athleteId, selectedStaff.id, assignRole)
 
-    const { error } = await supabase
-      .from('athletes')
-      .update({ [updateField]: selectedStaff.id } as never)
-      .eq('id', athleteId)
-
-    if (!error) {
-      if (athlete) {
-        await notifyAthleteAssignments({
-          athleteId,
-          athleteName: athlete.name,
-          assignments: [{ userId: selectedStaff.id, role: assignRole }],
-        })
-      }
+    if (result.success) {
       router.refresh()
       setShowAssignModal(false)
       setAssignSearch('')
+    } else {
+      setAssignmentError(result.error)
     }
     setAssigning(false)
   }
 
   const unassignAthlete = async (athleteId: string, role: string) => {
     if (!selectedStaff) return
-    const athlete = allAthletes.find((item) => item.id === athleteId)
+    setAssignmentError(null)
     const assignmentRole = role === 'Scout' ? 'scout' :
                            role === 'Agent' ? 'agent' :
                            'marketing'
-    const updateField = role === 'Scout' ? 'assigned_scout_id' :
-                       role === 'Agent' ? 'assigned_agent_id' :
-                       'assigned_marketing_lead_id'
 
-    const { error } = await supabase
-      .from('athletes')
-      .update({ [updateField]: null } as never)
-      .eq('id', athleteId)
+    const result = await unassignAthleteStaff(athleteId, selectedStaff.id, assignmentRole)
 
-    if (!error) {
-      if (athlete) {
-        await notifyAthleteUnassignments({
-          athleteId,
-          athleteName: athlete.name,
-          assignments: [{ userId: selectedStaff.id, role: assignmentRole }],
-        })
-      }
+    if (result.success) {
       router.refresh()
+    } else {
+      setAssignmentError(result.error)
     }
   }
 
@@ -454,12 +432,18 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Assigned Athletes ({assignedAthletes.length})</h4>
                 <button
-                  onClick={() => setShowAssignModal(true)}
+                  onClick={() => {
+                    setAssignmentError(null)
+                    setShowAssignModal(true)
+                  }}
                   className="text-xs font-medium text-brand-600 hover:text-brand-700"
                 >
                   + Assign
                 </button>
               </div>
+              {assignmentError && (
+                <p className="mb-2 text-xs text-red-600">{assignmentError}</p>
+              )}
               {assignedAthletes.length > 0 ? (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {assignedAthletes.map((athlete) => (
@@ -575,7 +559,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Assign Athlete to {selectedStaff.name}</h3>
               <button
-                onClick={() => { setShowAssignModal(false); setAssignSearch('') }}
+                onClick={() => { setShowAssignModal(false); setAssignSearch(''); setAssignmentError(null) }}
                 className="p-1 hover:bg-gray-100 rounded"
               >
                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -585,6 +569,10 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
             </div>
 
             <div className="p-4 space-y-4">
+              {assignmentError && (
+                <p className="text-sm text-red-600">{assignmentError}</p>
+              )}
+
               {/* Role Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Assign as</label>

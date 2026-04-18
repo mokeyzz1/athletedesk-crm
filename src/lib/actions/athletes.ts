@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthContext } from './auth'
 import { AuthError } from './errors'
 import type { Athlete, AthleteInsert } from '@/lib/database.types'
+import { userHasRole } from '@/lib/roles'
 
 // ============================================================================
 // Types
@@ -69,6 +70,15 @@ const ASSIGNMENT_ROLE_LABELS: Record<AssignmentRole, string> = {
   scout: 'Scout',
   agent: 'Agent',
   marketing: 'Marketing Lead',
+}
+
+const ASSIGNMENT_ROLE_FIELDS: Record<AssignmentRole, keyof Pick<
+  Athlete,
+  'assigned_scout_id' | 'assigned_agent_id' | 'assigned_marketing_lead_id'
+>> = {
+  scout: 'assigned_scout_id',
+  agent: 'assigned_agent_id',
+  marketing: 'assigned_marketing_lead_id',
 }
 
 // ============================================================================
@@ -257,6 +267,164 @@ async function notifyAdminsOfAthleteClaim(
   }))
 
   await insertNotifications(supabase, notifications)
+}
+
+/**
+ * Admin action for assigning staff to an athlete from team management surfaces.
+ */
+export async function assignAthleteStaff(
+  athleteId: string,
+  targetUserId: string,
+  assignmentRole: AssignmentRole
+): Promise<ActionResult<Athlete>> {
+  try {
+    const { organizationId, roles } = await getAuthContext()
+
+    if (!roles.includes('admin')) {
+      return { success: false, error: 'Only admins can assign athlete staff' }
+    }
+
+    const assignmentField = ASSIGNMENT_ROLE_FIELDS[assignmentRole]
+    if (!assignmentField) {
+      return { success: false, error: 'Invalid assignment role' }
+    }
+
+    const supabase = await createClient()
+
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('id, name')
+      .eq('id', athleteId)
+      .eq('organization_id', organizationId)
+      .maybeSingle() as unknown as { data: Pick<Athlete, 'id' | 'name'> | null }
+
+    if (!athlete) {
+      return { success: false, error: 'Athlete not found in the current organization' }
+    }
+
+    const { data: targetUser } = await supabase
+      .from('users')
+      .select('id, role, roles')
+      .eq('id', targetUserId)
+      .eq('organization_id', organizationId)
+      .maybeSingle() as unknown as {
+        data: { id: string; role: string | null; roles: string[] | null } | null
+      }
+
+    if (!targetUser) {
+      return { success: false, error: 'Team member not found in the current organization' }
+    }
+
+    if (!userHasRole(targetUser, assignmentRole)) {
+      return {
+        success: false,
+        error: `Team member does not have the ${ASSIGNMENT_ROLE_LABELS[assignmentRole]} role`,
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('athletes')
+      .update({ [assignmentField]: targetUserId } as never)
+      .eq('id', athleteId)
+      .eq('organization_id', organizationId)
+      .select()
+      .maybeSingle()
+
+    if (error) {
+      console.error('Assign athlete staff error:', error)
+      return { success: false, error: error.message }
+    }
+
+    if (!data) {
+      return { success: false, error: 'Athlete not found or you do not have permission to assign staff' }
+    }
+
+    await notifyAthleteAssignments({
+      athleteId,
+      athleteName: athlete.name,
+      assignments: [{ userId: targetUserId, role: assignmentRole }],
+    })
+
+    return { success: true, data: data as Athlete }
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { success: false, error: err.message }
+    }
+    console.error('Assign athlete staff unexpected error:', err)
+    return { success: false, error: 'Failed to assign athlete staff' }
+  }
+}
+
+/**
+ * Admin action for removing staff from an athlete assignment.
+ */
+export async function unassignAthleteStaff(
+  athleteId: string,
+  targetUserId: string,
+  assignmentRole: AssignmentRole
+): Promise<ActionResult<Athlete>> {
+  try {
+    const { organizationId, roles } = await getAuthContext()
+
+    if (!roles.includes('admin')) {
+      return { success: false, error: 'Only admins can unassign athlete staff' }
+    }
+
+    const assignmentField = ASSIGNMENT_ROLE_FIELDS[assignmentRole]
+    if (!assignmentField) {
+      return { success: false, error: 'Invalid assignment role' }
+    }
+
+    const supabase = await createClient()
+
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select(`id, name, ${assignmentField}`)
+      .eq('id', athleteId)
+      .eq('organization_id', organizationId)
+      .maybeSingle() as unknown as {
+        data: Pick<Athlete, 'id' | 'name'> & Record<typeof assignmentField, string | null> | null
+      }
+
+    if (!athlete) {
+      return { success: false, error: 'Athlete not found in the current organization' }
+    }
+
+    if (athlete[assignmentField] !== targetUserId) {
+      return { success: false, error: 'Team member is not assigned to this athlete role' }
+    }
+
+    const { data, error } = await supabase
+      .from('athletes')
+      .update({ [assignmentField]: null } as never)
+      .eq('id', athleteId)
+      .eq('organization_id', organizationId)
+      .select()
+      .maybeSingle()
+
+    if (error) {
+      console.error('Unassign athlete staff error:', error)
+      return { success: false, error: error.message }
+    }
+
+    if (!data) {
+      return { success: false, error: 'Athlete not found or you do not have permission to unassign staff' }
+    }
+
+    await notifyAthleteUnassignments({
+      athleteId,
+      athleteName: athlete.name,
+      assignments: [{ userId: targetUserId, role: assignmentRole }],
+    })
+
+    return { success: true, data: data as Athlete }
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { success: false, error: err.message }
+    }
+    console.error('Unassign athlete staff unexpected error:', err)
+    return { success: false, error: 'Failed to unassign athlete staff' }
+  }
 }
 
 // ============================================================================

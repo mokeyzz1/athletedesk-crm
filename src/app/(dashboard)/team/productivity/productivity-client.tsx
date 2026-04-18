@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { updateUserRegions } from '@/lib/actions/users'
-import { notifyAthleteAssignments } from '@/lib/actions/athletes'
+import { notifyAthleteAssignments, notifyAthleteUnassignments } from '@/lib/actions/athletes'
 
 interface StaffProductivity {
   id: string
@@ -171,6 +171,11 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
   }
 
   const unassignAthlete = async (athleteId: string, role: string) => {
+    if (!selectedStaff) return
+    const athlete = allAthletes.find((item) => item.id === athleteId)
+    const assignmentRole = role === 'Scout' ? 'scout' :
+                           role === 'Agent' ? 'agent' :
+                           'marketing'
     const updateField = role === 'Scout' ? 'assigned_scout_id' :
                        role === 'Agent' ? 'assigned_agent_id' :
                        'assigned_marketing_lead_id'
@@ -181,6 +186,13 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
       .eq('id', athleteId)
 
     if (!error) {
+      if (athlete) {
+        await notifyAthleteUnassignments({
+          athleteId,
+          athleteName: athlete.name,
+          assignments: [{ userId: selectedStaff.id, role: assignmentRole }],
+        })
+      }
       router.refresh()
     }
   }

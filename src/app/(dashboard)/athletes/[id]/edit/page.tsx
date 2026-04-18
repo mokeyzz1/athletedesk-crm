@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, Athlete, Json, ClassYear, OutreachStatus } from '@/lib/database.types'
+import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, Athlete, ClassYear, OutreachStatus } from '@/lib/database.types'
 import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
 import { userHasRole } from '@/lib/roles'
+import { updateAthlete, type UpdateAthleteInput } from '@/lib/actions/athletes'
 
 export default function EditAthletePage() {
   const router = useRouter()
@@ -101,7 +102,7 @@ export default function EditAthletePage() {
     )
 
     const canManageAssignments = userHasRole(currentUser, 'admin')
-    const updateData: Record<string, unknown> = {
+    const updateData: UpdateAthleteInput = {
       name: formData.get('name') as string,
       email: (formData.get('email') as string) || null,
       phone: (formData.get('phone') as string) || null,
@@ -114,8 +115,8 @@ export default function EditAthletePage() {
       transfer_portal_status: formData.get('transfer_portal_status') as TransferPortalStatus,
       marketability_score: formData.get('marketability_score') ? parseInt(formData.get('marketability_score') as string) : null,
       notes: (formData.get('notes') as string) || null,
-      sport_specific_stats: Object.keys(filteredStats).length > 0 ? filteredStats as Json : null,
-      social_media: Object.keys(filteredSocialMedia).length > 0 ? filteredSocialMedia as Json : null,
+      sport_specific_stats: Object.keys(filteredStats).length > 0 ? filteredStats : null,
+      social_media: Object.keys(filteredSocialMedia).length > 0 ? filteredSocialMedia : null,
       // Recruiting fields
       class_year: formData.get('class_year') as ClassYear,
       region: (formData.get('region') as string) || null,
@@ -128,13 +129,10 @@ export default function EditAthletePage() {
       updateData.assigned_marketing_lead_id = (formData.get('assigned_marketing_lead_id') as string) || null
     }
 
-    const { error: updateError } = await supabase
-      .from('athletes')
-      .update(updateData as never)
-      .eq('id', id)
+    const result = await updateAthlete(id, updateData)
 
-    if (updateError) {
-      setError(updateError.message)
+    if (!result.success) {
+      setError(result.error)
       setIsSubmitting(false)
       return
     }

@@ -173,6 +173,43 @@ export async function notifyAthleteAssignments(input: {
   }
 }
 
+/**
+ * Notify staff when they are removed from an athlete assignment.
+ */
+export async function notifyAthleteUnassignments(input: {
+  athleteId: string
+  athleteName: string
+  assignments: AthleteAssignmentNotification[]
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { organizationId, userId: actorId } = await getAuthContext()
+    const supabase = await createClient()
+
+    const notifications = uniqueAssignments(input.assignments)
+      .filter((assignment) => assignment.userId !== actorId)
+      .map((assignment) => ({
+        organization_id: organizationId,
+        user_id: assignment.userId as string,
+        type: 'assignment',
+        title: `You were unassigned from ${input.athleteName}`,
+        message: `You have been removed as ${ASSIGNMENT_ROLE_LABELS[assignment.role]} for this athlete.`,
+        href: `/athletes/${input.athleteId}`,
+        actor_id: actorId,
+        entity_type: 'athlete',
+        entity_id: input.athleteId,
+      }))
+
+    await insertNotifications(supabase, notifications)
+    return { success: true }
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return { success: false, error: err.message }
+    }
+    console.error('Notify athlete unassignments unexpected error:', err)
+    return { success: false, error: 'Failed to create unassignment notifications' }
+  }
+}
+
 async function notifyAdminsOfAthleteClaim(
   supabase: Awaited<ReturnType<typeof createClient>>,
   organizationId: string,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { OutreachStatus } from '@/lib/database.types'
+import { notifyAthleteAssignments } from '@/lib/actions/athletes'
 
 interface StatusUpdateRequest {
   status: OutreachStatus
@@ -200,6 +201,17 @@ export async function PATCH(
         status: 'todo',
       } as never)
   }
+
+  await notifyAthleteAssignments({
+    athleteId,
+    athleteName: athlete.name,
+    assignments: handoffActions
+      .filter((handoff) => handoff.assignedUser)
+      .map((handoff) => ({
+        userId: handoff.assignedUser!.id,
+        role: handoff.type,
+      })),
+  })
 
   return NextResponse.json({
     success: true,

@@ -10,7 +10,7 @@ type RegionRow = { region: string | null; outreach_status: OutreachStatus }
 type StaffCommRow = { staff_member_id: string }
 type UserRow = { id: string; name: string; role: UserRole; roles: UserRole[] | null }
 type AssignmentRow = { assigned_scout_id: string | null; assigned_agent_id: string | null; assigned_marketing_lead_id: string | null }
-type ActivityRow = { staff_member_id: string; communication_date: string }
+type ActivityRow = { actor_id: string; created_at: string }
 type RevenueRow = { deal_value: number | null; deal_type: DealType; payment_status: PaymentStatus; deal_date: string }
 type PipelineRow = { pipeline_stage: PipelineStage }
 type StaleAthleteRow = { id: string; name: string; outreach_status: OutreachStatus; updated_at: string; region: string | null }
@@ -118,8 +118,8 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
     supabase.from('communications_log').select('staff_member_id').gte('communication_date', periodStart.toISOString()),
     supabase.from('users').select('id, name, role, roles'),
     supabase.from('athletes').select('assigned_scout_id, assigned_agent_id, assigned_marketing_lead_id'),
-    // Last activity: only fetch recent (1 week) for performance - older = inactive anyway
-    supabase.from('communications_log').select('staff_member_id, communication_date').gte('communication_date', oneWeekAgo.toISOString()).order('communication_date', { ascending: false }),
+    // Last activity: query activity_events for comprehensive activity tracking
+    supabase.from('activity_events').select('actor_id, created_at').not('actor_id', 'is', null).gte('created_at', oneWeekAgo.toISOString()).order('created_at', { ascending: false }),
     supabase.from('outreach_goals').select('id, staff_id, target_count, period').eq('is_active', true),
     // 3. REVENUE
     supabase.from('financial_tracking').select('deal_value, deal_type, payment_status, deal_date').eq('deal_stage', 'active').gte('deal_date', revenueStart.toISOString().split('T')[0]),
@@ -190,11 +190,11 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
     if (a.assigned_marketing_lead_id) assignmentsPerUser[a.assigned_marketing_lead_id] = (assignmentsPerUser[a.assigned_marketing_lead_id] || 0) + 1
   })
 
-  // Process last activity per user
+  // Process last activity per user (from activity_events)
   const lastActivityPerUser: Record<string, string> = {}
-  lastActivity?.forEach(c => {
-    if (!lastActivityPerUser[c.staff_member_id]) {
-      lastActivityPerUser[c.staff_member_id] = c.communication_date
+  lastActivity?.forEach(event => {
+    if (event.actor_id && !lastActivityPerUser[event.actor_id]) {
+      lastActivityPerUser[event.actor_id] = event.created_at
     }
   })
 

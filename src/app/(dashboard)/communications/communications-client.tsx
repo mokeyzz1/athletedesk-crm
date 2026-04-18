@@ -257,6 +257,9 @@ export function CommunicationsClient({ communications: initialCommunications, at
         <td className="px-4 py-3">
           <div className="text-sm text-gray-900">{comm.subject || 'No subject'}</div>
         </td>
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div className="text-sm text-gray-700">{comm.users?.name || 'Unknown'}</div>
+        </td>
         <td className="px-4 py-3 whitespace-nowrap text-right">
           <button
             onClick={() => setEditingItem(comm)}
@@ -413,6 +416,7 @@ export function CommunicationsClient({ communications: initialCommunications, at
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Athlete</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Logged By</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20"></th>
                       </tr>
                     </thead>
@@ -462,6 +466,9 @@ export function CommunicationsClient({ communications: initialCommunications, at
                         <th onClick={() => handleSort('subject')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
                           <div className="flex items-center gap-1">Subject <SortIcon column="subject" /></div>
                         </th>
+                        <th onClick={() => handleSort('staff')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
+                          <div className="flex items-center gap-1">Logged By <SortIcon column="staff" /></div>
+                        </th>
                         <th onClick={() => handleSort('followup')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
                           <div className="flex items-center gap-1">Follow-up <SortIcon column="followup" /></div>
                         </th>
@@ -497,6 +504,9 @@ export function CommunicationsClient({ communications: initialCommunications, at
                               {comm.notes && (
                                 <div className="text-sm text-gray-500 truncate max-w-xs">{comm.notes}</div>
                               )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-700">{comm.users?.name || 'Unknown'}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               {comm.follow_up_date ? (

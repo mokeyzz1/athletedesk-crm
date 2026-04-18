@@ -39,6 +39,14 @@ export type ActivityEventType =
   | 'athlete.claimed'
   | 'athlete.status_changed'
   | 'athlete.handoff'
+  | 'communication.logged'
+  | 'communication.updated'
+  | 'communication.deleted'
+  | 'communication.follow_up_completed'
+  | 'communication.follow_up_reopened'
+  | 'document.uploaded'
+  | 'document.deleted'
+  | 'document.status_changed'
 
 // Region constants (not an enum in DB, just common values)
 export const REGIONS = [

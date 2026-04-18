@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { EmailStatsOverview } from '@/lib/queries/email-stats'
 import { DateDisplay } from '@/components/ui/date-display'
 import { isOverdue, parseDate } from '@/lib/helpers'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 interface CommunicationWithRelations extends CommunicationLog {
   athletes: { id: string; name: string } | null
@@ -56,6 +57,8 @@ export function CommunicationsClient({ communications: initialCommunications, at
   }
 
   const handleMarkComplete = async (id: string, currentStatus: boolean) => {
+    const item = communications?.find(communication => communication.id === id)
+
     // Optimistic update
     setCommunications(prev => prev?.map(item =>
       item.id === id ? { ...item, follow_up_completed: !currentStatus } : item
@@ -70,6 +73,20 @@ export function CommunicationsClient({ communications: initialCommunications, at
     if (error) {
       console.error('Failed to update follow-up status:', error)
       router.refresh()
+    } else if (item?.athlete_id) {
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: item.athlete_id,
+        eventType: currentStatus ? 'communication.follow_up_reopened' : 'communication.follow_up_completed',
+        title: currentStatus
+          ? `Follow-up reopened for ${item.athletes?.name || 'athlete'}`
+          : `Follow-up completed for ${item.athletes?.name || 'athlete'}`,
+        metadata: {
+          communication_id: item.id,
+          subject: item.subject,
+          source: 'communications_list',
+        },
+      })
     }
   }
 
@@ -102,6 +119,19 @@ export function CommunicationsClient({ communications: initialCommunications, at
       setCommunications(prev => prev?.map(item =>
         item.id === editingItem.id ? { ...item, ...updateData } : item
       ) || null)
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: updateData.athlete_id,
+        eventType: 'communication.updated',
+        title: `Communication updated for ${editingItem.athletes?.name || 'athlete'}`,
+        metadata: {
+          communication_id: editingItem.id,
+          previous_athlete_id: editingItem.athlete_id,
+          type: updateData.type,
+          subject: updateData.subject,
+          source: 'communications_list',
+        },
+      })
       setEditingItem(null)
     }
     setIsSaving(false)
@@ -120,6 +150,20 @@ export function CommunicationsClient({ communications: initialCommunications, at
       console.error('Failed to delete:', error)
     } else {
       setCommunications(prev => prev?.filter(item => item.id !== editingItem.id) || null)
+      if (editingItem.athlete_id) {
+        await logClientActivityEvent({
+          entityType: 'athlete',
+          entityId: editingItem.athlete_id,
+          eventType: 'communication.deleted',
+          title: `Communication deleted for ${editingItem.athletes?.name || 'athlete'}`,
+          metadata: {
+            communication_id: editingItem.id,
+            type: editingItem.type,
+            subject: editingItem.subject,
+            source: 'communications_list',
+          },
+        })
+      }
       setEditingItem(null)
     }
   }

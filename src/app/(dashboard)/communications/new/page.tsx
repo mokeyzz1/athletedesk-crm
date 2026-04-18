@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { getLocalDateString } from '@/lib/helpers'
 import type { User, Athlete, CommunicationType, CommunicationLogInsert } from '@/lib/database.types'
 import { EmailTemplateSelector } from '@/components/email-template-selector'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 export default function NewCommunicationPage() {
   const router = useRouter()
@@ -90,6 +91,19 @@ export default function NewCommunicationPage() {
       setIsSubmitting(false)
       return
     }
+
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: selectedAthleteId,
+      eventType: 'communication.logged',
+      title: `Communication logged for ${selectedAthlete?.name || 'athlete'}`,
+      metadata: {
+        type: communicationData.type,
+        subject: communicationData.subject,
+        follow_up_date: communicationData.follow_up_date,
+        source: 'communications_new',
+      },
+    })
 
     router.push('/communications')
   }

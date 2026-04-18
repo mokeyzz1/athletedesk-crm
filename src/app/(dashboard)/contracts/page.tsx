@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 type SortColumn = 'document' | 'athlete' | 'type' | 'date' | 'status'
 type SortDirection = 'asc' | 'desc'
@@ -209,7 +210,7 @@ export default function ContractsPage() {
       }
 
       // Save document record
-      const { error: docError } = await supabase
+      const { data: docData, error: docError } = await supabase
         .from('documents')
         .insert({
           athlete_id: uploadAthleteId,
@@ -222,8 +223,26 @@ export default function ContractsPage() {
           status: uploadStatus,
           notes: uploadNotes || null,
         } as never)
+        .select('id')
+        .single()
 
       if (docError) throw docError
+
+      const athlete = athletes.find(a => a.id === uploadAthleteId)
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: uploadAthleteId,
+        eventType: 'document.uploaded',
+        title: `Document uploaded: ${file.name}`,
+        metadata: {
+          document_id: (docData as { id: string } | null)?.id,
+          document_type: uploadType,
+          status: uploadStatus,
+          file_size: file.size,
+          athlete_name: athlete?.name,
+          source: 'contracts_documents',
+        },
+      })
 
       // Refresh data
       fetchData()
@@ -269,6 +288,7 @@ export default function ContractsPage() {
   }
 
   const handleStatusChange = async (docId: string, newStatus: string) => {
+    const doc = documents.find(d => d.id === docId)
     const { error } = await supabase
       .from('documents')
       .update({ status: newStatus } as never)
@@ -278,6 +298,20 @@ export default function ContractsPage() {
       setDocuments(docs =>
         docs.map(d => d.id === docId ? { ...d, status: newStatus } : d)
       )
+      if (doc) {
+        await logClientActivityEvent({
+          entityType: 'athlete',
+          entityId: doc.athlete_id,
+          eventType: 'document.status_changed',
+          title: `Document status changed: ${doc.name}`,
+          metadata: {
+            document_id: docId,
+            previous_status: doc.status || 'pending',
+            new_status: newStatus,
+            source: 'contracts_documents',
+          },
+        })
+      }
     }
   }
 

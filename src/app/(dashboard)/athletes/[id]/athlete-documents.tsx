@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Document } from '@/lib/database.types'
+import { logClientActivityEvent } from '@/lib/activity-client'
 
 interface DocumentWithUser extends Document {
   users: { name: string } | null
@@ -96,6 +97,18 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
       if (docError) throw docError
 
       setDocuments([docData as DocumentWithUser, ...documents])
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: athleteId,
+        eventType: 'document.uploaded',
+        title: `Document uploaded: ${file.name}`,
+        metadata: {
+          document_id: (docData as DocumentWithUser).id,
+          document_type: selectedType,
+          file_size: file.size,
+          source: 'athlete_documents',
+        },
+      })
       setShowUploadModal(false)
       setSelectedType('other')
       setNotes('')
@@ -123,6 +136,17 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
       if (error) throw error
 
       setDocuments(documents.filter(d => d.id !== docId))
+      await logClientActivityEvent({
+        entityType: 'athlete',
+        entityId: athleteId,
+        eventType: 'document.deleted',
+        title: `Document deleted: ${doc.name}`,
+        metadata: {
+          document_id: docId,
+          document_type: doc.document_type,
+          source: 'athlete_documents',
+        },
+      })
     } catch (error) {
       console.error('Delete error:', error)
       alert('Failed to delete document.')

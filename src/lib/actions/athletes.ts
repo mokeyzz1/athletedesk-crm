@@ -5,6 +5,7 @@ import { getAuthContext } from './auth'
 import { AuthError } from './errors'
 import type { Athlete, AthleteInsert } from '@/lib/database.types'
 import { userHasRole } from '@/lib/roles'
+import { logActivityEvent, logActivityEvents, type LogActivityEventInput } from './activity'
 
 // ============================================================================
 // Types
@@ -293,10 +294,12 @@ export async function assignAthleteStaff(
 
     const { data: athlete } = await supabase
       .from('athletes')
-      .select('id, name')
+      .select(`id, name, ${assignmentField}`)
       .eq('id', athleteId)
       .eq('organization_id', organizationId)
-      .maybeSingle() as unknown as { data: Pick<Athlete, 'id' | 'name'> | null }
+      .maybeSingle() as unknown as {
+        data: Pick<Athlete, 'id' | 'name'> & Record<typeof assignmentField, string | null> | null
+      }
 
     if (!athlete) {
       return { success: false, error: 'Athlete not found in the current organization' }
@@ -343,6 +346,21 @@ export async function assignAthleteStaff(
       athleteId,
       athleteName: athlete.name,
       assignments: [{ userId: targetUserId, role: assignmentRole }],
+    })
+
+    await logActivityEvent({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: athlete[assignmentField] ? 'athlete.reassigned' : 'athlete.assigned',
+      title: athlete[assignmentField]
+        ? `${ASSIGNMENT_ROLE_LABELS[assignmentRole]} reassigned on ${athlete.name}`
+        : `${ASSIGNMENT_ROLE_LABELS[assignmentRole]} assigned to ${athlete.name}`,
+      metadata: {
+        role: assignmentRole,
+        previous_user_id: athlete[assignmentField],
+        assigned_user_id: targetUserId,
+        source: 'team_productivity',
+      },
     })
 
     return { success: true, data: data as Athlete }
@@ -415,6 +433,18 @@ export async function unassignAthleteStaff(
       athleteId,
       athleteName: athlete.name,
       assignments: [{ userId: targetUserId, role: assignmentRole }],
+    })
+
+    await logActivityEvent({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: 'athlete.unassigned',
+      title: `${ASSIGNMENT_ROLE_LABELS[assignmentRole]} unassigned from ${athlete.name}`,
+      metadata: {
+        role: assignmentRole,
+        previous_user_id: targetUserId,
+        source: 'team_productivity',
+      },
     })
 
     return { success: true, data: data as Athlete }
@@ -648,6 +678,116 @@ export async function updateAthlete(
       checkArrayAssignment(currentAthlete.marketing_ids, safeInput.marketing_ids, 'Marketing')
 
       await insertNotifications(supabase, notifications)
+
+      const activityEvents: LogActivityEventInput[] = []
+      const checkActivity = (
+        oldId: string | null,
+        newId: string | null | undefined,
+        role: AssignmentRole
+      ) => {
+        if (newId === undefined || newId === oldId) return
+
+        const label = ASSIGNMENT_ROLE_LABELS[role]
+        if (oldId && newId) {
+          activityEvents.push({
+            entityType: 'athlete',
+            entityId: athleteId,
+            eventType: 'athlete.reassigned',
+            title: `${label} reassigned on ${athleteName}`,
+            metadata: {
+              role,
+              previous_user_id: oldId,
+              assigned_user_id: newId,
+              source: 'athlete_edit',
+            },
+          })
+          return
+        }
+
+        if (newId) {
+          activityEvents.push({
+            entityType: 'athlete',
+            entityId: athleteId,
+            eventType: 'athlete.assigned',
+            title: `${label} assigned to ${athleteName}`,
+            metadata: {
+              role,
+              assigned_user_id: newId,
+              source: 'athlete_edit',
+            },
+          })
+          return
+        }
+
+        if (oldId) {
+          activityEvents.push({
+            entityType: 'athlete',
+            entityId: athleteId,
+            eventType: 'athlete.unassigned',
+            title: `${label} unassigned from ${athleteName}`,
+            metadata: {
+              role,
+              previous_user_id: oldId,
+              source: 'athlete_edit',
+            },
+          })
+        }
+      }
+
+      const checkArrayActivity = (
+        oldIds: string[] | null,
+        newIds: string[] | null | undefined,
+        role: AssignmentRole
+      ) => {
+        if (newIds === undefined) return
+
+        const label = ASSIGNMENT_ROLE_LABELS[role]
+        const oldSet = new Set(oldIds || [])
+        const newSet = new Set(newIds || [])
+
+        newSet.forEach((id) => {
+          if (!oldSet.has(id)) {
+            activityEvents.push({
+              entityType: 'athlete',
+              entityId: athleteId,
+              eventType: 'athlete.assigned',
+              title: `${label} added to ${athleteName}`,
+              metadata: {
+                role,
+                assigned_user_id: id,
+                source: 'athlete_edit',
+                assignment_type: 'secondary',
+              },
+            })
+          }
+        })
+
+        oldSet.forEach((id) => {
+          if (!newSet.has(id)) {
+            activityEvents.push({
+              entityType: 'athlete',
+              entityId: athleteId,
+              eventType: 'athlete.unassigned',
+              title: `${label} removed from ${athleteName}`,
+              metadata: {
+                role,
+                previous_user_id: id,
+                source: 'athlete_edit',
+                assignment_type: 'secondary',
+              },
+            })
+          }
+        })
+      }
+
+      checkActivity(currentAthlete.assigned_scout_id, safeInput.assigned_scout_id, 'scout')
+      checkActivity(currentAthlete.assigned_agent_id, safeInput.assigned_agent_id, 'agent')
+      checkActivity(currentAthlete.assigned_marketing_lead_id, safeInput.assigned_marketing_lead_id, 'marketing')
+      checkArrayActivity(currentAthlete.scout_ids, safeInput.scout_ids, 'scout')
+      checkArrayActivity(currentAthlete.agent_ids, safeInput.agent_ids, 'agent')
+      checkArrayActivity(currentAthlete.marketing_ids, safeInput.marketing_ids, 'marketing')
+
+      await logActivityEvents(activityEvents)
     }
 
     return { success: true, data: data as Athlete }
@@ -715,6 +855,18 @@ export async function selfAssignAthlete(
     } catch (notificationError) {
       console.error('Self-assign notification error:', notificationError)
     }
+
+    await logActivityEvent({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: 'athlete.claimed',
+      title: `${ASSIGNMENT_ROLE_LABELS[targetRole]} claimed ${(data as Athlete).name || 'this athlete'}`,
+      metadata: {
+        role: targetRole,
+        assigned_user_id: userId,
+        source: 'self_assign',
+      },
+    })
 
     return { success: true, data: data as Athlete }
   } catch (err) {

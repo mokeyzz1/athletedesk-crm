@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { OutreachStatus } from '@/lib/database.types'
 import { notifyAthleteAssignments } from '@/lib/actions/athletes'
+import { logActivityEvents, type LogActivityEventInput } from '@/lib/actions/activity'
 
 interface StatusUpdateRequest {
   status: OutreachStatus
@@ -213,6 +214,41 @@ export async function PATCH(
         role: handoff.type,
       })),
   })
+
+  const activityEvents: LogActivityEventInput[] = []
+
+  if (oldStatus !== newStatus) {
+    activityEvents.push({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: 'athlete.status_changed',
+      title: `${athlete.name} status changed to ${newStatus.replace(/_/g, ' ')}`,
+      metadata: {
+        previous_status: oldStatus,
+        new_status: newStatus,
+        source: 'status_route',
+      },
+    })
+  }
+
+  handoffActions.forEach((handoff) => {
+    if (!handoff.assignedUser) return
+
+    activityEvents.push({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: 'athlete.handoff',
+      title: `${athlete.name} handed off to ${handoff.type === 'agent' ? 'Agent' : 'Marketing Lead'}`,
+      metadata: {
+        role: handoff.type,
+        assigned_user_id: handoff.assignedUser.id,
+        new_status: newStatus,
+        source: 'automatic_handoff',
+      },
+    })
+  })
+
+  await logActivityEvents(activityEvents)
 
   return NextResponse.json({
     success: true,

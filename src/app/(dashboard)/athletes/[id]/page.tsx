@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import type { Athlete, CommunicationLog, RecruitingPipeline, FinancialTracking, BrandOutreach, Document, UserRole } from '@/lib/database.types'
+import type { Athlete, CommunicationLog, RecruitingPipeline, FinancialTracking, BrandOutreach, Document, UserRole, ActivityEvent } from '@/lib/database.types'
 import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } from '@/lib/sport-fields'
 import { FaInstagram, FaXTwitter, FaTiktok, FaYoutube } from 'react-icons/fa6'
 import { AthleteDocuments } from './athlete-documents'
@@ -40,9 +40,13 @@ interface DocumentWithUser extends Document {
   users: { name: string } | null
 }
 
+interface ActivityEventWithActor extends ActivityEvent {
+  actor: { name: string } | null
+}
+
 type ActivityItem = {
   id: string
-  type: 'communication' | 'brand' | 'financial' | 'document' | 'pipeline'
+  type: 'communication' | 'brand' | 'financial' | 'document' | 'pipeline' | 'activity'
   date: string
   title: string
   description: string
@@ -79,12 +83,13 @@ export default async function AthletePage({ params }: AthletePageProps) {
   }
 
   // Fetch all related data in parallel with limits to avoid loading unused records
-  const [pipelineRes, communicationsRes, brandsRes, financialsRes, documentsRes, emailCount] = await Promise.all([
+  const [pipelineRes, communicationsRes, brandsRes, financialsRes, documentsRes, activityEventsRes, emailCount] = await Promise.all([
     supabase.from('recruiting_pipeline').select('*').eq('athlete_id', id).single(),
     supabase.from('communications_log').select('*, users:staff_member_id (name)').eq('athlete_id', id).order('communication_date', { ascending: false }).limit(20),
     supabase.from('brand_outreach').select('*, users:staff_member_id (name)').eq('athlete_id', id).order('date_contacted', { ascending: false }).limit(20),
     supabase.from('financial_tracking').select('*').eq('athlete_id', id).order('deal_date', { ascending: false }).limit(20),
     supabase.from('documents').select('*, users:uploaded_by (name)').eq('athlete_id', id).order('created_at', { ascending: false }).limit(20),
+    supabase.from('activity_events').select('*, actor:actor_id (name)').eq('entity_type', 'athlete').eq('entity_id', id).order('created_at', { ascending: false }).limit(20),
     getAthleteEmailCount(id),
   ])
 
@@ -93,6 +98,7 @@ export default async function AthletePage({ params }: AthletePageProps) {
   const brands = (brandsRes.data ?? []) as BrandWithDetails[]
   const financials = (financialsRes.data ?? []) as FinancialTracking[]
   const documents = (documentsRes.data ?? []) as DocumentWithUser[]
+  const activityEvents = (activityEventsRes.data ?? []) as ActivityEventWithActor[]
 
   const socialMedia = athlete.social_media as SocialMediaData | null
   const totalFollowing = socialMedia ? calculateTotalFollowing(socialMedia) : 0
@@ -140,6 +146,19 @@ export default async function AthletePage({ params }: AthletePageProps) {
       description: d.users?.name ? `by ${d.users.name}` : '',
       icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
       color: 'bg-purple-100 text-purple-600',
+    })),
+    ...activityEvents.map(event => ({
+      id: event.id,
+      type: 'activity' as const,
+      date: event.created_at,
+      title: event.title,
+      description: event.actor?.name ? `by ${event.actor.name}` : '',
+      icon: event.event_type === 'athlete.status_changed'
+        ? 'M7 7h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z'
+        : 'M17 20h5v-2a3 3 0 00-5.356-1.857M9 20H4v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+      color: event.event_type === 'athlete.handoff'
+        ? 'bg-indigo-100 text-indigo-600'
+        : 'bg-gray-100 text-gray-600',
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 

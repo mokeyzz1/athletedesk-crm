@@ -32,6 +32,13 @@ export type ClassYear = '2025' | '2026' | '2027' | '2028' | '2029' | '2030' | 'p
 export type OutreachStatus = 'not_contacted' | 'contacted' | 'in_conversation' | 'interested' | 'dead_lead' | 'circling_back' | 'signed'
 export type DealType = 'revenue_share' | 'marketing_brand'
 export type DealStage = 'prospective' | 'active'
+export type ActivityEventType =
+  | 'athlete.assigned'
+  | 'athlete.unassigned'
+  | 'athlete.reassigned'
+  | 'athlete.claimed'
+  | 'athlete.status_changed'
+  | 'athlete.handoff'
 
 // Region constants (not an enum in DB, just common values)
 export const REGIONS = [
@@ -1136,6 +1143,41 @@ export interface Database {
           created_at?: string
         }
       }
+      activity_events: {
+        Row: {
+          id: string
+          organization_id: string
+          actor_id: string | null
+          entity_type: string
+          entity_id: string
+          event_type: ActivityEventType
+          title: string
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          actor_id?: string | null
+          entity_type: string
+          entity_id: string
+          event_type: ActivityEventType
+          title: string
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          actor_id?: string | null
+          entity_type?: string
+          entity_id?: string
+          event_type?: ActivityEventType
+          title?: string
+          metadata?: Json
+          created_at?: string
+        }
+      }
     }
     Views: {
       dashboard_summary: {
@@ -1277,6 +1319,7 @@ export type CommunicationLog = Database['public']['Tables']['communications_log'
 export type RecruitingPipeline = Database['public']['Tables']['recruiting_pipeline']['Row']
 export type BrandOutreach = Database['public']['Tables']['brand_outreach']['Row']
 export type FinancialTracking = Database['public']['Tables']['financial_tracking']['Row']
+export type ActivityEvent = Database['public']['Tables']['activity_events']['Row']
 
 export type UserInsert = Database['public']['Tables']['users']['Insert']
 export type AthleteInsert = Database['public']['Tables']['athletes']['Insert']

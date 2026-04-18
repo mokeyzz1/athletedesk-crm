@@ -96,15 +96,24 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
       return
     }
 
-    // Auto-sync: When moved to signed_client, also update recruiting_status to 'signed'
+    // Auto-sync: signed pipeline changes should use the status API so handoffs,
+    // assignment notifications, and signed status stay consistent across screens.
     if (newStage === 'signed_client') {
-      const { error: statusError } = await supabase
-        .from('athletes')
-        .update({ recruiting_status: 'signed' } as never)
-        .eq('id', athleteId)
+      const response = await fetch(`/api/athletes/${athleteId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'signed' }),
+      })
 
-      if (statusError) {
-        console.error('Failed to update recruiting status:', statusError)
+      if (!response.ok) {
+        set(state => {
+          const newPipelines = new Map(state.pipelines)
+          newPipelines.set(athleteId, { ...pipeline, pipeline_stage: oldStage })
+          return { pipelines: newPipelines }
+        })
+
+        const result = await response.json().catch(() => null)
+        console.error('Failed to update signed status:', result?.error || response.statusText)
       }
     }
   },

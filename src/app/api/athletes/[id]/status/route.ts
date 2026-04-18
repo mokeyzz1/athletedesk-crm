@@ -94,6 +94,7 @@ export async function PATCH(
 
   // For signed status, include school_state and roster_team_id
   if (newStatus === 'signed') {
+    updates.recruiting_status = 'signed'
     if (school_state !== undefined) updates.school_state = school_state
     if (roster_team_id !== undefined) updates.roster_team_id = roster_team_id
   }

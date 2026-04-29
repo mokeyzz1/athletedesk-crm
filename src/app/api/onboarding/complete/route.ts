@@ -108,7 +108,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create user record
+    // Compute clean role model fields
+    const is_admin = assignedRole === 'admin'
+    const work_roles = assignedRole !== 'admin' ? [assignedRole] : []
+    const primary_work_role = assignedRole !== 'admin' ? assignedRole : null
+
+    // Create user record with both legacy and clean role model columns
     const { data: newUser, error: userError } = await supabase
       .from('users')
       .insert({
@@ -117,9 +122,14 @@ export async function POST(request: Request) {
         auth_user_id: pendingUser.auth_user_id,
         google_sso_id: pendingUser.google_sso_id,
         avatar_url: pendingUser.avatar_url,
+        // Legacy columns
         role: assignedRole,
         roles: [assignedRole],
         primary_role: assignedRole,
+        // Clean role model columns
+        is_admin,
+        work_roles,
+        primary_work_role,
         organization_id: organizationId,
         is_super_admin: false,
       } as never)

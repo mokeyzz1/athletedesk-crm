@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import type { WorkRole } from '@/lib/database.types'
 import { AuthError } from './errors'
 
 export type { AuthError }
@@ -9,9 +10,13 @@ export interface AuthContext {
   userId: string
   organizationId: string
   role: string       // Primary role (backward compat)
-  roles: string[]    // All user roles
+  roles: string[]    // All user roles (legacy)
   email: string
   isSuperAdmin: boolean
+  // Clean role model
+  isAdmin: boolean
+  workRoles: WorkRole[]
+  primaryWorkRole: WorkRole | null
 }
 
 /**
@@ -31,7 +36,7 @@ export async function getAuthContext(): Promise<AuthContext> {
   // Uses auth_user_id as the primary lookup key (provider-neutral)
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('id, organization_id, viewing_organization_id, is_super_admin, role, roles, primary_role')
+    .select('id, organization_id, viewing_organization_id, is_super_admin, role, roles, primary_role, is_admin, work_roles, primary_work_role')
     .eq('auth_user_id', user.id)
     .single() as {
       data: {
@@ -42,6 +47,10 @@ export async function getAuthContext(): Promise<AuthContext> {
         role: string
         roles: string[] | null
         primary_role: string | null
+        // Clean role model
+        is_admin: boolean | null
+        work_roles: WorkRole[] | null
+        primary_work_role: WorkRole | null
       } | null
       error: unknown
     }
@@ -58,11 +67,21 @@ export async function getAuthContext(): Promise<AuthContext> {
     throw new AuthError('User not associated with an organization')
   }
 
-  // Fallback: use role if roles array not yet populated
+  // Legacy roles: fallback to role if roles array not yet populated
   const roles = userData.roles?.length ? userData.roles : [userData.role]
   if (userData.is_super_admin && !roles.includes('admin')) {
     roles.push('admin')
   }
+
+  // Clean role model: prefer new columns, fallback to legacy
+  const isAdmin = userData.is_admin ?? userData.is_super_admin ?? roles.includes('admin')
+  const workRoles: WorkRole[] = userData.work_roles?.length
+    ? userData.work_roles
+    : (roles.filter(r => r !== 'admin') as WorkRole[])
+  const primaryWorkRole: WorkRole | null = userData.primary_work_role
+    ?? (userData.primary_role && userData.primary_role !== 'admin' ? userData.primary_role as WorkRole : null)
+    ?? workRoles[0]
+    ?? null
 
   return {
     userId: userData.id,
@@ -71,6 +90,10 @@ export async function getAuthContext(): Promise<AuthContext> {
     roles,
     email: user.email || '',
     isSuperAdmin: userData.is_super_admin,
+    // Clean role model
+    isAdmin,
+    workRoles,
+    primaryWorkRole,
   }
 }
 

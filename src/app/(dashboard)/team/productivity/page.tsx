@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import type { RecruitingRegion, User } from '@/lib/database.types'
 import { ProductivityClient } from './productivity-client'
 import { isOverdue } from '@/lib/helpers'
-import { getPrimaryRole, userHasRole } from '@/lib/roles'
+import { getPrimaryRole, isAdminLike } from '@/lib/roles'
 
 interface StaffProductivity {
   id: string
@@ -41,7 +41,7 @@ export default async function ProductivityPage() {
     .single()
 
   const typedCurrentUser = currentUser as User | null
-  if (!userHasRole(typedCurrentUser, 'admin')) {
+  if (!isAdminLike(typedCurrentUser)) {
     redirect('/dashboard')
   }
 

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { getUserRoles } from '@/lib/roles'
-import type { UserRole } from '@/lib/database.types'
+import { getWorkRoles } from '@/lib/roles'
+import type { WorkRole } from '@/lib/database.types'
 
 export interface GoalProgress {
   goalId: string
@@ -74,7 +74,7 @@ export async function getGoalProgressForUser(userId: string): Promise<GoalProgre
     // Specific staff member
     if (goal.staff_id === userId) return true
     // Role-based
-    if (goal.target_role && getUserRoles(user).includes(goal.target_role as UserRole) && !goal.staff_id) return true
+    if (goal.target_role && getWorkRoles(user).includes(goal.target_role as WorkRole) && !goal.staff_id) return true
     // All staff (no specific staff or role)
     if (!goal.staff_id && !goal.target_role) return true
     return false
@@ -175,7 +175,7 @@ export async function getAllUsersGoalProgress(): Promise<UserGoalProgress[]> {
     // Find applicable goals for this user
     const applicableGoals = goals.filter(goal => {
       if (goal.staff_id === user.id) return true
-      if (goal.target_role && getUserRoles(user).includes(goal.target_role as UserRole) && !goal.staff_id) return true
+      if (goal.target_role && getWorkRoles(user).includes(goal.target_role as WorkRole) && !goal.staff_id) return true
       if (!goal.staff_id && !goal.target_role) return true
       return false
     })

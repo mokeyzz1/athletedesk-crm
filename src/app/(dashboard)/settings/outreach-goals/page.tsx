@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { User } from '@/lib/database.types'
 import { OutreachGoalsClient } from './outreach-goals-client'
-import { userHasRole } from '@/lib/roles'
+import { isAdminLike } from '@/lib/roles'
 
 export interface OutreachGoal {
   id: string
@@ -31,7 +31,7 @@ export default async function OutreachGoalsPage() {
     .single()
 
   const typedCurrentUser = currentUser as User | null
-  if (!userHasRole(typedCurrentUser, 'admin')) {
+  if (!isAdminLike(typedCurrentUser)) {
     redirect('/settings')
   }
 

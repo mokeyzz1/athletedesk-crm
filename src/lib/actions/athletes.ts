@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthContext } from './auth'
 import { AuthError } from './errors'
 import type { Athlete, AthleteInsert } from '@/lib/database.types'
-import { userHasRole } from '@/lib/roles'
+import { hasWorkRole } from '@/lib/roles'
 import { logActivityEvent, logActivityEvents, type LogActivityEventInput } from './activity'
 
 // ============================================================================
@@ -318,7 +318,7 @@ export async function assignAthleteStaff(
       return { success: false, error: 'Team member not found in the current organization' }
     }
 
-    if (!userHasRole(targetUser, assignmentRole)) {
+    if (!hasWorkRole(targetUser, assignmentRole)) {
       return {
         success: false,
         error: `Team member does not have the ${ASSIGNMENT_ROLE_LABELS[assignmentRole]} role`,

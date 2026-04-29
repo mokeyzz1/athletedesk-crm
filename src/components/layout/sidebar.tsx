@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { DateDisplay } from '@/components/ui/date-display'
 import { getLocalDateString } from '@/lib/helpers'
 import type { User } from '@/lib/database.types'
-import { userHasRole } from '@/lib/roles'
+import { isAdminLike } from '@/lib/roles'
 import { SearchModal } from './search-modal'
 
 interface Notification {
@@ -548,7 +548,7 @@ export function Sidebar({ user }: SidebarProps) {
                     <div className="space-y-1">
                       {group.items.filter(item => {
                         // Filter out admin-only items for non-admin users
-                        if ('adminOnly' in item && item.adminOnly && !userHasRole(user, 'admin')) {
+                        if ('adminOnly' in item && item.adminOnly && !isAdminLike(user)) {
                           return false
                         }
                         return true

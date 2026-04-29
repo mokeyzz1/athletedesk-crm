@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { AnalyticsClient } from './analytics-client'
 import type { OutreachStatus, UserRole, PipelineStage, DealType, PaymentStatus } from '@/lib/database.types'
-import { userHasAnyRole } from '@/lib/roles'
+import { isAdminLike, hasAnyWorkRole } from '@/lib/roles'
 
 // Types for query results
 type StatusCount = { outreach_status: OutreachStatus }
@@ -137,7 +137,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const contactedLastPeriod = contactedLastPeriodResult.count
   const staffComms = staffCommsResult.data as StaffCommRow[] | null
   const users = ((usersResult.data as UserRow[] | null) || [])
-    .filter(user => userHasAnyRole(user, ['admin', 'agent', 'scout', 'marketing']))
+    .filter(user => isAdminLike(user) || hasAnyWorkRole(user, ['agent', 'scout', 'marketing']))
   const assignmentData = assignmentResult.data as AssignmentRow[] | null
   const lastActivity = lastActivityResult.data as ActivityRow[] | null
   const goalsData = goalsResult.data as GoalRow[] | null

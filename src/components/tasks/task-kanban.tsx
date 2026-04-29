@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { DateDisplay } from '@/components/ui/date-display'
 import { isOverdue as checkOverdue } from '@/lib/helpers'
 import type { Task, User, Athlete } from '@/lib/database.types'
-import { userHasRole } from '@/lib/roles'
+import { isAdminLike } from '@/lib/roles'
 import { logClientActivityEvent } from '@/lib/activity-client'
 
 interface TaskWithRelations extends Task {
@@ -69,7 +69,7 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
     }
 
     // Check permissions
-    const canEdit = userHasRole(currentUser, 'admin') || task.assigned_to === currentUser.id
+    const canEdit = isAdminLike(currentUser) || task.assigned_to === currentUser.id
     if (!canEdit) {
       setDraggedTaskId(null)
       setDragOverColumn(null)

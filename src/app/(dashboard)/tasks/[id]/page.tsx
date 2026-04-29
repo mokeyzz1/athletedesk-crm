@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { User, Athlete, Task, TaskUpdate } from '@/lib/database.types'
 import { TaskComments } from '@/components/tasks/task-comments'
-import { getPrimaryRole, userHasRole } from '@/lib/roles'
+import { getPrimaryRole, isAdminLike } from '@/lib/roles'
 import { logClientActivityEvent } from '@/lib/activity-client'
 
 interface TaskWithRelations extends Task {
@@ -92,12 +92,12 @@ export default function TaskDetailPage() {
   }, [supabase, router, taskId])
 
   const canEdit = currentUser && task && (
-    userHasRole(currentUser, 'admin') ||
+    isAdminLike(currentUser) ||
     task.assigned_to === currentUser.id
   )
 
   const canDelete = currentUser && task && (
-    userHasRole(currentUser, 'admin') ||
+    isAdminLike(currentUser) ||
     task.created_by === currentUser.id
   )
 
@@ -315,7 +315,7 @@ export default function TaskDetailPage() {
                     id="assigned_to"
                     required
                     defaultValue={task.assigned_to}
-                    disabled={!canEdit || !userHasRole(currentUser, 'admin')}
+                    disabled={!canEdit || !isAdminLike(currentUser)}
                     className="mt-1 input w-full disabled:bg-gray-100"
                   >
                     {users.map(user => (

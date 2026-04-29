@@ -4,11 +4,12 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import type { User, UserRole, RecruitingRegion } from '@/lib/database.types'
+import type { User, UserRole, WorkRole, RecruitingRegion } from '@/lib/database.types'
 import { updateUserRegions, updateUserRoles } from '@/lib/actions/users'
-import { getPrimaryRole, getUserRoles, userHasRole } from '@/lib/roles'
+import { getPrimaryWorkRole, getWorkRoles, isAdminLike } from '@/lib/roles'
 
-const ALL_ROLES: UserRole[] = ['admin', 'agent', 'scout', 'marketing', 'intern']
+// Work roles only - admin is a permission, not a work role
+const WORK_ROLES: WorkRole[] = ['agent', 'scout', 'marketing', 'intern']
 
 export default function TeamManagementPage() {
   const router = useRouter()
@@ -17,8 +18,9 @@ export default function TeamManagementPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [editingRolesUser, setEditingRolesUser] = useState<User | null>(null)
-  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([])
-  const [primaryRole, setPrimaryRole] = useState<UserRole>('intern')
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [selectedWorkRoles, setSelectedWorkRoles] = useState<WorkRole[]>([])
+  const [primaryWorkRole, setPrimaryWorkRole] = useState<WorkRole>('intern')
   const [savingRoles, setSavingRoles] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -50,7 +52,7 @@ export default function TeamManagementPage() {
 
       const profile = profileData as User | null
 
-      if (!userHasRole(profile, 'admin')) {
+      if (!isAdminLike(profile)) {
         router.push('/settings')
         return
       }
@@ -78,18 +80,20 @@ export default function TeamManagementPage() {
 
   const openRolesModal = (user: User) => {
     setEditingRolesUser(user)
-    const userRoles = getUserRoles(user)
-    setSelectedRoles(userRoles)
-    setPrimaryRole(getPrimaryRole(user) || userRoles[0] || 'intern')
+    // Use clean role model helpers
+    setIsAdmin(user.is_admin ?? false)
+    const workRoles = getWorkRoles(user)
+    setSelectedWorkRoles(workRoles)
+    setPrimaryWorkRole(getPrimaryWorkRole(user) || workRoles[0] || 'intern')
   }
 
-  const toggleRole = (role: UserRole) => {
-    setSelectedRoles(prev => {
+  const toggleWorkRole = (role: WorkRole) => {
+    setSelectedWorkRoles(prev => {
       if (prev.includes(role)) {
         // Removing role - if it's the primary, auto-pick another
         const newRoles = prev.filter(r => r !== role)
-        if (role === primaryRole && newRoles.length > 0) {
-          setPrimaryRole(newRoles[0])
+        if (role === primaryWorkRole && newRoles.length > 0) {
+          setPrimaryWorkRole(newRoles[0])
         }
         return newRoles
       } else {
@@ -99,11 +103,20 @@ export default function TeamManagementPage() {
   }
 
   const saveRoles = async () => {
-    if (!editingRolesUser || selectedRoles.length === 0) return
+    if (!editingRolesUser || selectedWorkRoles.length === 0) return
 
     setSavingRoles(true)
     setTeamError('')
-    const result = await updateUserRoles(editingRolesUser.id, selectedRoles, primaryRole)
+
+    // Reconstruct legacy format for updateUserRoles
+    // The action will compute clean model fields internally
+    const legacyRoles: UserRole[] = isAdmin
+      ? ['admin', ...selectedWorkRoles]
+      : selectedWorkRoles
+    // Primary role for legacy: use primary work role (admin is a permission, not displayed as primary)
+    const legacyPrimaryRole: UserRole = primaryWorkRole
+
+    const result = await updateUserRoles(editingRolesUser.id, legacyRoles, legacyPrimaryRole)
 
     if (result.success) {
       setUsers(users.map(u =>
@@ -254,12 +267,15 @@ export default function TeamManagementPage() {
       )}
       {/* Role Legend */}
       <div className="card">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Role Permissions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-          <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Permissions & Roles</h3>
+        <div className="mb-4 pb-4 border-b border-gray-200">
+          <div className="flex items-start gap-2">
             <span className="badge-red">Admin</span>
-            <p className="mt-1 text-gray-500">Full access, team management</p>
+            <p className="text-sm text-gray-500">Permission granting full access and team management. Can be combined with any work role.</p>
           </div>
+        </div>
+        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Work Roles</h4>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
           <div>
             <span className="badge-blue">Agent</span>
             <p className="mt-1 text-gray-500">Manage athletes, deals, pipeline</p>
@@ -332,12 +348,20 @@ export default function TeamManagementPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-1.5">
-                    <span className={`${getRoleBadge(getPrimaryRole(user))} capitalize`}>
-                      {getPrimaryRole(user)}
-                    </span>
-                    {getUserRoles(user).length > 1 && (
+                    {/* Admin badge shown separately */}
+                    {user.is_admin && (
+                      <span className="badge-red">Admin</span>
+                    )}
+                    {/* Primary work role badge */}
+                    {getPrimaryWorkRole(user) && (
+                      <span className={`${getRoleBadge(getPrimaryWorkRole(user)!)} capitalize`}>
+                        {getPrimaryWorkRole(user)}
+                      </span>
+                    )}
+                    {/* Show +N more for additional work roles */}
+                    {getWorkRoles(user).length > 1 && (
                       <span className="text-xs text-gray-500">
-                        +{getUserRoles(user).length - 1} more
+                        +{getWorkRoles(user).length - 1} more
                       </span>
                     )}
                   </div>
@@ -504,13 +528,45 @@ export default function TeamManagementPage() {
               Edit Roles
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Select roles for {editingRolesUser.name}. Click the star to set primary role.
+              Configure roles for {editingRolesUser.name}.
             </p>
 
+            {/* Admin Permission Toggle - Separate from work roles */}
+            <div className="mb-4">
+              <label
+                className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                  isAdmin
+                    ? 'border-red-500 bg-red-50'
+                    : 'border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isAdmin}
+                  onChange={() => setIsAdmin(!isAdmin)}
+                  disabled={editingRolesUser.id === currentUser?.id && isAdmin}
+                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                />
+                <div className="ml-3">
+                  <span className="text-sm font-medium text-gray-900">Admin Permission</span>
+                  <p className="text-xs text-gray-500">Full access to all features and team management</p>
+                </div>
+              </label>
+              {editingRolesUser.id === currentUser?.id && isAdmin && (
+                <p className="text-xs text-gray-500 mt-1 ml-1">You cannot remove your own admin permission</p>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 pt-4 mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                Work Roles <span className="text-gray-400 font-normal">(click star for primary)</span>
+              </p>
+            </div>
+
             <div className="space-y-2 mb-6">
-              {ALL_ROLES.map(role => {
-                const isSelected = selectedRoles.includes(role)
-                const isPrimary = primaryRole === role
+              {WORK_ROLES.map(role => {
+                const isSelected = selectedWorkRoles.includes(role)
+                const isPrimary = primaryWorkRole === role
                 return (
                   <div
                     key={role}
@@ -524,20 +580,20 @@ export default function TeamManagementPage() {
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => toggleRole(role)}
+                        onChange={() => toggleWorkRole(role)}
                         className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
                       />
                       <span className="ml-3 text-sm font-medium text-gray-900 capitalize">{role}</span>
                     </label>
                     {isSelected && (
                       <button
-                        onClick={() => setPrimaryRole(role)}
+                        onClick={() => setPrimaryWorkRole(role)}
                         className={`p-1 rounded transition-colors ${
                           isPrimary
                             ? 'text-yellow-500'
                             : 'text-gray-300 hover:text-yellow-400'
                         }`}
-                        title={isPrimary ? 'Primary role' : 'Set as primary'}
+                        title={isPrimary ? 'Primary work role' : 'Set as primary'}
                       >
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -549,8 +605,8 @@ export default function TeamManagementPage() {
               })}
             </div>
 
-            {selectedRoles.length === 0 && (
-              <p className="text-sm text-red-600 mb-4">At least one role is required.</p>
+            {selectedWorkRoles.length === 0 && (
+              <p className="text-sm text-red-600 mb-4">At least one work role is required.</p>
             )}
 
             <div className="flex justify-end gap-3">
@@ -563,7 +619,7 @@ export default function TeamManagementPage() {
               </button>
               <button
                 onClick={saveRoles}
-                disabled={savingRoles || selectedRoles.length === 0}
+                disabled={savingRoles || selectedWorkRoles.length === 0}
                 className="btn-primary"
               >
                 {savingRoles ? (

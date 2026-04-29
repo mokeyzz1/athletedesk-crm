@@ -144,15 +144,21 @@ async function handleAuthenticatedUser(
 
   if (isSuperAdmin) {
     // Create super admin user without org - they can access /admin
+    // Super admin has is_admin=true but no work_roles (pure permission)
     const { error: insertError } = await supabase.from('users').insert({
       name: user.user_metadata?.full_name || userEmail?.split('@')[0] || 'Super Admin',
       email: userEmail!,
       auth_user_id: authUserId,
       google_sso_id: isGoogleProvider ? authUserId : null,
       avatar_url: user.user_metadata?.avatar_url,
+      // Legacy columns
       role: 'admin',
       roles: ['admin'],
       primary_role: 'admin',
+      // Clean role model columns
+      is_admin: true,
+      work_roles: [],
+      primary_work_role: null,
       is_super_admin: true,
       organization_id: null,
     } as never)

@@ -124,26 +124,3 @@ export function getPrimaryWorkRole(user: RoleLike | null | undefined): WorkRole 
   return workRoles[0] || null
 }
 
-// =============================================================================
-// LEGACY HELPERS (admin = wildcard, kept for backward compatibility)
-// TODO: Migrate usages to isAdminLike() + hasWorkRole() and remove these
-// =============================================================================
-
-/**
- * @deprecated Use isAdminLike() for permission checks, hasWorkRole() for work lanes
- */
-export function userHasRole(user: RoleLike | null | undefined, role: UserRole): boolean {
-  const roles = getUserRoles(user)
-  return roles.includes('admin') || roles.includes(role)
-}
-
-/**
- * @deprecated Use isAdminLike() for permission checks, hasAnyWorkRole() for work lanes
- */
-export function userHasAnyRole(
-  user: RoleLike | null | undefined,
-  rolesToCheck: UserRole[]
-): boolean {
-  const roles = getUserRoles(user)
-  return roles.includes('admin') || rolesToCheck.some(role => roles.includes(role))
-}

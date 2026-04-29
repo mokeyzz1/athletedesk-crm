@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { DateDisplay } from '@/components/ui/date-display'
 import type { User, Athlete, Task, TaskUpdate } from '@/lib/database.types'
-import { userHasRole } from '@/lib/roles'
+import { isAdminLike } from '@/lib/roles'
 import { TaskComments } from './task-comments'
 import { logClientActivityEvent } from '@/lib/activity-client'
 
@@ -73,12 +73,12 @@ export function TaskPanel({
   }, [taskId, isOpen, supabase])
 
   const canEdit = currentUser && task && (
-    userHasRole(currentUser, 'admin') ||
+    isAdminLike(currentUser) ||
     task.assigned_to === currentUser.id
   )
 
   const canDelete = currentUser && task && (
-    userHasRole(currentUser, 'admin') ||
+    isAdminLike(currentUser) ||
     task.created_by === currentUser.id
   )
 
@@ -316,7 +316,7 @@ export function TaskPanel({
                     id="assigned_to"
                     required
                     defaultValue={task.assigned_to}
-                    disabled={!canEdit || !userHasRole(currentUser, 'admin')}
+                    disabled={!canEdit || !isAdminLike(currentUser)}
                     className="mt-1 input w-full disabled:bg-gray-100"
                   >
                     {users.map(user => (

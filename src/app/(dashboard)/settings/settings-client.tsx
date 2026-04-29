@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { User, EmailTemplate, RosterTeam, RecruitingRegion, Organization, IntegrationProvider } from '@/lib/database.types'
 import { US_STATES } from '@/lib/database.types'
-import { getPrimaryRole, userHasRole } from '@/lib/roles'
+import { getPrimaryRole, isAdminLike } from '@/lib/roles'
 
 interface Integration {
   id: string
@@ -251,7 +251,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
   const [isEditingOrgName, setIsEditingOrgName] = useState(false)
   const [isSavingOrg, setIsSavingOrg] = useState(false)
 
-  const isAdmin = userHasRole(profile, 'admin')
+  const isAdmin = isAdminLike(profile)
   const router = useRouter()
   const supabase = createClient()
 

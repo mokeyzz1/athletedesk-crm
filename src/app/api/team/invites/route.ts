@@ -1,7 +1,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { UserRole } from '@/lib/database.types'
-import { userHasRole } from '@/lib/roles'
+import { isAdminLike } from '@/lib/roles'
 
 const ALLOWED_ROLES: UserRole[] = ['admin', 'agent', 'scout', 'marketing', 'intern']
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'User is not associated with an organization' }, { status: 400 })
   }
 
-  if (!userHasRole(currentUser, 'admin')) {
+  if (!isAdminLike(currentUser)) {
     return NextResponse.json({ error: 'Only admins can invite team members' }, { status: 403 })
   }
 

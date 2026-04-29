@@ -9,7 +9,7 @@ import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
-import { userHasRole } from '@/lib/roles'
+import { hasWorkRole, isAdminLike } from '@/lib/roles'
 import { updateAthlete, type UpdateAthleteInput } from '@/lib/actions/athletes'
 
 export default function EditAthletePage() {
@@ -101,7 +101,7 @@ export default function EditAthletePage() {
       Object.entries(socialMedia).filter(([, v]) => v !== '' && v !== null && v !== undefined && v !== 0)
     )
 
-    const canManageAssignments = userHasRole(currentUser, 'admin')
+    const canManageAssignments = isAdminLike(currentUser)
     const updateData: UpdateAthleteInput = {
       name: formData.get('name') as string,
       email: (formData.get('email') as string) || null,
@@ -140,10 +140,11 @@ export default function EditAthletePage() {
     router.push(`/athletes/${id}`)
   }
 
-  const scouts = users.filter(u => userHasRole(u, 'scout'))
-  const agents = users.filter(u => userHasRole(u, 'agent'))
-  const marketingLeads = users.filter(u => userHasRole(u, 'marketing'))
-  const canManageAssignments = userHasRole(currentUser, 'admin')
+  // Filter by work role only - admin doesn't auto-appear in work lane lists
+  const scouts = users.filter(u => hasWorkRole(u, 'scout'))
+  const agents = users.filter(u => hasWorkRole(u, 'agent'))
+  const marketingLeads = users.filter(u => hasWorkRole(u, 'marketing'))
+  const canManageAssignments = isAdminLike(currentUser)
   const isAssignedToCurrentUser = Boolean(
     currentUser && athlete && (
       athlete.assigned_scout_id === currentUser.id ||

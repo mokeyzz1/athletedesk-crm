@@ -16,7 +16,7 @@ import { PipelineStatusCard } from './pipeline-status-card'
 import { getAthleteEmailCount } from '@/lib/queries/email-stats'
 import { formatDate } from '@/lib/helpers'
 import { SelfAssignButton } from '@/components/athletes/self-assign-button'
-import { userHasRole } from '@/lib/roles'
+import { hasWorkRole, isAdminLike } from '@/lib/roles'
 
 interface AthletePageProps {
   params: Promise<{ id: string }>
@@ -102,9 +102,10 @@ export default async function AthletePage({ params }: AthletePageProps) {
 
   const socialMedia = athlete.social_media as SocialMediaData | null
   const totalFollowing = socialMedia ? calculateTotalFollowing(socialMedia) : 0
-  const canSelfAssignScout = userHasRole(currentUser, 'scout') && !athlete.assigned_scout_id
-  const canSelfAssignAgent = userHasRole(currentUser, 'agent') && !athlete.assigned_agent_id
-  const canSelfAssignMarketing = userHasRole(currentUser, 'marketing') && !athlete.assigned_marketing_lead_id
+  // Self-assign: work role holders OR admins can self-assign
+  const canSelfAssignScout = (hasWorkRole(currentUser, 'scout') || isAdminLike(currentUser)) && !athlete.assigned_scout_id
+  const canSelfAssignAgent = (hasWorkRole(currentUser, 'agent') || isAdminLike(currentUser)) && !athlete.assigned_agent_id
+  const canSelfAssignMarketing = (hasWorkRole(currentUser, 'marketing') || isAdminLike(currentUser)) && !athlete.assigned_marketing_lead_id
 
   // Build activity timeline
   const activities: ActivityItem[] = [

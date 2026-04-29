@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { userHasRole } from '@/lib/roles'
+import { hasWorkRole, isAdminLike } from '@/lib/roles'
 import type { UserRole } from '@/lib/database.types'
 
 interface RegionAssignmentUpdate {
@@ -86,8 +86,9 @@ export async function GET() {
 
   return NextResponse.json({
     assignments,
-    agents: (agents || []).filter(agent => userHasRole(agent, 'agent')),
-    marketingUsers: (marketingUsers || []).filter(marketingUser => userHasRole(marketingUser, 'marketing')),
+    // Filter by work role only - admin doesn't auto-appear in work lane lists
+    agents: (agents || []).filter(agent => hasWorkRole(agent, 'agent')),
+    marketingUsers: (marketingUsers || []).filter(marketingUser => hasWorkRole(marketingUser, 'marketing')),
   })
 }
 
@@ -102,13 +103,13 @@ export async function PATCH(request: NextRequest) {
   // Check if user is admin and get their organization_id
   const { data: currentUserData } = await supabase
     .from('users')
-    .select('role, roles, organization_id')
+    .select('role, roles, organization_id, is_super_admin')
     .eq('auth_user_id', user.id)
     .single()
 
-  const currentUser = currentUserData as { role: UserRole; roles: UserRole[] | null; organization_id: string } | null
+  const currentUser = currentUserData as { role: UserRole; roles: UserRole[] | null; organization_id: string; is_super_admin: boolean } | null
 
-  if (!currentUser || !userHasRole(currentUser, 'admin')) {
+  if (!currentUser || !isAdminLike(currentUser)) {
     return NextResponse.json({ error: 'Only admins can manage region assignments' }, { status: 403 })
   }
 

@@ -8,7 +8,7 @@ import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
-import { userHasRole } from '@/lib/roles'
+import { hasWorkRole } from '@/lib/roles'
 import { notifyAthleteAssignments } from '@/lib/actions/athletes'
 
 interface DuplicateWarning {
@@ -185,9 +185,10 @@ export default function NewAthletePage() {
     router.push(`/athletes/${athlete.id}`)
   }
 
-  const scouts = users.filter(u => userHasRole(u, 'scout'))
-  const agents = users.filter(u => userHasRole(u, 'agent'))
-  const marketingLeads = users.filter(u => userHasRole(u, 'marketing'))
+  // Filter by work role only - admin doesn't auto-appear in work lane lists
+  const scouts = users.filter(u => hasWorkRole(u, 'scout'))
+  const agents = users.filter(u => hasWorkRole(u, 'agent'))
+  const marketingLeads = users.filter(u => hasWorkRole(u, 'marketing'))
 
   return (
     <div className="flex flex-col h-full">

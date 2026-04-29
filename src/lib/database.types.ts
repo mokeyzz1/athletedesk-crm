@@ -7,6 +7,7 @@ export type Json =
   | Json[]
 
 export type UserRole = 'admin' | 'agent' | 'scout' | 'marketing' | 'intern'
+export type WorkRole = 'scout' | 'agent' | 'marketing' | 'intern'  // No admin - admin is a permission, not a work role
 export type LeagueLevel = 'high_school' | 'college' | 'professional' | 'international'
 export type RecruitingStatus = 'not_recruiting' | 'open_to_contact' | 'actively_recruiting' | 'committed' | 'signed'
 export type TransferPortalStatus = 'not_in_portal' | 'entered_portal' | 'committed' | 'transferred'
@@ -187,6 +188,10 @@ export interface Database {
           viewing_organization_id: string | null
           // Email signature
           email_signature: string | null
+          // Clean role model (admin = permission, work_roles = identity)
+          is_admin: boolean
+          work_roles: WorkRole[] | null
+          primary_work_role: WorkRole | null
         }
         Insert: {
           id?: string
@@ -216,6 +221,10 @@ export interface Database {
           is_super_admin?: boolean
           // Email signature
           email_signature?: string | null
+          // Clean role model
+          is_admin?: boolean
+          work_roles?: WorkRole[] | null
+          primary_work_role?: WorkRole | null
         }
         Update: {
           id?: string
@@ -245,6 +254,10 @@ export interface Database {
           is_super_admin?: boolean
           // Email signature
           email_signature?: string | null
+          // Clean role model
+          is_admin?: boolean
+          work_roles?: WorkRole[] | null
+          primary_work_role?: WorkRole | null
         }
       }
       athletes: {

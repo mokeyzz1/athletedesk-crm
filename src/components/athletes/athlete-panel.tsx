@@ -8,7 +8,7 @@ import { SportSelect, SportSpecificFields } from '@/components/forms/sport-speci
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
 import { updateAthlete, deleteAthlete } from '@/lib/actions/athletes'
-import { userHasRole } from '@/lib/roles'
+import { hasWorkRole } from '@/lib/roles'
 
 interface AthletePanelProps {
   athleteId: string | null
@@ -186,9 +186,10 @@ export function AthletePanel({
     }
   }
 
-  const scouts = users.filter(u => userHasRole(u, 'scout'))
-  const agents = users.filter(u => userHasRole(u, 'agent'))
-  const marketingLeads = users.filter(u => userHasRole(u, 'marketing'))
+  // Filter by work role only - admin doesn't auto-appear in work lane lists
+  const scouts = users.filter(u => hasWorkRole(u, 'scout'))
+  const agents = users.filter(u => hasWorkRole(u, 'agent'))
+  const marketingLeads = users.filter(u => hasWorkRole(u, 'marketing'))
 
   return (
     <>

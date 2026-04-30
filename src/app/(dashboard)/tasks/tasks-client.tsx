@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import type { Task, User, Athlete } from '@/lib/database.types'
 import { TaskPanel } from '@/components/tasks/task-panel'
 import { TaskKanban } from '@/components/tasks/task-kanban'
-import { isAdminLike, hasWorkRole } from '@/lib/roles'
+import { isAdminLike, hasWorkRole, hasAnyWorkRole } from '@/lib/roles'
 
 interface TaskWithRelations extends Task {
   assigned_user: { id: string; name: string; avatar_url: string | null; role: string; roles: string[] | null } | null
@@ -156,7 +156,8 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
 
-  const canCreateTasks = isAdminLike(currentUser) || hasWorkRole(currentUser, 'agent')
+  // Admin, agent, scout, marketing can create tasks (not intern)
+  const canCreateTasks = isAdminLike(currentUser) || hasAnyWorkRole(currentUser, ['agent', 'scout', 'marketing'])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {

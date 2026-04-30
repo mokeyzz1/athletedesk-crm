@@ -17,10 +17,10 @@ interface PipelineStore {
   setPipelines: (data: PipelineData[]) => void
 
   // Update priority (updates store and database)
-  updatePriority: (athleteId: string, newPriority: 'high' | 'medium' | 'low') => Promise<void>
+  updatePriority: (athleteId: string, newPriority: 'high' | 'medium' | 'low') => Promise<{ success: boolean; error?: string }>
 
   // Update stage (updates store and database)
-  updateStage: (athleteId: string, newStage: PipelineStage) => Promise<void>
+  updateStage: (athleteId: string, newStage: PipelineStage) => Promise<{ success: boolean; error?: string }>
 
   // Get pipeline by athlete ID
   getPipeline: (athleteId: string) => PipelineData | undefined
@@ -37,7 +37,7 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
 
   updatePriority: async (athleteId, newPriority) => {
     const pipeline = get().pipelines.get(athleteId)
-    if (!pipeline) return
+    if (!pipeline) return { success: false, error: 'Pipeline not found' }
 
     const oldPriority = pipeline.priority
 
@@ -63,25 +63,27 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
         return { pipelines: newPipelines }
       })
       console.error('Failed to update priority:', error)
-    } else {
-      await logClientActivityEvent({
-        entityType: 'athlete',
-        entityId: athleteId,
-        eventType: 'pipeline.priority_changed',
-        title: `Pipeline priority changed to ${newPriority}`,
-        metadata: {
-          pipeline_id: pipeline.id,
-          previous_priority: oldPriority,
-          new_priority: newPriority,
-          source: 'pipeline_store',
-        },
-      })
+      return { success: false, error: 'Could not update priority. Please try again.' }
     }
+
+    await logClientActivityEvent({
+      entityType: 'athlete',
+      entityId: athleteId,
+      eventType: 'pipeline.priority_changed',
+      title: `Pipeline priority changed to ${newPriority}`,
+      metadata: {
+        pipeline_id: pipeline.id,
+        previous_priority: oldPriority,
+        new_priority: newPriority,
+        source: 'pipeline_store',
+      },
+    })
+    return { success: true }
   },
 
   updateStage: async (athleteId, newStage) => {
     const pipeline = get().pipelines.get(athleteId)
-    if (!pipeline) return
+    if (!pipeline) return { success: false, error: 'Pipeline not found' }
 
     const oldStage = pipeline.pipeline_stage
 
@@ -107,7 +109,7 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
         return { pipelines: newPipelines }
       })
       console.error('Failed to update stage:', error)
-      return
+      return { success: false, error: 'Could not update stage. Please try again.' }
     }
 
     await logClientActivityEvent({
@@ -141,8 +143,11 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
 
         const result = await response.json().catch(() => null)
         console.error('Failed to update signed status:', result?.error || response.statusText)
+        return { success: false, error: 'Could not update signed status. Please try again.' }
       }
     }
+
+    return { success: true }
   },
 
   getPipeline: (athleteId) => {

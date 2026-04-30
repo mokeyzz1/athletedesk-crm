@@ -26,6 +26,7 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
   const supabase = createClient()
   const [comments, setComments] = useState<TaskCommentWithAuthor[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchComments() {
@@ -48,6 +49,8 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
   }, [supabase, taskId])
 
   const handleSubmitComment = async (content: string, mentionedUserIds: string[]) => {
+    setSubmitError(null)
+
     // Insert the comment
     const { data: newComment, error: commentError } = await supabase
       .from('task_comments')
@@ -64,6 +67,7 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
 
     if (commentError || !newComment) {
       console.error('Error posting comment:', commentError)
+      setSubmitError('Could not post comment. Please try again.')
       return
     }
 
@@ -176,11 +180,18 @@ export function TaskComments({ taskId, currentUser, canComment, users }: TaskCom
 
       {/* Comment Input */}
       {canComment && (
-        <MentionInput
-          users={users}
-          onSubmit={handleSubmitComment}
-          placeholder="Add a comment... Use @ to mention someone"
-        />
+        <>
+          {submitError && (
+            <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+              {submitError}
+            </div>
+          )}
+          <MentionInput
+            users={users}
+            onSubmit={handleSubmitComment}
+            placeholder="Add a comment... Use @ to mention someone"
+          />
+        </>
       )}
     </div>
   )

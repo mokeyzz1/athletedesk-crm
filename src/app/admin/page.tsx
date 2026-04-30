@@ -158,6 +158,7 @@ export default function AdminPage() {
   const [deletingOrgId, setDeletingOrgId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const deleteOrganization = async (orgId: string, orgName: string) => {
     if (confirmDelete !== orgId) {
@@ -165,6 +166,7 @@ export default function AdminPage() {
       return
     }
 
+    setDeleteError(null)
     setDeletingOrgId(orgId)
     try {
       const response = await fetch(`/api/admin/organizations/${orgId}`, {
@@ -177,16 +179,19 @@ export default function AdminPage() {
         setConfirmDelete(null)
       } else {
         const result = await response.json()
-        alert(`Failed to delete: ${result.error}`)
+        console.error('Failed to delete organization:', result.error)
+        setDeleteError(`Could not delete organization. ${result.error || 'Please try again.'}`)
       }
     } catch (err) {
-      alert('Failed to delete organization')
+      console.error('Failed to delete organization:', err)
+      setDeleteError('Could not delete organization. Please try again.')
     } finally {
       setDeletingOrgId(null)
     }
   }
 
   const deleteInvite = async (inviteId: string) => {
+    setDeleteError(null)
     setDeletingInviteId(inviteId)
     try {
       const response = await fetch(`/api/admin/invites/${inviteId}`, {
@@ -196,10 +201,12 @@ export default function AdminPage() {
         loadData()
       } else {
         const result = await response.json()
-        alert(`Failed to delete: ${result.error}`)
+        console.error('Failed to delete invite:', result.error)
+        setDeleteError(`Could not delete invite. ${result.error || 'Please try again.'}`)
       }
-    } catch {
-      alert('Failed to delete invite')
+    } catch (err) {
+      console.error('Failed to delete invite:', err)
+      setDeleteError('Could not delete invite. Please try again.')
     } finally {
       setDeletingInviteId(null)
     }
@@ -287,6 +294,21 @@ export default function AdminPage() {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+          {/* Error Banner */}
+          {deleteError && (
+            <div className="mb-4 max-w-5xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center justify-between">
+              <span className="text-sm">{deleteError}</span>
+              <button
+                onClick={() => setDeleteError(null)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           {/* Overview Tab */}
           {activeTab === 'overview' && stats && (
             <div className="space-y-6 max-w-5xl">

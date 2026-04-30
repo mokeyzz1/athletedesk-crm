@@ -34,6 +34,7 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
   const supabase = createClient()
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const getTasksByStatus = (status: TaskStatus) => {
     return tasks.filter(task => task.status === status)
@@ -77,29 +78,35 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
     }
 
     // Update task status
-    const { error } = await supabase
+    setError(null)
+    const { error: updateError } = await supabase
       .from('tasks')
       .update({ status: newStatus } as never)
       .eq('id', taskId)
 
-    if (!error) {
-      await logClientActivityEvent({
-        entityType: task.athlete_id ? 'athlete' : 'task',
-        entityId: task.athlete_id || task.id,
-        eventType: newStatus === 'done' ? 'task.completed' : 'task.status_changed',
-        title: newStatus === 'done' ? `Task completed: ${task.title}` : `Task status changed: ${task.title}`,
-        metadata: {
-          task_id: task.id,
-          previous_status: task.status,
-          new_status: newStatus,
-          athlete_id: task.athlete_id,
-          source: 'task_kanban',
-        },
-      })
-    }
-
     setDraggedTaskId(null)
     setDragOverColumn(null)
+
+    if (updateError) {
+      console.error('Failed to update task status:', updateError)
+      setError('Could not update task status. Please try again.')
+      return
+    }
+
+    await logClientActivityEvent({
+      entityType: task.athlete_id ? 'athlete' : 'task',
+      entityId: task.athlete_id || task.id,
+      eventType: newStatus === 'done' ? 'task.completed' : 'task.status_changed',
+      title: newStatus === 'done' ? `Task completed: ${task.title}` : `Task status changed: ${task.title}`,
+      metadata: {
+        task_id: task.id,
+        previous_status: task.status,
+        new_status: newStatus,
+        athlete_id: task.athlete_id,
+        source: 'task_kanban',
+      },
+    })
+
     onTaskUpdated()
   }
 
@@ -124,7 +131,18 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
 
 
   return (
-    <div className="flex gap-3 h-full overflow-x-auto pb-4">
+    <div className="flex flex-col h-full">
+      {error && (
+        <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+      <div className="flex gap-3 flex-1 overflow-x-auto pb-4">
       {columns.map(column => {
         const columnTasks = getTasksByStatus(column.id)
         const isDragOver = dragOverColumn === column.id
@@ -232,6 +250,7 @@ export function TaskKanban({ tasks, currentUser, onTaskClick, onTaskUpdated }: T
           </div>
         )
       })}
+      </div>
     </div>
   )
 }

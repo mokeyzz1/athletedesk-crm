@@ -169,6 +169,7 @@ export default function TeamManagementPage() {
     }
 
     setDeletingUser(userId)
+    setTeamError('')
 
     try {
       const { error } = await supabase
@@ -181,7 +182,7 @@ export default function TeamManagementPage() {
       setUsers(users.filter(u => u.id !== userId))
     } catch (error) {
       console.error('Failed to delete user:', error)
-      alert('Failed to remove team member. Please try again.')
+      setTeamError('Could not remove team member. Please try again.')
     } finally {
       setDeletingUser(null)
     }

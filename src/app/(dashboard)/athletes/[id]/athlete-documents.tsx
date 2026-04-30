@@ -29,6 +29,7 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedType, setSelectedType] = useState('other')
   const [notes, setNotes] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -112,10 +113,11 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
       setShowUploadModal(false)
       setSelectedType('other')
       setNotes('')
+      setError(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch (error) {
-      console.error('Upload error:', error)
-      alert('Failed to upload document. Please try again.')
+    } catch (err) {
+      console.error('Upload error:', err)
+      setError('Failed to upload document. Please try again.')
     } finally {
       setIsUploading(false)
     }
@@ -136,6 +138,7 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
       if (error) throw error
 
       setDocuments(documents.filter(d => d.id !== docId))
+      setError(null)
       await logClientActivityEvent({
         entityType: 'athlete',
         entityId: athleteId,
@@ -147,20 +150,21 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
           source: 'athlete_documents',
         },
       })
-    } catch (error) {
-      console.error('Delete error:', error)
-      alert('Failed to delete document.')
+    } catch (err) {
+      console.error('Delete error:', err)
+      setError('Failed to delete document. Please try again.')
     }
   }
 
   const handleDownload = async (doc: DocumentWithUser) => {
     try {
-      const { data, error } = await supabase.storage
+      const { data, error: downloadError } = await supabase.storage
         .from('documents')
         .download(doc.storage_path)
 
-      if (error) {
-        alert('Document not available for download.')
+      if (downloadError) {
+        console.error('Download error:', downloadError)
+        setError('Document not available for download.')
         return
       }
 
@@ -170,9 +174,10 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
       a.download = doc.name
       a.click()
       URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Download error:', error)
-      alert('Failed to download document.')
+      setError(null)
+    } catch (err) {
+      console.error('Download error:', err)
+      setError('Failed to download document. Please try again.')
     }
   }
 
@@ -187,6 +192,17 @@ export function AthleteDocuments({ athleteId, initialDocuments }: AthleteDocumen
           Upload
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {documents.length > 0 ? (
         <ul className="divide-y divide-gray-200">

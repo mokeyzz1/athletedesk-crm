@@ -12,21 +12,24 @@ interface DeleteAthleteButtonProps {
 export function DeleteAthleteButton({ athleteId, athleteName }: DeleteAthleteButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   const handleDelete = async () => {
     setDeleting(true)
-    const { error } = await supabase
+    setError(null)
+    const { error: deleteError } = await supabase
       .from('athletes')
       .delete()
       .eq('id', athleteId)
 
-    if (!error) {
+    if (!deleteError) {
       router.push('/athletes')
       router.refresh()
     } else {
-      alert('Failed to delete: ' + error.message)
+      console.error('Failed to delete athlete:', deleteError)
+      setError('Could not delete athlete. Please try again.')
       setDeleting(false)
     }
   }
@@ -35,6 +38,9 @@ export function DeleteAthleteButton({ athleteId, athleteName }: DeleteAthleteBut
     return (
       <div className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
         <p className="text-sm text-red-800">Delete {athleteName}?</p>
+        {error && (
+          <p className="text-xs text-red-600">{error}</p>
+        )}
         <div className="flex gap-2">
           <button
             onClick={handleDelete}

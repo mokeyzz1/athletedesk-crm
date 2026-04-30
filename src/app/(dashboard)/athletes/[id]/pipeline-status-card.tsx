@@ -12,6 +12,7 @@ export function PipelineStatusCard({ pipeline: initialPipeline }: PipelineStatus
   const [pipeline, setPipeline] = useState(initialPipeline)
   const [showPriorityMenu, setShowPriorityMenu] = useState(false)
   const [showStageMenu, setShowStageMenu] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { updatePriority, updateStage, pipelines, setPipelines } = usePipelineStore()
 
   // Initialize store if this is the first page loaded
@@ -62,7 +63,11 @@ export function PipelineStatusCard({ pipeline: initialPipeline }: PipelineStatus
       return
     }
     setShowPriorityMenu(false)
-    await updatePriority(pipeline.athlete_id, newPriority)
+    setError(null)
+    const result = await updatePriority(pipeline.athlete_id, newPriority)
+    if (!result.success && result.error) {
+      setError(result.error)
+    }
   }
 
   const handleStageChange = async (newStage: string) => {
@@ -71,7 +76,11 @@ export function PipelineStatusCard({ pipeline: initialPipeline }: PipelineStatus
       return
     }
     setShowStageMenu(false)
-    await updateStage(pipeline.athlete_id, newStage as PipelineStage)
+    setError(null)
+    const result = await updateStage(pipeline.athlete_id, newStage as PipelineStage)
+    if (!result.success && result.error) {
+      setError(result.error)
+    }
   }
 
   const currentPriority = priorities.find(p => p.value === pipeline?.priority) || priorities[1]
@@ -79,6 +88,11 @@ export function PipelineStatusCard({ pipeline: initialPipeline }: PipelineStatus
   return (
     <div className="card">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Pipeline Status</h2>
+      {error && (
+        <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+          {error}
+        </div>
+      )}
       {pipeline ? (
         <div className="space-y-3">
           <div>

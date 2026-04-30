@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { RosterClient } from './roster-client'
-import type { DealType } from '@/lib/database.types'
+import type { DealType, User } from '@/lib/database.types'
 import { getAthleteEmailCounts } from '@/lib/queries/email-stats'
+import { isAdminLike, hasAnyWorkRole } from '@/lib/roles'
 
 export interface RosterAthlete {
   id: string
@@ -31,6 +32,18 @@ export interface RosterAthlete {
 
 export default async function RosterPage() {
   const supabase = await createClient()
+
+  // Get current user to check permissions
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('*')
+    .eq('auth_user_id', authUser?.id || '')
+    .single()
+
+  const typedUser = currentUser as User | null
+  // Admins, agents, and scouts can import athletes
+  const canImport = isAdminLike(typedUser) || hasAnyWorkRole(typedUser, ['agent', 'scout'])
 
   // Get athletes who are signed (outreach_status = 'signed')
   const { data: athletesData } = await supabase
@@ -153,5 +166,5 @@ export default async function RosterPage() {
     }
   })
 
-  return <RosterClient athletes={rosterData} />
+  return <RosterClient athletes={rosterData} canImport={canImport} />
 }

@@ -12,6 +12,7 @@ import type { OutreachStatus } from '@/lib/database.types'
 
 interface AthletesClientProps {
   athletes: AllAthlete[]
+  canImport?: boolean
 }
 
 const STATUS_COLORS: Record<OutreachStatus, string> = {
@@ -41,7 +42,7 @@ type SortColumn = 'name' | 'sport' | 'school' | 'class_year' | 'region' | 'outre
 type SortDirection = 'asc' | 'desc'
 type GroupFilter = 'all' | 'recruiting' | 'roster'
 
-export function AthletesClient({ athletes: initialAthletes }: AthletesClientProps) {
+export function AthletesClient({ athletes: initialAthletes, canImport = false }: AthletesClientProps) {
   const [athletes] = useState(initialAthletes)
   const [showImportModal, setShowImportModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -183,15 +184,17 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
                 />
               </div>
             )}
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="btn-secondary text-sm"
-            >
-              <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              <span className="hidden md:inline">Import</span>
-            </button>
+            {canImport && (
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="btn-secondary text-sm"
+              >
+                <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span className="hidden md:inline">Import</span>
+              </button>
+            )}
             <Link href="/athletes/new" className="btn-primary text-sm">
               <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -462,11 +465,15 @@ export function AthletesClient({ athletes: initialAthletes }: AthletesClientProp
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
                 <p className="empty-state-title">No athletes yet</p>
-                <p className="empty-state-description">Import from a spreadsheet or add your first athlete.</p>
+                <p className="empty-state-description">
+                  {canImport ? 'Import from a spreadsheet or add your first athlete.' : 'Add your first athlete to get started.'}
+                </p>
                 <div className="mt-4 flex justify-center gap-3">
-                  <button onClick={() => setShowImportModal(true)} className="btn-secondary">
-                    Import Spreadsheet
-                  </button>
+                  {canImport && (
+                    <button onClick={() => setShowImportModal(true)} className="btn-secondary">
+                      Import Spreadsheet
+                    </button>
+                  )}
                   <Link href="/athletes/new" className="btn-primary">
                     Add Manually
                   </Link>

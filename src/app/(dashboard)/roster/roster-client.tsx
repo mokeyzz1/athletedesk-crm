@@ -11,12 +11,13 @@ import type { RosterAthlete } from './page'
 
 interface RosterClientProps {
   athletes: RosterAthlete[]
+  canImport?: boolean
 }
 
 type SortColumn = 'name' | 'sport' | 'school' | 'agent' | 'deals' | 'revenue_share' | 'marketing_brand' | 'reach'
 type SortDirection = 'asc' | 'desc'
 
-export function RosterClient({ athletes }: RosterClientProps) {
+export function RosterClient({ athletes, canImport = false }: RosterClientProps) {
   const [sortColumn, setSortColumn] = useState<SortColumn>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [sportFilter, setSportFilter] = useState<string>('')
@@ -234,15 +235,17 @@ export function RosterClient({ athletes }: RosterClientProps) {
               sheetName="Roster"
             />
           )}
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="btn-secondary text-sm"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            Import Roster
-          </button>
+          {canImport && (
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="btn-secondary text-sm"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Import Roster
+            </button>
+          )}
         </div>
       </div>
 

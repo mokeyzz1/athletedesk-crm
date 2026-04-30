@@ -1,9 +1,13 @@
+import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { UserRole } from '@/lib/database.types'
 import { isAdminLike } from '@/lib/roles'
 
-const ALLOWED_ROLES: UserRole[] = ['admin', 'agent', 'scout', 'marketing', 'intern']
+const inviteSchema = z.object({
+  email: z.string().email('Invalid email address').max(254).transform(v => v.toLowerCase().trim()),
+  role: z.enum(['admin', 'agent', 'scout', 'marketing', 'intern']),
+})
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -14,16 +18,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-  const role = body.role as UserRole
+  const parsed = inviteSchema.safeParse(body)
 
-  if (!email) {
-    return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0]
+    return NextResponse.json({ error: firstError?.message || 'Invalid input' }, { status: 400 })
   }
 
-  if (!ALLOWED_ROLES.includes(role)) {
-    return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
-  }
+  const { email, role } = parsed.data
 
   const serviceClient = createServiceClient()
 

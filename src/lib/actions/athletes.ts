@@ -1,5 +1,6 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthContext } from './auth'
 import { AuthError } from './errors'
@@ -83,41 +84,63 @@ const ASSIGNMENT_ROLE_FIELDS: Record<AssignmentRole, keyof Pick<
 }
 
 // ============================================================================
-// Validation
+// Validation Schemas
 // ============================================================================
 
+const createAthleteSchema = z.object({
+  name: z.string().transform(v => v.trim()).pipe(z.string().min(1, 'Name is required').max(200, 'Name is too long')),
+  sport: z.string().transform(v => v.trim()).pipe(z.string().min(1, 'Sport is required').max(100, 'Sport is too long')),
+  email: z.string().email('Invalid email format').max(254).optional().nullable().or(z.literal('')),
+  phone: z.string().max(50, 'Phone is too long').optional().nullable(),
+  school: z.string().max(200, 'School name is too long').optional().nullable(),
+  position: z.string().max(100, 'Position is too long').optional().nullable(),
+  class_year: z.string().max(20).optional(),
+  region: z.string().max(100, 'Region is too long').optional().nullable(),
+})
+
+const updateAthleteSchema = z.object({
+  name: z.string().transform(v => v.trim()).pipe(z.string().min(1, 'Name cannot be empty').max(200, 'Name is too long')).optional(),
+  sport: z.string().transform(v => v.trim()).pipe(z.string().min(1).max(100, 'Sport is too long')).optional(),
+  email: z.string().email('Invalid email format').max(254).optional().nullable().or(z.literal('')),
+  phone: z.string().max(50).optional().nullable(),
+  school: z.string().max(200).optional().nullable(),
+  position: z.string().max(100).optional().nullable(),
+  league_level: z.string().max(50).optional(),
+  eligibility_year: z.number().int().min(2000).max(2100).optional().nullable(),
+  recruiting_status: z.string().max(50).optional(),
+  transfer_portal_status: z.string().max(50).optional(),
+  marketability_score: z.number().min(0, 'Marketability score must be between 0 and 100').max(100, 'Marketability score must be between 0 and 100').optional().nullable(),
+  assigned_scout_id: z.string().uuid().optional().nullable(),
+  assigned_agent_id: z.string().uuid().optional().nullable(),
+  assigned_marketing_lead_id: z.string().uuid().optional().nullable(),
+  scout_ids: z.array(z.string().uuid()).optional(),
+  agent_ids: z.array(z.string().uuid()).optional(),
+  marketing_ids: z.array(z.string().uuid()).optional(),
+  notes: z.string().max(10000, 'Notes are too long').optional().nullable(),
+  sport_specific_stats: z.record(z.string(), z.unknown()).optional().nullable(),
+  social_media: z.record(z.string(), z.unknown()).optional().nullable(),
+  class_year: z.string().max(20).optional(),
+  region: z.string().max(100).optional().nullable(),
+  outreach_status: z.string().max(50).optional(),
+  school_state: z.string().max(100).optional().nullable(),
+  roster_team_id: z.string().uuid().optional().nullable(),
+  birthday: z.string().max(20).optional().nullable(),
+  hometown: z.string().max(200).optional().nullable(),
+  mailing_address: z.string().max(500).optional().nullable(),
+  interests: z.string().max(1000).optional().nullable(),
+  dream_partnership: z.string().max(500).optional().nullable(),
+})
+
 function validateCreateAthlete(data: CreateAthleteInput): string | null {
-  if (!data.name || data.name.trim().length === 0) {
-    return 'Name is required'
-  }
-  if (data.name.length > 200) {
-    return 'Name is too long'
-  }
-  if (!data.sport || data.sport.trim().length === 0) {
-    return 'Sport is required'
-  }
-  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-    return 'Invalid email format'
-  }
-  return null
+  const result = createAthleteSchema.safeParse(data)
+  if (result.success) return null
+  return result.error.issues[0]?.message || 'Validation failed'
 }
 
 function validateUpdateAthlete(data: UpdateAthleteInput): string | null {
-  if (data.name !== undefined && data.name.trim().length === 0) {
-    return 'Name cannot be empty'
-  }
-  if (data.name && data.name.length > 200) {
-    return 'Name is too long'
-  }
-  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-    return 'Invalid email format'
-  }
-  if (data.marketability_score !== undefined && data.marketability_score !== null) {
-    if (data.marketability_score < 0 || data.marketability_score > 100) {
-      return 'Marketability score must be between 0 and 100'
-    }
-  }
-  return null
+  const result = updateAthleteSchema.safeParse(data)
+  if (result.success) return null
+  return result.error.issues[0]?.message || 'Validation failed'
 }
 
 async function insertNotifications(

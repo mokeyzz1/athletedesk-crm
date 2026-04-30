@@ -1,16 +1,17 @@
+import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!
 
-interface SendEmailRequest {
-  to: string
-  subject: string
-  body: string
-  athleteId: string | null
-  recipientName?: string
-}
+const sendEmailSchema = z.object({
+  to: z.string().email('Invalid recipient email').max(254),
+  subject: z.string().min(1, 'Subject is required').max(998, 'Subject too long'),
+  body: z.string().min(1, 'Body is required').max(100000, 'Email body too long'),
+  athleteId: z.string().uuid().nullable().optional(),
+  recipientName: z.string().max(200).optional(),
+})
 
 interface UserWithGmail {
   id: string
@@ -162,12 +163,15 @@ export async function POST(request: NextRequest) {
       .eq('id', userData.id)
   }
 
-  const body: SendEmailRequest = await request.json()
-  const { to, subject, body: emailBody, athleteId, recipientName } = body
+  const rawBody = await request.json()
+  const parsed = sendEmailSchema.safeParse(rawBody)
 
-  if (!to || !subject || !emailBody) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0]
+    return NextResponse.json({ error: firstError?.message || 'Invalid input' }, { status: 400 })
   }
+
+  const { to, subject, body: emailBody, athleteId, recipientName } = parsed.data
 
   if (!userData.gmail_email) {
     return NextResponse.json({ error: 'Gmail email not found' }, { status: 400 })

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { drawerNavItems, getPageTitle } from './nav-config'
+import { isAdminLike } from '@/lib/roles'
 import type { User } from '@/lib/database.types'
 
 interface MobileHeaderProps {
@@ -25,6 +26,7 @@ export function MobileHeader({ user }: MobileHeaderProps) {
   }
 
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2)
+  const visibleNavItems = drawerNavItems.filter(item => !item.adminOnly || isAdminLike(user))
 
   return (
     <>
@@ -102,7 +104,7 @@ export function MobileHeader({ user }: MobileHeaderProps) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
-          {drawerNavItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = item.href === '/dashboard'
               ? pathname === item.href
               : pathname.startsWith(item.href)

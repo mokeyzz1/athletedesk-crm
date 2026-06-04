@@ -297,7 +297,98 @@ export default function TeamManagementPage() {
       </div>
 
       {/* Team Members Table */}
-      <div className="card overflow-hidden p-0">
+      <div className="space-y-3 md:hidden">
+        {users.map((user) => (
+          <div key={user.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              {user.avatar_url ? (
+                <Image
+                  className="h-10 w-10 rounded-full"
+                  src={user.avatar_url}
+                  alt={user.name}
+                  width={40}
+                  height={40}
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-brand-500 flex items-center justify-center text-sm font-medium text-white">
+                  {user.name.split(' ').map(n => n[0]).join('')}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {user.name}
+                      {user.id === currentUser?.id && (
+                        <span className="ml-2 text-xs text-gray-400">(you)</span>
+                      )}
+                    </p>
+                    <p className="truncate text-sm text-gray-500">{user.email}</p>
+                  </div>
+                  <p className="shrink-0 text-xs text-gray-400">{new Date(user.created_at).toLocaleDateString()}</p>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {user.is_admin && (
+                    <span className="badge-red">Admin</span>
+                  )}
+                  {getPrimaryWorkRole(user) && (
+                    <span className={`${getRoleBadge(getPrimaryWorkRole(user)!)} capitalize`}>
+                      {getPrimaryWorkRole(user)}
+                    </span>
+                  )}
+                  {getWorkRoles(user).length > 1 && (
+                    <span className="text-xs text-gray-500">
+                      +{getWorkRoles(user).length - 1} more
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-xs uppercase tracking-wide text-gray-400">Regions</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {user.assigned_regions && user.assigned_regions.length > 0 ? (
+                      user.assigned_regions.map(region => (
+                        <span key={region} className="badge-blue text-xs">
+                          {region}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-400">None</span>
+                    )}
+                  </div>
+                </div>
+
+                {user.id !== currentUser?.id && (
+                  <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
+                    <button
+                      onClick={() => openRolesModal(user)}
+                      className="text-brand-600 hover:text-brand-900"
+                    >
+                      Edit Roles
+                    </button>
+                    <button
+                      onClick={() => openRegionsModal(user)}
+                      className="text-brand-600 hover:text-brand-900"
+                    >
+                      Edit Regions
+                    </button>
+                    <button
+                      onClick={() => deleteUser(user.id)}
+                      disabled={deletingUser === user.id}
+                      className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                    >
+                      {deletingUser === user.id ? 'Removing...' : 'Remove'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden md:block card overflow-hidden p-0">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

@@ -250,35 +250,35 @@ export function RosterClient({ athletes, canImport = false }: RosterClientProps)
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
         {athletes.length > 0 ? (
           <>
             {/* Stats Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <div className="card text-center">
-                <p className="text-3xl font-bold text-gray-900">{athletes.length}</p>
+                <p className="text-2xl md:text-3xl font-bold text-gray-900">{athletes.length}</p>
                 <p className="text-sm text-gray-500">Signed Athletes</p>
               </div>
               <div className="card text-center">
-                <p className="text-3xl font-bold text-purple-600">{formatCurrency(totalRevenueShare)}</p>
+                <p className="text-xl md:text-3xl font-bold text-purple-600 break-words">{formatCurrency(totalRevenueShare)}</p>
                 <p className="text-sm text-gray-500">Revenue Share / Scholarship</p>
               </div>
               <div className="card text-center">
-                <p className="text-3xl font-bold text-green-600">{formatCurrency(totalMarketingBrand)}</p>
+                <p className="text-xl md:text-3xl font-bold text-green-600 break-words">{formatCurrency(totalMarketingBrand)}</p>
                 <p className="text-sm text-gray-500">Marketing / Brand Deals</p>
               </div>
               <div className="card text-center">
-                <p className="text-3xl font-bold text-blue-600">{formatNumber(totalReach)}</p>
+                <p className="text-2xl md:text-3xl font-bold text-blue-600">{formatNumber(totalReach)}</p>
                 <p className="text-sm text-gray-500">Social Reach</p>
               </div>
             </div>
 
             {/* Filters */}
-            <div className="mb-4 flex items-center gap-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
               <select
                 value={sportFilter}
                 onChange={(e) => setSportFilter(e.target.value)}
-                className="input w-48"
+                className="input w-full sm:w-48"
               >
                 <option value="">All Sports</option>
                 {sports.map(sport => (
@@ -296,7 +296,73 @@ export function RosterClient({ athletes, canImport = false }: RosterClientProps)
             </div>
 
             {/* Table */}
-            <div className="card overflow-hidden p-0">
+            <div className="space-y-3 md:hidden">
+              {filteredAndSortedAthletes.map((athlete) => {
+                const socialReach = calculateSocialReach(athlete.social_media)
+
+                return (
+                  <div key={athlete.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedAthletes.has(athlete.id)}
+                        onChange={(e) => handleSelectAthlete(athlete.id, e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded text-brand-600 focus:ring-brand-500"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/athletes/${athlete.id}`}
+                              className="block truncate text-sm font-semibold text-brand-600 hover:text-brand-700"
+                            >
+                              {athlete.name}
+                            </Link>
+                            <p className="truncate text-sm text-gray-500">
+                              {athlete.sport}{athlete.position ? ` · ${athlete.position}` : ''}
+                            </p>
+                          </div>
+                          <span className="badge-blue shrink-0">{athlete.sport}</span>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">School</p>
+                            <p className="truncate text-gray-900">{athlete.school || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Agent</p>
+                            <p className="truncate text-gray-900">{athlete.agent_name || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Revenue Share</p>
+                            <p className="font-medium text-purple-700">
+                              {athlete.revenue_share_total > 0 ? formatCurrency(athlete.revenue_share_total) : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Marketing/Brand</p>
+                            <p className="font-medium text-green-700">
+                              {athlete.marketing_brand_total > 0 ? formatCurrency(athlete.marketing_brand_total) : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Emails</p>
+                            <p className="text-gray-900">{athlete.emailCount}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Social Reach</p>
+                            <p className="text-gray-900">{socialReach > 0 ? formatNumber(socialReach) : '-'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="hidden md:block card overflow-hidden p-0">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>

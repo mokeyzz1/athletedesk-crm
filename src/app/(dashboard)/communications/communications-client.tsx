@@ -319,31 +319,33 @@ export function CommunicationsClient({ communications: initialCommunications, at
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 h-[92px] flex items-center justify-between px-6 bg-gray-50 border-b border-gray-200">
+      <div className="flex-shrink-0 min-h-[64px] md:h-[92px] flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-0 bg-gray-50 border-b border-gray-200">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Communications</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Communications</h1>
           <p className="text-gray-500 text-sm">Track all athlete communications</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 self-start md:self-auto">
           {communications && communications.length > 0 && (
-            <ExportButtons
-              data={exportData}
-              filename="communications"
-              columns={communicationExportColumns}
-              sheetName="Communications"
-            />
+            <div className="hidden sm:block">
+              <ExportButtons
+                data={exportData}
+                filename="communications"
+                columns={communicationExportColumns}
+                sheetName="Communications"
+              />
+            </div>
           )}
-          <Link href="/communications/new" className="btn-primary">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Link href="/communications/new" className="btn-primary text-sm">
+            <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            Log Communication
+            <span className="hidden md:inline">Log Communication</span>
           </Link>
         </div>
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6">
         {/* Email Stats Section */}
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Email Activity</h2>
@@ -357,7 +359,7 @@ export function CommunicationsClient({ communications: initialCommunications, at
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">This Week</p>
-                  <p className="text-2xl font-bold text-gray-900">{emailStats.thisWeek}</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">{emailStats.thisWeek}</p>
                 </div>
               </div>
             </div>
@@ -370,7 +372,7 @@ export function CommunicationsClient({ communications: initialCommunications, at
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">This Month</p>
-                  <p className="text-2xl font-bold text-gray-900">{emailStats.thisMonth}</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">{emailStats.thisMonth}</p>
                 </div>
               </div>
             </div>
@@ -383,7 +385,7 @@ export function CommunicationsClient({ communications: initialCommunications, at
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">All Time</p>
-                  <p className="text-2xl font-bold text-gray-900">{emailStats.allTime}</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">{emailStats.allTime}</p>
                 </div>
               </div>
             </div>
@@ -451,7 +453,70 @@ export function CommunicationsClient({ communications: initialCommunications, at
                     {totalPending}
                   </span>
                 </div>
-                <div className="card p-0">
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {[...overdueFollowUps, ...pendingFollowUps].map((comm) => {
+                      const typeBadge = getTypeBadge(comm.type)
+                      const overdue = !!(comm.follow_up_date && isOverdue(comm.follow_up_date))
+                      return (
+                        <div key={comm.id} className={`mobile-data-card ${overdue ? 'border-red-200 bg-red-50/40' : ''}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-gray-900">{comm.subject || 'No subject'}</p>
+                              <Link href={`/athletes/${comm.athlete_id}`} className="truncate text-sm text-brand-600 hover:text-brand-700">
+                                {comm.athletes?.name ?? 'Unknown'}
+                              </Link>
+                            </div>
+                            <button
+                              onClick={() => handleMarkComplete(comm.id, comm.follow_up_completed)}
+                              className="flex h-5 w-5 items-center justify-center rounded border-2 border-gray-300 hover:border-green-500 transition-colors"
+                              title="Mark as complete"
+                            >
+                              {comm.follow_up_completed && (
+                                <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                          <div className="mobile-data-grid">
+                            <div>
+                              <p className="mobile-field-label">Due</p>
+                              <p className={overdue ? 'font-medium text-red-600' : 'text-gray-900'}>
+                                <DateDisplay date={comm.follow_up_date} short showTodayLabel />
+                              </p>
+                            </div>
+                            <div>
+                              <p className="mobile-field-label">Type</p>
+                              <span className={`${typeBadge.badge} inline-flex items-center gap-1`}>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={typeBadge.icon} />
+                                </svg>
+                                {typeBadge.label}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="mobile-field-label">Logged By</p>
+                              <p className="truncate text-gray-900">{comm.users?.name || 'Unknown'}</p>
+                            </div>
+                            <div>
+                              <p className="mobile-field-label">Status</p>
+                              <p className={overdue ? 'text-red-600' : 'text-gray-900'}>{overdue ? 'Overdue' : 'Pending'}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              onClick={() => setEditingItem(comm)}
+                              className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="hidden md:block card p-0">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -473,7 +538,8 @@ export function CommunicationsClient({ communications: initialCommunications, at
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </>
               </div>
             )}
 
@@ -494,7 +560,72 @@ export function CommunicationsClient({ communications: initialCommunications, at
                 All Communications ({allCommunications.length})
               </button>
               {showAllCommunications && (
-                <div className="card p-0">
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {allCommunications.map((comm) => {
+                      const typeBadge = getTypeBadge(comm.type)
+                      return (
+                        <div key={comm.id} className="mobile-data-card">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-gray-900">{comm.subject || 'No subject'}</p>
+                              <Link href={`/athletes/${comm.athlete_id}`} className="truncate text-sm text-brand-600 hover:text-brand-700">
+                                {comm.athletes?.name ?? 'Unknown'}
+                              </Link>
+                            </div>
+                            <span className={`${typeBadge.badge} inline-flex items-center gap-1 shrink-0`}>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={typeBadge.icon} />
+                              </svg>
+                              {typeBadge.label}
+                            </span>
+                          </div>
+                          <div className="mobile-data-grid">
+                            <div>
+                              <p className="mobile-field-label">Date</p>
+                              <p className="text-gray-900"><DateDisplay date={comm.communication_date} short /></p>
+                            </div>
+                            <div>
+                              <p className="mobile-field-label">Logged By</p>
+                              <p className="truncate text-gray-900">{comm.users?.name || 'Unknown'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="mobile-field-label">Notes</p>
+                              <p className="line-clamp-2 text-gray-500">{comm.notes || '-'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="mobile-field-label">Follow-up</p>
+                              {comm.follow_up_date ? (
+                                <div className="flex items-center gap-2">
+                                  <DateDisplay
+                                    date={comm.follow_up_date}
+                                    short
+                                    className={`text-sm ${comm.follow_up_completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}
+                                  />
+                                  {comm.follow_up_completed ? (
+                                    <span className="badge-green text-xs">Done</span>
+                                  ) : (
+                                    <span className="badge-yellow text-xs">Pending</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-gray-400">-</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              onClick={() => setEditingItem(comm)}
+                              className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="hidden md:block card p-0">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -583,7 +714,8 @@ export function CommunicationsClient({ communications: initialCommunications, at
                       })}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </>
               )}
             </div>
           </>

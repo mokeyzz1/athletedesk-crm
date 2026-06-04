@@ -303,11 +303,11 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4">
           {/* Filter Tabs & View Toggle */}
-          <div className="flex items-center justify-between">
-            <div className="flex gap-1">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 md:mx-0 md:px-0 md:pb-0">
               <button
                 onClick={() => setActiveFilter('all')}
-                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                className={`shrink-0 px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                   activeFilter === 'all'
                     ? 'bg-gray-900 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
@@ -317,7 +317,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
               </button>
               <button
                 onClick={() => setActiveFilter('my_tasks')}
-                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-2 ${
+                className={`shrink-0 px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-2 ${
                   activeFilter === 'my_tasks'
                     ? 'bg-gray-900 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
@@ -334,7 +334,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
               </button>
               <button
                 onClick={() => setActiveFilter('overdue')}
-                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-2 ${
+                className={`shrink-0 px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-2 ${
                   activeFilter === 'overdue'
                     ? 'bg-red-600 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
@@ -351,7 +351,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
               </button>
               <button
                 onClick={() => setActiveFilter('marketing')}
-                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-2 ${
+                className={`shrink-0 px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-2 ${
                   activeFilter === 'marketing'
                     ? 'bg-purple-600 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
@@ -369,7 +369,7 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
             </div>
 
             {/* View Toggle */}
-            <div className="flex items-center border border-gray-200 rounded p-0.5">
+            <div className="flex items-center self-start border border-gray-200 rounded p-0.5 md:self-auto">
               <button
                 onClick={() => setViewMode('table')}
                 className={`p-1.5 rounded transition-colors ${
@@ -432,8 +432,80 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                 isOverdue={isTaskOverdue}
               />
             ) : (
-              <div className="card overflow-hidden p-0">
-                <table className="min-w-full divide-y divide-gray-200">
+              <>
+                <div className="space-y-3 md:hidden">
+                  {sortedTasks.map((task) => (
+                    <button
+                      key={task.id}
+                      type="button"
+                      onClick={() => setSelectedTaskId(task.id)}
+                      className={`w-full rounded-lg border bg-white p-4 text-left shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 ${
+                        selectedTaskId === task.id ? 'border-brand-300 bg-brand-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{task.title}</p>
+                          {task.description && (
+                            <p className="mt-1 line-clamp-2 text-sm text-gray-500">{task.description}</p>
+                          )}
+                        </div>
+                        <span className={`${getStatusBadge(task.status)} shrink-0 capitalize`}>
+                          {formatStatus(task.status)}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Assigned</p>
+                          <p className="truncate text-gray-900">{task.assigned_user?.name || 'Unknown'}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Athlete</p>
+                          <p className="truncate text-gray-900">{task.athletes?.name || '-'}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Due</p>
+                          {task.due_date ? (
+                            <p className={`truncate ${
+                              isTaskOverdue(task) ? 'font-medium text-red-600' :
+                              isTaskDueToday(task) ? 'font-medium text-yellow-700' :
+                              'text-gray-900'
+                            }`}>
+                              <DateDisplay date={task.due_date} short showTodayLabel />
+                            </p>
+                          ) : (
+                            <p className="text-gray-500">No date</p>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Priority</p>
+                          <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium capitalize ${getPriorityBadge(task.priority)}`}>
+                            {task.priority}
+                          </span>
+                        </div>
+                      </div>
+
+                      {(isTaskOverdue(task) || isTaskDueToday(task)) && (
+                        <div className="mt-3 flex gap-2">
+                          {isTaskOverdue(task) && (
+                            <span className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                              Overdue
+                            </span>
+                          )}
+                          {isTaskDueToday(task) && !isTaskOverdue(task) && (
+                            <span className="rounded bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">
+                              Today
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="hidden md:block card overflow-hidden p-0">
+                  <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th onClick={() => handleSort('title')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
@@ -535,7 +607,8 @@ export function TasksClient({ tasks, currentUser, users, athletes }: TasksClient
                     ))}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             )
           ) : (
             <div className="card">

@@ -394,7 +394,81 @@ function TableView({
   )
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <>
+      <div className="space-y-3 md:hidden">
+        {sortedAthletes.map((athlete) => (
+          <div key={athlete.id} className="mobile-data-card">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={selectedAthletes.has(athlete.id)}
+                onChange={(e) => onSelectAthlete(athlete.id, e.target.checked)}
+                className="mt-1 h-4 w-4 rounded text-brand-600 focus:ring-brand-500"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link href={`/athletes/${athlete.id}`} className="block truncate text-sm font-semibold text-gray-900 hover:text-brand-600">
+                      {athlete.name}
+                    </Link>
+                    <p className="truncate text-sm text-gray-500">
+                      {athlete.sport}{athlete.position ? ` · ${athlete.position}` : ''}
+                    </p>
+                  </div>
+                  <select
+                    value={athlete.outreach_status}
+                    onChange={(e) => onStatusChange(athlete.id, e.target.value as OutreachStatus)}
+                    className={`text-xs px-2 py-1 rounded font-medium border-0 cursor-pointer shrink-0 ${STATUS_COLORS[athlete.outreach_status]}`}
+                  >
+                    {OUTREACH_STATUSES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mobile-data-grid">
+                  <div>
+                    <p className="mobile-field-label">School</p>
+                    <p className="truncate text-gray-900">{athlete.school || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="mobile-field-label">Class</p>
+                    <p className="text-gray-900">{CLASS_YEARS.find(c => c.value === athlete.class_year)?.label || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="mobile-field-label">Region</p>
+                    <p className="truncate text-gray-900">{athlete.region || 'Unassigned'}</p>
+                  </div>
+                  <div>
+                    <p className="mobile-field-label">Emails</p>
+                    <p className="text-gray-900">{athlete.emailCount}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="mobile-field-label">Last Contact</p>
+                    <p className="text-gray-900">
+                      {athlete.last_contacted_date ? <DateDisplay date={athlete.last_contacted_date} short /> : '-'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    onClick={() => onEditClick(athlete.id)}
+                    className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {sortedAthletes.length === 0 && (
+          <div className="card text-center py-8 text-gray-500">
+            No prospects match your filters
+          </div>
+        )}
+      </div>
+
+      <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -491,7 +565,8 @@ function TableView({
           No prospects match your filters
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 
@@ -768,7 +843,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
           <div className="px-4 md:px-6 py-4">
             {/* Region Progress Section */}
             <div className="card mb-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-900">Region Progress</h2>
                 <div className="flex items-center gap-4">
                   {/* Legend */}
@@ -826,13 +901,13 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-3 mb-4 items-end">
+            <div className="flex flex-col gap-3 mb-4 md:flex-row md:flex-wrap md:items-end">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Region</label>
                 <select
                   value={selectedRegion}
                   onChange={(e) => setSelectedRegion(e.target.value)}
-                  className="input text-sm py-1.5"
+                  className="input text-sm py-1.5 w-full md:w-auto"
                 >
                   <option value="all">All Regions</option>
                   {REGIONS.map(r => (
@@ -846,7 +921,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                 <select
                   value={selectedClassYear}
                   onChange={(e) => setSelectedClassYear(e.target.value)}
-                  className="input text-sm py-1.5"
+                  className="input text-sm py-1.5 w-full md:w-auto"
                 >
                   <option value="all">All Classes</option>
                   {CLASS_YEARS.map(cy => (
@@ -860,13 +935,13 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                 <select
                   value={viewMode}
                   onChange={(e) => setViewMode(e.target.value as ViewMode)}
-                  className="input text-sm py-1.5"
+                  className="input text-sm py-1.5 w-full"
                 >
                   <option value="table">Table</option>
                   <option value="kanban">Kanban</option>
                 </select>
               </div>
-              <div className="flex-1 flex items-end justify-end">
+              <div className="md:flex-1 md:flex md:items-end md:justify-end">
                 <p className="text-sm text-gray-500">
                   Showing {filteredAthletes.length} of {totalProspects} prospects
                 </p>

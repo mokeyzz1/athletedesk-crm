@@ -370,11 +370,11 @@ export default function ContractsPage() {
 
       {/* Filters */}
       <div className="card p-3">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
           <select
             value={athleteFilter}
             onChange={(e) => setAthleteFilter(e.target.value)}
-            className="input py-1.5 text-sm w-[140px]"
+            className="input py-1.5 text-sm w-full sm:w-[140px]"
           >
             <option value="">All Athletes</option>
             {athletes.map(athlete => (
@@ -385,7 +385,7 @@ export default function ContractsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="input py-1.5 text-sm w-[130px]"
+            className="input py-1.5 text-sm w-full sm:w-[130px]"
           >
             <option value="">All Types</option>
             {documentTypes.map(type => (
@@ -396,7 +396,7 @@ export default function ContractsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="input py-1.5 text-sm w-[120px]"
+            className="input py-1.5 text-sm w-full sm:w-[120px]"
           >
             <option value="">All Statuses</option>
             {statusOptions.map(status => (
@@ -414,8 +414,72 @@ export default function ContractsPage() {
 
       {/* Documents Table */}
       {sortedDocuments.length > 0 ? (
-        <div className="card overflow-hidden p-0">
-          <div className="overflow-x-auto">
+        <>
+          <div className="space-y-3 md:hidden">
+            {sortedDocuments.map((doc) => (
+              <div key={doc.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="rounded bg-gray-100 p-2">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getFileIcon(doc.file_type)} />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">{doc.name}</p>
+                        <p className="text-xs text-gray-500">{formatFileSize(doc.file_size)}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        className="shrink-0 text-sm font-medium text-brand-600 hover:text-brand-900"
+                      >
+                        Download
+                      </button>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-400">Athlete</p>
+                        <Link href={`/athletes/${doc.athlete_id}`} className="truncate text-brand-600 hover:text-brand-700">
+                          {doc.athletes?.name || 'Unknown'}
+                        </Link>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-400">Type</p>
+                        <p className="text-gray-900">
+                          {documentTypes.find(t => t.value === doc.document_type)?.label || doc.document_type}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-400">Upload Date</p>
+                        <p className="text-gray-900">{new Date(doc.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-400">Status</p>
+                        <select
+                          value={doc.status || 'pending'}
+                          onChange={(e) => handleStatusChange(doc.id, e.target.value)}
+                          className={`w-full rounded-full px-2 py-1 text-xs font-medium border-0 cursor-pointer ${
+                            (doc.status || 'pending') === 'signed' ? 'bg-green-100 text-green-800' :
+                            (doc.status || 'pending') === 'expired' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}
+                        >
+                          {statusOptions.map(status => (
+                            <option key={status.value} value={status.value}>{status.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden md:block card overflow-hidden p-0">
+            <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -499,7 +563,8 @@ export default function ContractsPage() {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+        </>
       ) : (
         <div className="card">
           <div className="empty-state">

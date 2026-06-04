@@ -338,26 +338,67 @@ export function FinancialsClient({ financials: initialFinancials }: FinancialsCl
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
           <div className="bg-white rounded border border-gray-200 p-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Total Deals</p>
-            <p className="text-3xl font-semibold text-gray-900">{totals.totalDeals}</p>
+            <p className="text-2xl md:text-3xl font-semibold text-gray-900">{totals.totalDeals}</p>
           </div>
           <div className="bg-white rounded border border-gray-200 p-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Total Deal Value</p>
-            <p className="text-2xl font-semibold text-gray-900">{formatCurrency(totals.totalValue)}</p>
+            <p className="text-lg md:text-2xl font-semibold text-gray-900 break-words">{formatCurrency(totals.totalValue)}</p>
           </div>
           <div className="bg-white rounded border border-gray-200 p-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Agency Revenue</p>
-            <p className="text-2xl font-semibold text-gray-900">{formatCurrency(totals.totalAgencyFee)}</p>
+            <p className="text-lg md:text-2xl font-semibold text-gray-900 break-words">{formatCurrency(totals.totalAgencyFee)}</p>
           </div>
           <div className="bg-white rounded border border-gray-200 p-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Pending Payments</p>
-            <p className="text-3xl font-semibold text-gray-900">{totals.pendingPayments}</p>
+            <p className="text-2xl md:text-3xl font-semibold text-gray-900">{totals.pendingPayments}</p>
           </div>
         </div>
 
         {/* Deals Table */}
       {financials && financials.length > 0 ? (
-        <div className="card overflow-hidden p-0">
-          <table className="min-w-full divide-y divide-gray-200">
+        <>
+          <div className="space-y-3 md:hidden">
+            {sortedFinancials.map((deal) => (
+              <button
+                key={deal.id}
+                type="button"
+                onClick={() => openPanel(deal)}
+                className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900">{deal.deal_name}</p>
+                    <p className="truncate text-sm text-gray-500">{deal.athletes?.name ?? 'Unknown athlete'}</p>
+                  </div>
+                  <span className={`${getStatusBadge(deal.payment_status)} shrink-0`}>
+                    {deal.payment_status}
+                  </span>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Deal Value</p>
+                    <p className="font-medium text-gray-900">{formatCurrency(Number(deal.deal_value))}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Agency Fee</p>
+                    <p className="font-medium text-green-600">{formatCurrency(Number(deal.agency_fee))}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Agency %</p>
+                    <p className="text-gray-900">{deal.agency_percentage}%</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Date</p>
+                    <p className="text-gray-900"><DateDisplay date={deal.deal_date} short /></p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="hidden md:block card overflow-hidden p-0">
+            <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th onClick={() => handleSort('deal')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none">
@@ -428,7 +469,8 @@ export function FinancialsClient({ financials: initialFinancials }: FinancialsCl
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       ) : (
         <div className="card">
           <div className="empty-state">

@@ -312,51 +312,97 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 h-[92px] flex items-center justify-between px-6 bg-gray-50 border-b border-gray-200">
+      <div className="flex-shrink-0 min-h-[64px] md:h-[92px] flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-0 bg-gray-50 border-b border-gray-200">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Brand Outreach</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Brand Outreach</h1>
           <p className="text-gray-500 text-sm">Track brand partnerships and sponsorship deals</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 self-start md:self-auto">
           {outreach && outreach.length > 0 && (
-            <ExportButtons
-              data={exportData}
-              filename="brand-outreach"
-              columns={[
-                ...brandExportColumns,
-                { key: 'athlete_name' as const, header: 'Athlete' },
-                { key: 'staff_name' as const, header: 'Staff Member' },
-              ]}
-              sheetName="Brand Outreach"
-            />
+            <div className="hidden sm:block">
+              <ExportButtons
+                data={exportData}
+                filename="brand-outreach"
+                columns={[
+                  ...brandExportColumns,
+                  { key: 'athlete_name' as const, header: 'Athlete' },
+                  { key: 'staff_name' as const, header: 'Staff Member' },
+                ]}
+                sheetName="Brand Outreach"
+              />
+            </div>
           )}
           <button
             onClick={() => setShowApolloModal(true)}
-            className="btn-secondary"
+            className="btn-secondary text-sm"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            Search Apollo
+            <span className="hidden md:inline">Search Apollo</span>
           </button>
-          <Link href="/brands/new" className="btn-primary">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Link href="/brands/new" className="btn-primary text-sm">
+            <svg className="w-4 h-4 md:w-5 md:h-5 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            New Outreach
+            <span className="hidden md:inline">New Outreach</span>
           </Link>
         </div>
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-6">
       {outreach && outreach.length > 0 ? (
         <>
           {/* Active Deals */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Active Deals ({activeOutreach.length})</h2>
             {activeOutreach.length > 0 ? (
-              <div className="card p-0">
+              <>
+                <div className="space-y-3 md:hidden">
+                  {activeOutreach.map((item) => (
+                    <div key={item.id} className="mobile-data-card">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-gray-900">{item.brand_name}</p>
+                          {item.brand_contact_name && (
+                            <p className="truncate text-sm text-gray-500">{item.brand_contact_name}</p>
+                          )}
+                        </div>
+                        <StatusBadge item={item} />
+                      </div>
+                      <div className="mobile-data-grid">
+                        <div>
+                          <p className="mobile-field-label">Athlete</p>
+                          <Link href={`/athletes/${item.athlete_id}`} className="truncate text-brand-600 hover:text-brand-700">
+                            {item.athletes?.name ?? 'Unknown'}
+                          </Link>
+                        </div>
+                        <div>
+                          <p className="mobile-field-label">Deal Value</p>
+                          <p className="font-medium text-gray-900">{formatCurrency(item.deal_value)}</p>
+                        </div>
+                        <div>
+                          <p className="mobile-field-label">Date</p>
+                          <p className="text-gray-900"><DateDisplay date={item.date_contacted} short /></p>
+                        </div>
+                        <div>
+                          <p className="mobile-field-label">Staff</p>
+                          <p className="truncate text-gray-900">{item.users?.name || 'Unknown'}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          onClick={() => setEditingItem(item)}
+                          className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block card p-0">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -419,7 +465,8 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
                     ))}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             ) : (
               <div className="card text-center py-8 text-gray-500">
                 No active deals. All deals have been closed or lost.
@@ -445,7 +492,39 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
                 Completed ({completedOutreach.length})
               </button>
               {showCompleted && (
-                <div className="card p-0">
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {completedOutreach.map((item) => (
+                      <div key={item.id} className="mobile-data-card opacity-80">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-gray-900">{item.brand_name}</p>
+                            <p className="truncate text-sm text-gray-500">{item.athletes?.name ?? 'Unknown'}</p>
+                          </div>
+                          <StatusBadge item={item} />
+                        </div>
+                        <div className="mobile-data-grid">
+                          <div>
+                            <p className="mobile-field-label">Value</p>
+                            <p className="font-medium text-gray-900">{formatCurrency(item.deal_value)}</p>
+                          </div>
+                          <div>
+                            <p className="mobile-field-label">Date</p>
+                            <p className="text-gray-900"><DateDisplay date={item.date_contacted} short /></p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            onClick={() => setEditingItem(item)}
+                            className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden md:block card p-0">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -495,7 +574,8 @@ export function BrandsClient({ outreach: initialOutreach, athletes }: BrandsClie
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </>
               )}
             </div>
           )}

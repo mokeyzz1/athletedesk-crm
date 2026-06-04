@@ -258,9 +258,9 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col md:h-full">
       {/* Header - aligns with sidebar logo + icon row */}
-      <div className="flex-shrink-0 md:h-[92px] flex flex-col justify-center px-4 md:px-6 pt-4 pb-3 md:py-0 bg-gray-50 md:border-b md:border-gray-200">
+      <div className="md:flex-shrink-0 md:h-[92px] flex flex-col justify-center px-4 md:px-6 pt-5 pb-2 md:py-0 bg-gray-50 md:border-b md:border-gray-200">
         <Greeting name={userName} />
         <p className="text-gray-500 text-sm">
           {(overdueFollowUpsCount ?? 0) > 0
@@ -275,14 +275,14 @@ export default async function DashboardPage() {
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-3 md:py-4 space-y-3 md:space-y-4">
+      <div className="md:flex-1 md:overflow-y-auto px-4 md:px-6 py-4 md:py-4 space-y-4 md:space-y-4">
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         {stats.map((stat) => (
           <Link
             key={stat.name}
             href={stat.href}
-            className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+            className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4 hover:border-gray-300 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.name}</p>
@@ -297,7 +297,7 @@ export default async function DashboardPage() {
 
       {/* Goal Progress Widget */}
       {userGoalProgress.length > 0 && (
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">My Outreach Goals</h3>
@@ -383,7 +383,7 @@ export default async function DashboardPage() {
 
       {/* Recruiting Progress Widget */}
       {totalRecruits > 0 && (
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Recruiting Progress</h3>
@@ -438,7 +438,7 @@ export default async function DashboardPage() {
 
       {/* Revenue Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Revenue</p>
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -450,7 +450,7 @@ export default async function DashboardPage() {
           </p>
           <p className="text-xs text-gray-500 mt-1">Lifetime agency revenue</p>
         </div>
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending Revenue</p>
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,7 +462,7 @@ export default async function DashboardPage() {
           </p>
           <p className="text-xs text-gray-500 mt-1">Awaiting payment</p>
         </div>
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">This Month</p>
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -481,7 +481,7 @@ export default async function DashboardPage() {
         <UpcomingMeetingsCard />
 
         {/* My Tasks */}
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">My Tasks</h3>
             <Link href="/tasks?filter=my_tasks" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
@@ -542,7 +542,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Pending Follow-ups */}
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">Upcoming Follow-ups</h3>
             <Link href="/communications" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
@@ -593,7 +593,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Active Brand Discussions */}
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">Active Brand Discussions</h3>
             <Link href="/brands" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
@@ -635,7 +635,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Recent Athletes */}
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">Recent Athletes</h3>
             <Link href="/athletes" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
@@ -677,7 +677,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Activity Feed */}
-        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 p-4">
+        <div className="bg-white rounded-2xl md:rounded border border-gray-100 md:border-gray-200 shadow-sm md:shadow-none p-5 md:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">Recent Activity</h3>
           </div>

@@ -52,13 +52,13 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen md:h-screen bg-gray-50">
       {/* Impersonation banner */}
       {impersonatedOrgName && (
         <ImpersonationBanner organizationName={impersonatedOrgName} />
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 md:overflow-hidden">
         {/* Desktop sidebar - hidden on mobile */}
         <div className="hidden md:flex flex-shrink-0">
           <Sidebar user={profile} />
@@ -69,7 +69,7 @@ export default async function DashboardLayout({
           <MobileHeader user={profile} />
         </div>
 
-        <main className="flex-1 flex flex-col overflow-hidden pt-14 pb-[calc(env(safe-area-inset-bottom)+64px)] md:pt-0 md:pb-0">
+        <main className="flex-1 flex flex-col pt-14 pb-[calc(env(safe-area-inset-bottom)+72px)] md:pt-0 md:pb-0 md:overflow-hidden">
           <DashboardProviders>
             {children}
           </DashboardProviders>

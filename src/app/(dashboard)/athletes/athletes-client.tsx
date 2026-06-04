@@ -160,9 +160,9 @@ export function AthletesClient({ athletes: initialAthletes, canImport = false }:
 
   return (
     <>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col md:h-full">
         {/* Header */}
-        <div className="flex-shrink-0 min-h-[64px] md:h-[92px] flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-0 bg-gray-50 border-b border-gray-200">
+        <div className="md:flex-shrink-0 min-h-[64px] md:h-[92px] flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 md:px-6 py-4 md:py-0 bg-gray-50 md:border-b md:border-gray-200">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-bold text-gray-900">All Athletes</h1>
@@ -205,7 +205,7 @@ export function AthletesClient({ athletes: initialAthletes, canImport = false }:
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4">
+        <div className="md:flex-1 md:overflow-y-auto px-4 md:px-6 py-4 space-y-4">
           {/* Search and Filters */}
           <div className="card p-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-wrap">
@@ -272,7 +272,7 @@ export function AthletesClient({ athletes: initialAthletes, canImport = false }:
           {athletes && athletes.length > 0 ? (
             filteredAthletes.length > 0 ? (
               <>
-                <div className="md:hidden overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                <div className="md:hidden overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
                   {filteredAthletes.map((athlete, idx) => {
                     const statusLabel = OUTREACH_STATUSES.find(s => s.value === athlete.outreach_status)?.label || athlete.outreach_status
                     const secondary = [athlete.sport, athlete.school].filter(Boolean).join(' · ')

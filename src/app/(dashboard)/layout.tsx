@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { MobileHeader } from '@/components/layout/mobile-header'
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 import { DashboardProviders } from '@/components/layout/dashboard-providers'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
 import type { User } from '@/lib/database.types'
@@ -68,11 +69,12 @@ export default async function DashboardLayout({
           <MobileHeader user={profile} />
         </div>
 
-        <main className="flex-1 flex flex-col overflow-hidden pt-14 md:pt-0">
+        <main className="flex-1 flex flex-col overflow-hidden pt-16 pb-20 md:pt-0 md:pb-0">
           <DashboardProviders>
             {children}
           </DashboardProviders>
         </main>
+        <MobileBottomNav />
       </div>
     </div>
   )

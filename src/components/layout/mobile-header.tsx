@@ -30,6 +30,24 @@ export function MobileHeader({ user }: MobileHeaderProps) {
   const router = useRouter()
   const supabase = createClient()
 
+  const getPageTitle = () => {
+    if (pathname.startsWith('/athletes')) return 'Athletes'
+    if (pathname.startsWith('/recruiting')) return 'Recruiting'
+    if (pathname.startsWith('/roster')) return 'Roster'
+    if (pathname.startsWith('/pipeline')) return 'Pipeline'
+    if (pathname.startsWith('/tasks')) return 'Tasks'
+    if (pathname.startsWith('/communications')) return 'Communications'
+    if (pathname.startsWith('/email')) return 'Email'
+    if (pathname.startsWith('/brands')) return 'Brands'
+    if (pathname.startsWith('/financials')) return 'Financials'
+    if (pathname.startsWith('/contracts')) return 'Contracts'
+    if (pathname.startsWith('/settings')) return 'Settings'
+    if (pathname.startsWith('/team/productivity')) return 'Productivity'
+    if (pathname.startsWith('/team/weekly')) return 'Weekly View'
+    if (pathname.startsWith('/analytics')) return 'Analytics'
+    return 'Dashboard'
+  }
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/login')
@@ -39,39 +57,48 @@ export function MobileHeader({ user }: MobileHeaderProps) {
   return (
     <>
       {/* Fixed header bar - only visible on mobile */}
-      <div className="fixed top-0 left-0 right-0 h-14 bg-brand-900 flex items-center justify-between px-4 z-40 md:hidden">
+      <div className="fixed left-0 right-0 top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 md:hidden">
+        <div className="flex h-16 items-center justify-between px-4">
         {/* Hamburger button */}
         <button
           onClick={() => setIsOpen(true)}
-          className="p-2 rounded text-brand-200 hover:text-white hover:bg-brand-800"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          aria-label="Open navigation"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
 
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-white rounded flex items-center justify-center">
-            <span className="text-brand-600 font-bold text-xs">AD</span>
-          </div>
-          <span className="text-white font-semibold">AthleteDesk</span>
+        <div className="min-w-0 flex-1 px-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-gray-400">AthleteDesk</p>
+          <p className="truncate text-base font-semibold text-gray-900">{getPageTitle()}</p>
         </div>
 
-        {/* User avatar */}
-        {user.avatar_url ? (
-          <Image
-            src={user.avatar_url}
-            alt={user.name}
-            width={32}
-            height={32}
-            className="w-8 h-8 rounded-full"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-xs font-medium text-white">
-            {user.name.split(' ').map(n => n[0]).join('')}
-          </div>
-        )}
+        <button
+          onClick={() => setIsOpen(true)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors hover:bg-gray-100"
+          aria-label="Open account menu"
+        >
+          {user.avatar_url ? (
+            <Image
+              src={user.avatar_url}
+              alt={user.name}
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-full"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-xs font-medium text-white">
+              {user.name.split(' ').map(n => n[0]).join('')}
+            </div>
+          )}
+        </button>
+        </div>
+
+        <div className="px-4 pb-2">
+          <div className="h-1 w-20 rounded-full bg-gray-100" />
+        </div>
       </div>
 
       {/* Drawer backdrop */}
@@ -84,30 +111,55 @@ export function MobileHeader({ user }: MobileHeaderProps) {
 
       {/* Drawer */}
       <div
-        className={`fixed top-0 left-0 bottom-0 w-72 bg-brand-900 z-50 transform transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed top-0 left-0 bottom-0 z-50 w-[84vw] max-w-sm transform overflow-hidden rounded-r-3xl bg-brand-950 shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Drawer header */}
-        <div className="h-14 flex items-center justify-between px-4 bg-brand-950">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-white rounded flex items-center justify-center">
+        <div className="border-b border-brand-800 bg-brand-950 px-5 py-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
               <span className="text-brand-600 font-bold text-xs">AD</span>
             </div>
-            <span className="text-white font-semibold">AthleteDesk</span>
+              <div>
+                <p className="text-sm font-semibold text-white">AthleteDesk</p>
+                <p className="text-xs text-brand-300">CRM</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-2 rounded-xl text-brand-300 hover:text-white hover:bg-brand-800"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="p-2 rounded text-brand-300 hover:text-white hover:bg-brand-800"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+
+          <div className="flex items-center gap-3 rounded-2xl bg-brand-900/70 p-3">
+            {user.avatar_url ? (
+              <Image
+                src={user.avatar_url}
+                alt={user.name}
+                width={44}
+                height={44}
+                className="w-11 h-11 rounded-full"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-full bg-brand-500 flex items-center justify-center text-sm font-medium text-white">
+                {user.name.split(' ').map(n => n[0]).join('')}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-white">{user.name}</p>
+              <p className="truncate text-xs text-brand-300">{user.email}</p>
+            </div>
+          </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {navigationItems.map((item) => {
             const isActive = pathname.startsWith(item.href)
             return (
@@ -115,14 +167,14 @@ export function MobileHeader({ user }: MobileHeaderProps) {
                 key={item.name}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-brand-800 text-white'
-                    : 'text-brand-100 hover:bg-brand-800 hover:text-white'
+                    ? 'bg-white text-brand-900'
+                    : 'text-brand-100 hover:bg-brand-900 hover:text-white'
                 }`}
               >
                 <svg
-                  className={`w-5 h-5 ${isActive ? 'text-white' : 'text-brand-300'}`}
+                  className={`w-5 h-5 ${isActive ? 'text-brand-700' : 'text-brand-300'}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -136,29 +188,10 @@ export function MobileHeader({ user }: MobileHeaderProps) {
         </nav>
 
         {/* User section */}
-        <div className="border-t border-brand-700 p-4">
-          <div className="flex items-center gap-3 mb-3">
-            {user.avatar_url ? (
-              <Image
-                src={user.avatar_url}
-                alt={user.name}
-                width={40}
-                height={40}
-                className="w-10 h-10 rounded-full"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center text-sm font-medium text-white">
-                {user.name.split(' ').map(n => n[0]).join('')}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user.name}</p>
-              <p className="text-xs text-brand-300 truncate">{user.email}</p>
-            </div>
-          </div>
+        <div className="border-t border-brand-800 p-4">
           <button
             onClick={handleSignOut}
-            className="w-full text-left px-3 py-2 text-sm text-brand-200 hover:text-white hover:bg-brand-800 rounded transition-colors"
+            className="w-full rounded-xl bg-brand-900 px-3 py-3 text-left text-sm text-brand-100 transition-colors hover:bg-brand-800 hover:text-white"
           >
             Sign out
           </button>

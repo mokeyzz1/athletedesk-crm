@@ -820,15 +820,15 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                   <p className="text-sm text-gray-500">Manage your email notification preferences</p>
                 </div>
 
-                <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
-                  <div className="p-4 flex items-start justify-between gap-4">
+                <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200 overflow-hidden">
+                  <div className="p-4 flex items-start justify-between gap-4 sm:items-center">
                     <div>
                       <p className="text-sm font-medium text-gray-900">Follow-up Reminders</p>
                       <p className="text-sm text-gray-500">Get notified when follow-ups are due</p>
                     </div>
                     <button
                       onClick={() => handleNotificationChange('emailFollowUps')}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                         notifications.emailFollowUps ? 'bg-brand-600' : 'bg-gray-200'
                       }`}
                     >
@@ -838,14 +838,14 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </button>
                   </div>
 
-                  <div className="p-4 flex items-start justify-between gap-4">
+                  <div className="p-4 flex items-start justify-between gap-4 sm:items-center">
                     <div>
                       <p className="text-sm font-medium text-gray-900">Task Reminders</p>
                       <p className="text-sm text-gray-500">Get notified about upcoming and overdue tasks</p>
                     </div>
                     <button
                       onClick={() => handleNotificationChange('emailTaskReminders')}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                         notifications.emailTaskReminders ? 'bg-brand-600' : 'bg-gray-200'
                       }`}
                     >
@@ -855,14 +855,14 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </button>
                   </div>
 
-                  <div className="p-4 flex items-start justify-between gap-4">
+                  <div className="p-4 flex items-start justify-between gap-4 sm:items-center">
                     <div>
                       <p className="text-sm font-medium text-gray-900">New Assignments</p>
                       <p className="text-sm text-gray-500">Get notified when athletes are assigned to you</p>
                     </div>
                     <button
                       onClick={() => handleNotificationChange('emailNewAssignments')}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                         notifications.emailNewAssignments ? 'bg-brand-600' : 'bg-gray-200'
                       }`}
                     >
@@ -872,14 +872,14 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </button>
                   </div>
 
-                  <div className="p-4 flex items-start justify-between gap-4">
+                  <div className="p-4 flex items-start justify-between gap-4 sm:items-center">
                     <div>
                       <p className="text-sm font-medium text-gray-900">Weekly Summary</p>
                       <p className="text-sm text-gray-500">Receive a weekly activity digest</p>
                     </div>
                     <button
                       onClick={() => handleNotificationChange('emailWeeklySummary')}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                         notifications.emailWeeklySummary ? 'bg-brand-600' : 'bg-gray-200'
                       }`}
                     >
@@ -890,22 +890,30 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={saveNotifications}
-                    disabled={savingNotifications}
-                    className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50"
-                  >
-                    {savingNotifications ? 'Saving...' : 'Save Preferences'}
-                  </button>
-                  {notificationsSaved && (
-                    <span className="text-sm text-green-600 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Saved
-                    </span>
-                  )}
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-900">Save notification changes</p>
+                      <p className="text-xs text-gray-500">Your email alerts update as soon as you save.</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                      {notificationsSaved && (
+                        <span className="order-2 flex items-center gap-1 text-sm text-green-600 sm:order-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Saved
+                        </span>
+                      )}
+                      <button
+                        onClick={saveNotifications}
+                        disabled={savingNotifications}
+                        className="btn-primary w-full sm:w-auto"
+                      >
+                        {savingNotifications ? 'Saving...' : 'Save Preferences'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

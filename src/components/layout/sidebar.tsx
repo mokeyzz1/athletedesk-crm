@@ -560,12 +560,15 @@ export function Sidebar({ user }: SidebarProps) {
                             key={item.name}
                             href={item.href}
                             title={isCollapsed ? item.name : undefined}
-                            className={`group flex items-center ${isCollapsed ? 'justify-center px-2' : 'px-2'} py-2 text-sm font-medium rounded-md transition-colors ${
+                            className={`group relative flex items-center ${isCollapsed ? 'justify-center px-2' : 'px-2'} py-2 text-sm rounded-md transition-colors ${
                               isActive
-                                ? 'bg-brand-800 text-white'
-                                : 'text-brand-100 hover:bg-brand-800 hover:text-white'
+                                ? 'text-white font-semibold'
+                                : 'font-medium text-brand-100 hover:bg-brand-800/60 hover:text-white'
                             }`}
                           >
+                            {isActive && (
+                              <span className="absolute -left-2 top-1.5 bottom-1.5 w-1 rounded-r-full bg-white" />
+                            )}
                             <div className="relative">
                               <svg
                                 className={`h-5 w-5 flex-shrink-0 ${

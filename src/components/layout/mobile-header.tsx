@@ -136,14 +136,17 @@ export function MobileHeader({ user }: MobileHeaderProps) {
                 key={item.name}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
+                className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors ${
                   isActive
-                    ? 'bg-white text-brand-900'
-                    : 'text-brand-100 active:bg-brand-900'
+                    ? 'text-white font-semibold'
+                    : 'font-medium text-brand-100 active:bg-brand-900/60'
                 }`}
               >
+                {isActive && (
+                  <span className="absolute -left-3 top-2 bottom-2 w-1 rounded-r-full bg-white" />
+                )}
                 <svg
-                  className={`h-5 w-5 ${isActive ? 'text-brand-700' : 'text-brand-300'}`}
+                  className={`h-5 w-5 ${isActive ? 'text-white' : 'text-brand-300'}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

@@ -82,51 +82,26 @@ export function MobileHeader({ user }: MobileHeaderProps) {
         }`}
       >
         {/* Drawer header */}
-        <div className="border-b border-brand-800/60 px-5 pb-5 pt-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white">
-                <span className="text-xs font-bold text-brand-600">AD</span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">AthleteDesk</p>
-                <p className="text-xs text-brand-300">CRM</p>
-              </div>
+        <div className="flex items-center justify-between px-5 pb-3 pt-5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+              <span className="text-xs font-bold text-brand-600">AD</span>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-brand-300 transition-colors active:bg-brand-800"
-              aria-label="Close navigation"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <span className="text-sm font-semibold text-white">AthleteDesk</span>
           </div>
-
-          <div className="flex items-center gap-3 rounded-2xl bg-brand-900/70 p-3">
-            {user.avatar_url ? (
-              <Image
-                src={user.avatar_url}
-                alt={user.name}
-                width={44}
-                height={44}
-                className="h-11 w-11 rounded-full"
-              />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">
-                {initials}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">{user.name}</p>
-              <p className="truncate text-xs text-brand-300">{user.email}</p>
-            </div>
-          </div>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-brand-300 transition-colors active:bg-brand-800"
+            aria-label="Close navigation"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
           {drawerNavItems.map((item) => {
             const isActive = item.href === '/dashboard'
               ? pathname === item.href
@@ -159,11 +134,37 @@ export function MobileHeader({ user }: MobileHeaderProps) {
           })}
         </nav>
 
-        {/* Sign out */}
-        <div className="border-t border-brand-800/60 p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+        {/* Profile + sign out */}
+        <div className="border-t border-brand-800/60 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+          <Link
+            href="/settings"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 rounded-2xl bg-brand-900/70 p-3 transition-colors active:bg-brand-900"
+          >
+            {user.avatar_url ? (
+              <Image
+                src={user.avatar_url}
+                alt={user.name}
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-full"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">{user.name}</p>
+              <p className="truncate text-xs text-brand-300">{user.email}</p>
+            </div>
+            <svg className="h-5 w-5 flex-shrink-0 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
           <button
             onClick={handleSignOut}
-            className="w-full rounded-xl bg-brand-900 px-3 py-3 text-left text-sm font-medium text-brand-100 transition-colors active:bg-brand-800"
+            className="mt-2 w-full rounded-xl px-3 py-2.5 text-center text-sm font-medium text-brand-300 transition-colors active:bg-brand-900 active:text-white"
           >
             Sign out
           </button>

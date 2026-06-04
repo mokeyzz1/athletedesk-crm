@@ -438,10 +438,10 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
   const validCount = previewData.filter(r => r.name).length
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end bg-black/50 p-0 sm:items-center sm:justify-center sm:p-4">
+      <div className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-w-3xl sm:rounded-lg">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 sm:px-6">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{title || 'Import Athletes'}</h2>
             {file && step !== 'upload' && (
@@ -459,14 +459,14 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
         <div className="flex-1 overflow-y-auto">
           {/* Upload Step */}
           {step === 'upload' && (
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={`
-                  border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors
+                  border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors sm:p-10
                   ${isDragging ? 'border-brand-500 bg-brand-50' : 'border-gray-300 hover:border-gray-400'}
                 `}
               >
@@ -503,7 +503,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
           {/* Type Selection */}
           {step === 'select-type' && (
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <p className="text-sm text-gray-600 mb-6">
                 What type of data are you importing?
               </p>
@@ -558,7 +558,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
           {/* Mismatch Warning */}
           {step === 'mismatch-warning' && detectedType && (
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <div className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -640,7 +640,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
           {/* Sheet Selection */}
           {step === 'select-sheet' && workbook && (
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <p className="text-sm text-gray-600 mb-4">
                 This file has {workbook.sheetNames.length} sheets. Select which to import.
               </p>
@@ -723,9 +723,9 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
           {/* Preview */}
           {step === 'preview' && (
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {/* Sport Selection */}
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+              <div className="mb-6 flex flex-col gap-3 border-b border-gray-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Sport</p>
                   <p className="text-xs text-gray-500">Applied to athletes without a sport</p>
@@ -733,7 +733,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                 <select
                   value={selectedSport}
                   onChange={(e) => setSelectedSport(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-brand-500 focus:border-brand-500"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-brand-500 focus:border-brand-500 sm:w-auto"
                 >
                   {SPORTS.map(sport => (
                     <option key={sport} value={sport}>{sport}</option>
@@ -752,7 +752,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
               {/* Duplicate Warning */}
               {duplicates.size > 0 && (
                 <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -766,7 +766,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                         </p>
                       </div>
                     </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer sm:pl-4">
                       <input
                         type="checkbox"
                         checked={skipDuplicates}
@@ -796,7 +796,47 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
               </details>
 
               {/* Data Table */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="space-y-3 md:hidden">
+                {previewData.slice(0, 8).map((row, idx) => (
+                  <div
+                    key={idx}
+                    className={`mobile-data-card ${
+                      !row.name ? 'border-red-200 bg-red-50' : duplicates.has(idx) ? 'border-amber-200 bg-amber-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {String(row.name || '—')}
+                          {!row.name && <span className="ml-1 text-xs text-red-500">(missing)</span>}
+                          {duplicates.has(idx) && <span className="ml-1 text-xs text-amber-600">(duplicate)</span>}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">{String(row.school || '—')}</p>
+                      </div>
+                      <span className="badge-gray capitalize">
+                        {String(row.outreach_status || '—').replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="mobile-data-grid">
+                      <div>
+                        <div className="mobile-field-label">Class</div>
+                        <div className="font-medium text-gray-700">{String(row.class_year || '—').replace(/_/g, "'")}</div>
+                      </div>
+                      <div>
+                        <div className="mobile-field-label">Region</div>
+                        <div className="font-medium text-gray-700">{String(row.region || '—')}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {previewData.length > 8 && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-center text-xs text-gray-500">
+                    +{previewData.length - 8} more
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden border border-gray-200 rounded-lg overflow-hidden md:block">
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
@@ -843,7 +883,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
           {/* Importing */}
           {step === 'importing' && (
-            <div className="p-12 text-center">
+              <div className="p-8 text-center sm:p-12">
               <div className="w-8 h-8 border-2 border-gray-200 border-t-brand-600 rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-900 font-medium">Importing...</p>
               <p className="text-sm text-gray-500 mt-1">
@@ -860,7 +900,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
           {/* Complete */}
           {step === 'complete' && (
-            <div className="p-12 text-center">
+              <div className="p-8 text-center sm:p-12">
               {importResults.failed > 0 ? (
                 <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -892,16 +932,16 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
           {step !== 'importing' && step !== 'complete' && (
-            <button onClick={handleClose} className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900">
+            <button onClick={handleClose} className="w-full px-4 py-2 text-sm text-gray-700 hover:text-gray-900 sm:w-auto">
               Cancel
             </button>
           )}
           {step === 'preview' && (
             <button
               onClick={handleImport}
-              className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700"
+              className="w-full px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 sm:w-auto"
             >
               Import {skipDuplicates ? validCount - duplicates.size : validCount} athletes
             </button>
@@ -909,7 +949,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
           {step === 'complete' && (
             <button
               onClick={handleComplete}
-              className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700"
+              className="w-full px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 sm:w-auto"
             >
               Done
             </button>

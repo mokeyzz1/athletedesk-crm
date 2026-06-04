@@ -241,7 +241,7 @@ export default function AdminPage() {
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <div className="w-60 bg-brand-900 flex flex-col">
+      <div className="hidden md:flex w-60 bg-brand-900 flex-col">
         {/* Workspace Header */}
         <div className="px-4 py-3 flex items-center justify-between border-b border-brand-700 bg-brand-950">
           <div className="flex items-center gap-2">
@@ -288,15 +288,51 @@ export default function AdminPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-12 border-b border-gray-200 flex items-center px-6">
-          <h1 className="text-lg font-semibold text-gray-900 capitalize">{activeTab}</h1>
+        <header className="border-b border-gray-200 bg-white">
+          <div className="flex h-14 items-center justify-between px-4 md:hidden">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 text-sm font-medium text-brand-700"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+              </svg>
+              CRM
+            </Link>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-brand-900 rounded flex items-center justify-center">
+                <span className="text-white font-bold text-xs">AD</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900">Admin</span>
+            </div>
+          </div>
+          <div className="hidden md:flex h-12 items-center px-6">
+            <h1 className="text-lg font-semibold text-gray-900 capitalize">{activeTab}</h1>
+          </div>
+          <div className="md:hidden border-t border-gray-100 px-2 py-2">
+            <div className="flex gap-1 overflow-x-auto">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as typeof activeTab)}
+                  className={`shrink-0 rounded px-3 py-2 text-sm font-medium transition-colors ${
+                    activeTab === item.id
+                      ? 'bg-brand-900 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+        <main className="flex-1 overflow-y-auto bg-gray-50/50 p-4 md:p-6">
           {/* Error Banner */}
           {deleteError && (
-            <div className="mb-4 max-w-5xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center justify-between">
+            <div className="mb-4 max-w-5xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center justify-between gap-3">
               <span className="text-sm">{deleteError}</span>
               <button
                 onClick={() => setDeleteError(null)}
@@ -322,7 +358,7 @@ export default function AdminPage() {
                   { label: 'Accepted', value: stats.usedInvites },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-4">
-                    <div className="text-3xl font-bold text-gray-900">{stat.value}</div>
+                    <div className="text-2xl md:text-3xl font-bold text-gray-900">{stat.value}</div>
                     <div className="text-sm text-gray-500 mt-1">{stat.label}</div>
                   </div>
                 ))}
@@ -331,7 +367,7 @@ export default function AdminPage() {
               {/* Quick Actions */}
               <div className="bg-white rounded-lg border border-gray-200 p-5">
                 <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => {
                       setActiveTab('invites')
@@ -351,7 +387,64 @@ export default function AdminPage() {
 
           {/* Organizations Tab */}
           {activeTab === 'organizations' && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden max-w-5xl">
+            <div className="max-w-5xl">
+              <div className="space-y-3 md:hidden">
+                {organizations.map((org) => (
+                  <div key={org.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-brand-900 to-brand-700 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-bold text-white">{org.name.charAt(0)}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-gray-900">{org.name}</div>
+                            <div className="text-xs text-gray-500">{org.slug}</div>
+                          </div>
+                          <div className="text-xs text-gray-400">{new Date(org.created_at).toLocaleDateString()}</div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Owner</p>
+                            <p className="truncate text-gray-900">{org.owner?.name || '—'}</p>
+                            {org.owner?.email && <p className="truncate text-xs text-gray-500">{org.owner.email}</p>}
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Usage</p>
+                            <p className="text-gray-900">{org.userCount} users · {org.athleteCount} athletes</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex flex-wrap justify-end gap-3 text-sm font-medium">
+                          <button
+                            onClick={() => viewOrganization(org.id)}
+                            className="text-brand-600 hover:text-brand-700"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => deleteOrganization(org.id, org.name)}
+                            disabled={deletingOrgId === org.id}
+                            className={`${
+                              confirmDelete === org.id
+                                ? 'rounded bg-red-600 px-2 py-1 text-white hover:bg-red-700'
+                                : 'text-red-600 hover:text-red-700'
+                            } disabled:opacity-50`}
+                          >
+                            {deletingOrgId === org.id ? 'Deleting...' : confirmDelete === org.id ? 'Confirm?' : 'Delete'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {organizations.length === 0 && (
+                  <div className="rounded-lg border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+                    No organizations yet
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
@@ -428,6 +521,7 @@ export default function AdminPage() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
@@ -435,7 +529,7 @@ export default function AdminPage() {
           {activeTab === 'invites' && (
             <div className="space-y-4 max-w-5xl">
               {/* Create Button */}
-              <div className="flex justify-end">
+              <div className="flex justify-start md:justify-end">
                 <button
                   onClick={() => setShowCreateInvite(!showCreateInvite)}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-md hover:bg-brand-700 transition-colors"
@@ -544,7 +638,7 @@ export default function AdminPage() {
                         </p>
                       )}
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <input
                           type="text"
                           value={newInviteUrl}
@@ -566,7 +660,78 @@ export default function AdminPage() {
               )}
 
               {/* Invites Table */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div>
+                <div className="space-y-3 md:hidden">
+                  {invites.map((invite) => {
+                    const isExpired = new Date(invite.expires_at) < new Date()
+                    const isUsed = !!invite.accepted_at
+
+                    return (
+                      <div key={invite.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-semibold text-gray-900">{invite.email || 'General invite'}</div>
+                            <div className="text-xs text-gray-500">{invite.invite_type === 'new_org' ? 'New org' : 'Join org'}</div>
+                          </div>
+                          <div className="shrink-0">
+                            {isUsed ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                Used
+                              </span>
+                            ) : isExpired ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                Expired
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                Pending
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">For</p>
+                            <p className="truncate text-gray-900">{invite.organization?.name || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Created</p>
+                            <p className="text-gray-900">{new Date(invite.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex flex-wrap justify-end gap-3 text-sm font-medium">
+                          {!isUsed && !isExpired && (
+                            <button
+                              onClick={() => copyToClipboard(`${window.location.origin}/invite/${invite.token}`)}
+                              className="text-brand-600 hover:underline"
+                            >
+                              Copy link
+                            </button>
+                          )}
+                          {!isUsed && (
+                            <button
+                              onClick={() => deleteInvite(invite.id)}
+                              disabled={deletingInviteId === invite.id}
+                              className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                            >
+                              {deletingInviteId === invite.id ? 'Deleting...' : 'Delete'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {invites.length === 0 && (
+                    <div className="rounded-lg border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+                      No invites yet
+                    </div>
+                  )}
+                </div>
+
+                <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
@@ -645,6 +810,7 @@ export default function AdminPage() {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}

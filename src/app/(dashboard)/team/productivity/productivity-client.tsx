@@ -271,13 +271,13 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
         </div>
 
         {/* Table Card */}
-        <div className="bg-white rounded border border-gray-200">
+          <div className="bg-white rounded border border-gray-200">
           {/* Filters */}
-          <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+          <div className="flex flex-col gap-3 p-4 border-b border-gray-200 md:flex-row md:items-center">
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 md:w-auto"
             >
               <option value="week">This Week</option>
               <option value="month">This Month</option>
@@ -287,7 +287,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 md:w-auto"
             >
               {roles.map(role => (
                 <option key={role} value={role}>
@@ -299,7 +299,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
             <select
               value={regionFilter}
               onChange={(e) => setRegionFilter(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 md:w-auto"
             >
               <option value="all">All Regions</option>
               {allRegions.map(region => (
@@ -307,26 +307,85 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
               ))}
             </select>
 
-            <div className="flex-1">
+            <div className="w-full flex-1">
               <input
                 type="text"
                 placeholder="Search staff..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 md:max-w-xs"
               />
             </div>
 
             <Link
               href="/settings/team"
-              className="px-4 py-1.5 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded"
+              className="btn-primary w-full md:w-auto"
             >
               Invite Member
             </Link>
           </div>
 
+          <div className="space-y-3 p-4 md:hidden">
+            {filteredStaff.map((staff) => {
+              const score = getProductivityScore(staff)
+              return (
+                <button
+                  key={staff.id}
+                  onClick={() => setSelectedStaff(staff)}
+                  className="mobile-data-card block w-full text-left"
+                >
+                  <div className="flex items-start gap-3">
+                    {staff.avatar_url ? (
+                      <Image src={staff.avatar_url} alt="" width={40} height={40} className="w-10 h-10 rounded-full" />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-xs font-medium text-white">
+                        {staff.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900">{staff.name}</p>
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${getRoleBadgeColor(staff.role)}`}>
+                          {staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}
+                        </span>
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-bold rounded ${getScoreColor(score)}`}>
+                          Score {score}
+                        </span>
+                      </div>
+                      {(staff.assigned_regions || []).length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {staff.assigned_regions.map(region => (
+                            <span key={region} className="badge-blue">{region}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mobile-data-grid">
+                        <div>
+                          <div className="mobile-field-label">Athletes</div>
+                          <div className="font-medium text-gray-900">{staff.athletesManaged}</div>
+                        </div>
+                        <div>
+                          <div className="mobile-field-label">Contacted</div>
+                          <div className="font-medium text-gray-900">{staff.contactedThisWeek || 0}</div>
+                        </div>
+                        <div>
+                          <div className="mobile-field-label">Emails</div>
+                          <div className="font-medium text-gray-900">{getEmails(staff)}</div>
+                        </div>
+                        <div>
+                          <div className="mobile-field-label">Comms</div>
+                          <div className="font-medium text-gray-900">{getComms(staff)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
@@ -393,7 +452,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
           />
 
           {/* Panel */}
-          <div className="fixed right-0 top-0 h-full w-[420px] bg-white shadow-xl z-50 overflow-y-auto">
+          <div className="fixed right-0 top-0 h-full w-full bg-white shadow-xl z-50 overflow-y-auto md:w-[420px]">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Staff Details</h2>
@@ -555,7 +614,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
       {/* Assign Athlete Modal */}
       {showAssignModal && selectedStaff && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Assign Athlete to {selectedStaff.name}</h3>
               <button
@@ -631,7 +690,7 @@ export function ProductivityClient({ staffProductivity, staffAthleteMap, allAthl
       {/* Edit Regions Modal */}
       {showRegionModal && selectedStaff && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Assign Regions to {selectedStaff.name}</h3>
               <button

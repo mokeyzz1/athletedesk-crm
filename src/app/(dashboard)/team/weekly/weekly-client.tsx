@@ -51,18 +51,24 @@ export function WeeklyClient({ days, weekLabel }: WeeklyClientProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 h-[92px] flex items-center justify-between px-6 bg-gray-50 border-b border-gray-200">
+      <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50 px-4 py-4 md:flex md:min-h-[92px] md:items-center md:justify-between md:px-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Weekly View</h1>
+          <h1 className="text-xl font-bold text-gray-900 md:text-2xl">Weekly View</h1>
           <p className="text-gray-500 text-sm">{weekLabel}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span><strong>{totalTasks}</strong> tasks</span>
-            <span><strong>{totalComms}</strong> comms</span>
-            <span><strong>{totalFollowUps}</strong> follow-ups</span>
+        <div className="mt-4 flex flex-col gap-3 md:mt-0 md:items-center md:gap-3">
+          <div className="grid grid-cols-3 gap-2 text-sm text-gray-600 md:flex md:items-center md:gap-4">
+            <span className="rounded border border-gray-200 bg-white px-3 py-2 text-center md:border-0 md:bg-transparent md:px-0 md:py-0">
+              <strong>{totalTasks}</strong> tasks
+            </span>
+            <span className="rounded border border-gray-200 bg-white px-3 py-2 text-center md:border-0 md:bg-transparent md:px-0 md:py-0">
+              <strong>{totalComms}</strong> comms
+            </span>
+            <span className="rounded border border-gray-200 bg-white px-3 py-2 text-center md:border-0 md:bg-transparent md:px-0 md:py-0">
+              <strong>{totalFollowUps}</strong> follow-ups
+            </span>
           </div>
-          <Link href="/team/productivity" className="btn-secondary">
+          <Link href="/team/productivity" className="btn-secondary w-full md:w-auto">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
@@ -72,9 +78,126 @@ export function WeeklyClient({ days, weekLabel }: WeeklyClientProps) {
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-x-auto px-6 py-4">
+      <div className="flex-1 overflow-x-auto px-4 py-4 md:px-6">
+        <div className="space-y-4 md:hidden">
+          {days.map(day => {
+            const isToday = day.date === today
+            const hasActivity = day.tasks.length > 0 || day.communications.length > 0 || day.followUps.length > 0
+
+            return (
+              <div
+                key={day.date}
+                className={`mobile-data-card ${isToday ? 'border-brand-300 bg-brand-50/30' : ''}`}
+              >
+                <div className={`mb-4 flex items-start justify-between border-b pb-3 ${isToday ? 'border-brand-200' : 'border-gray-200'}`}>
+                  <div>
+                    <p className={`text-sm font-semibold ${isToday ? 'text-brand-700' : 'text-gray-900'}`}>
+                      {day.dayName}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                  {isToday && (
+                    <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-medium">
+                      Today
+                    </span>
+                  )}
+                </div>
+
+                {hasActivity ? (
+                  <div className="space-y-4">
+                    {day.tasks.length > 0 && (
+                      <div>
+                        <div className="mb-2 text-xs font-medium text-gray-500">Tasks ({day.tasks.length})</div>
+                        <div className="space-y-2">
+                          {day.tasks.map(task => (
+                            <Link
+                              key={task.id}
+                              href={`/tasks?id=${task.id}`}
+                              className="block rounded-lg border border-gray-200 bg-white p-3"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <span className={`text-sm ${task.status === 'done' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                  {task.title}
+                                </span>
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getPriorityBadge(task.priority)}`}>
+                                  {task.priority[0].toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className={`text-xs px-1.5 py-0.5 rounded capitalize ${getStatusBadge(task.status)}`}>
+                                  {task.status.replace('_', ' ')}
+                                </span>
+                                <span className="text-xs text-gray-500">{task.assignedTo}</span>
+                              </div>
+                              {task.athleteName && (
+                                <span className="text-xs text-brand-600 block mt-2">{task.athleteName}</span>
+                              )}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {day.communications.length > 0 && (
+                      <div>
+                        <div className="mb-2 text-xs font-medium text-gray-500">Communications ({day.communications.length})</div>
+                        <div className="space-y-2">
+                          {day.communications.map(comm => (
+                            <div key={comm.id} className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                              <div className="flex items-center gap-2">
+                                <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getTypeIcon(comm.type)} />
+                                </svg>
+                                <span className="text-xs font-medium text-blue-700 capitalize">{comm.type}</span>
+                              </div>
+                              {comm.subject && (
+                                <p className="text-sm text-gray-900 mt-2">{comm.subject}</p>
+                              )}
+                              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-xs text-gray-500">{comm.staffName}</span>
+                                {comm.athleteName && (
+                                  <span className="text-xs text-brand-600">{comm.athleteName}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {day.followUps.length > 0 && (
+                      <div>
+                        <div className="mb-2 text-xs font-medium text-gray-500">Follow-ups ({day.followUps.length})</div>
+                        <div className="space-y-2">
+                          {day.followUps.map(followUp => (
+                            <div key={followUp.id} className="rounded-lg border border-yellow-100 bg-yellow-50 p-3">
+                              <p className="text-sm text-gray-900">{followUp.subject || 'Follow-up'}</p>
+                              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-xs text-gray-500">{followUp.staffName}</span>
+                                {followUp.athleteName && (
+                                  <span className="text-xs text-brand-600">{followUp.athleteName}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-400">No activity</p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
         {/* Calendar Grid */}
-        <div className="flex gap-4 min-w-max">
+        <div className="hidden gap-4 min-w-max md:flex">
           {days.map(day => {
             const isToday = day.date === today
             const hasActivity = day.tasks.length > 0 || day.communications.length > 0 || day.followUps.length > 0

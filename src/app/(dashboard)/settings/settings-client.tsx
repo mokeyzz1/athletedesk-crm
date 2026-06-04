@@ -673,6 +673,15 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
     }
   }
 
+  const visibleSidebarGroups = sidebarGroups.filter(group => !group.adminOnly || isAdmin)
+  const allVisibleSections = visibleSidebarGroups.reduce<{ id: SettingsSection; label: string; icon: string }[]>(
+    (sections, group) => {
+      sections.push(...(group.items as { id: SettingsSection; label: string; icon: string }[]))
+      return sections
+    },
+    []
+  )
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -684,11 +693,9 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
       {/* Content with Sidebar */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <div className="w-52 flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto">
+        <div className="hidden md:block w-52 flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto">
           <nav className="p-3 space-y-4">
-            {sidebarGroups
-              .filter(group => !group.adminOnly || isAdmin)
-              .map((group) => (
+            {visibleSidebarGroups.map((group) => (
                 <div key={group.label}>
                   <p className="px-3 mb-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
                     {group.label}
@@ -717,8 +724,42 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto px-4 py-4 md:p-6">
           <div className="max-w-4xl">
+            <div className="mb-4 md:hidden">
+              <label className="label mb-2">Settings Section</label>
+              <select
+                value={activeSection}
+                onChange={(e) => setActiveSection(e.target.value as SettingsSection)}
+                className="input"
+              >
+                {visibleSidebarGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.items.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+                {allVisibleSections.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={`shrink-0 rounded px-3 py-2 text-sm font-medium transition-colors ${
+                      activeSection === item.id
+                        ? 'bg-brand-900 text-white'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Profile Section */}
             {activeSection === 'profile' && (
               <div className="space-y-6">
@@ -727,8 +768,8 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                   <p className="text-sm text-gray-500">Your personal details and role</p>
                 </div>
 
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                  <div className="flex items-start gap-4">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
+                  <div className="flex flex-col sm:flex-row items-start gap-4">
                     {profile?.avatar_url ? (
                       <Image
                         src={profile.avatar_url}
@@ -751,7 +792,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-2 gap-4">
+                  <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Member Since</p>
                       <p className="mt-1 text-sm text-gray-900">
@@ -780,7 +821,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                 </div>
 
                 <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
-                  <div className="p-4 flex items-center justify-between">
+                  <div className="p-4 flex items-start justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-900">Follow-up Reminders</p>
                       <p className="text-sm text-gray-500">Get notified when follow-ups are due</p>
@@ -797,7 +838,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </button>
                   </div>
 
-                  <div className="p-4 flex items-center justify-between">
+                  <div className="p-4 flex items-start justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-900">Task Reminders</p>
                       <p className="text-sm text-gray-500">Get notified about upcoming and overdue tasks</p>
@@ -814,7 +855,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </button>
                   </div>
 
-                  <div className="p-4 flex items-center justify-between">
+                  <div className="p-4 flex items-start justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-900">New Assignments</p>
                       <p className="text-sm text-gray-500">Get notified when athletes are assigned to you</p>
@@ -831,7 +872,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </button>
                   </div>
 
-                  <div className="p-4 flex items-center justify-between">
+                  <div className="p-4 flex items-start justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-900">Weekly Summary</p>
                       <p className="text-sm text-gray-500">Receive a weekly activity digest</p>
@@ -849,7 +890,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <button
                     onClick={saveNotifications}
                     disabled={savingNotifications}
@@ -942,14 +983,14 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
             {/* Templates Section */}
             {activeSection === 'templates' && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Email Templates</h2>
                     <p className="text-sm text-gray-500">Create reusable templates for athlete outreach</p>
                   </div>
                   <button
                     onClick={openNewTemplate}
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+                    className="inline-flex items-center self-start px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -974,8 +1015,8 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                 ) : (
                   <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
                     {templates.map((template) => (
-                      <div key={template.id} className="p-4 flex items-center justify-between">
-                        <div className="flex-1">
+                      <div key={template.id} className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-gray-900">{template.name}</p>
                             {template.is_shared && (
@@ -984,7 +1025,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                           </div>
                           <p className="text-sm text-gray-500 truncate max-w-md">{template.subject}</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3 sm:gap-2">
                           <button
                             onClick={() => openEditTemplate(template)}
                             className="text-sm text-brand-600 hover:text-brand-700 font-medium"
@@ -1033,7 +1074,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                 ) : (
                   <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
                     {/* Gmail */}
-                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                         <Image
                           src="https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_48dp.png"
@@ -1094,7 +1135,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </div>
 
                     {/* Google Calendar - uses same auth as Gmail */}
-                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                         <Image
                           src="https://www.gstatic.com/images/branding/product/2x/calendar_2020q4_48dp.png"
@@ -1155,7 +1196,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </div>
 
                     {/* Calendly */}
-                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                         <svg className="w-8 h-8" viewBox="0 0 120 120">
                           <circle fill="#006BFF" cx="60" cy="60" r="60"/>
@@ -1214,7 +1255,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </div>
 
                     {/* DocuSign */}
-                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                         <svg className="w-8 h-8" viewBox="0 0 40 40">
                           <rect fill="#FFC829" width="40" height="40" rx="4"/>
@@ -1273,7 +1314,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </div>
 
                     {/* Apollo */}
-                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                         <svg className="w-8 h-8" viewBox="0 0 40 40">
                           <rect fill="#6C5CE7" width="40" height="40" rx="8"/>
@@ -1337,14 +1378,14 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
             {/* Team Section */}
             {activeSection === 'team' && isAdmin && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Team Management</h2>
                     <p className="text-sm text-gray-500">Invite members and manage roles</p>
                   </div>
                   <Link
                     href="/settings/team"
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+                    className="inline-flex items-center self-start px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1353,26 +1394,26 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                   </Link>
                 </div>
 
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
                   <h3 className="text-sm font-medium text-gray-900 mb-4">Role Permissions</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                       <span className="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-700 w-20 text-center">Admin</span>
                       <span className="text-sm text-gray-600">Full access, team management, settings</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                       <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-700 w-20 text-center">Agent</span>
                       <span className="text-sm text-gray-600">Manage athletes, deals, contracts</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                       <span className="px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700 w-20 text-center">Scout</span>
                       <span className="text-sm text-gray-600">Add athletes, recruiting pipeline</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                       <span className="px-2 py-0.5 text-xs font-medium rounded bg-yellow-100 text-yellow-700 w-20 text-center">Marketing</span>
                       <span className="text-sm text-gray-600">Brand outreach, communications</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                       <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-700 w-20 text-center">Intern</span>
                       <span className="text-sm text-gray-600">View-only access</span>
                     </div>
@@ -1384,14 +1425,14 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
             {/* Goals Section */}
             {activeSection === 'goals' && isAdmin && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Outreach Goals</h2>
                     <p className="text-sm text-gray-500">Set communication targets for your team</p>
                   </div>
                   <Link
                     href="/settings/outreach-goals"
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+                    className="inline-flex items-center self-start px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -1400,7 +1441,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                   </Link>
                 </div>
 
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
                   <h3 className="text-sm font-medium text-gray-900 mb-4">About Outreach Goals</h3>
                   <div className="space-y-3 text-sm text-gray-600">
                     <div className="flex items-start gap-2">
@@ -1429,14 +1470,14 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
             {/* Recruiting Regions Section */}
             {activeSection === 'regions' && isAdmin && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Recruiting Regions</h2>
                     <p className="text-sm text-gray-500">Define geographic regions and assign states for recruiting</p>
                   </div>
                   <button
                     onClick={openNewRegion}
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+                    className="inline-flex items-center self-start px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1462,7 +1503,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                   <div className="space-y-4">
                     {recruitingRegions.map((region) => (
                       <div key={region.id} className="bg-white rounded-lg border border-gray-200 p-4">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                               <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1473,7 +1514,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                             <h3 className="text-sm font-semibold text-gray-900">{region.name}</h3>
                             <span className="text-xs text-gray-500">{(region.states || []).length} states</span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
                             <button
                               onClick={() => openEditRegion(region)}
                               className="text-sm text-brand-600 hover:text-brand-700 font-medium"
@@ -1520,14 +1561,14 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
             {/* Roster Teams Section */}
             {activeSection === 'roster-teams' && isAdmin && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Roster Teams</h2>
                     <p className="text-sm text-gray-500">Organize signed athletes by team based on school location</p>
                   </div>
                   <button
                     onClick={openNewTeam}
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
+                    className="inline-flex items-center self-start px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

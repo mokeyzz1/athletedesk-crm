@@ -272,72 +272,38 @@ export function AthletesClient({ athletes: initialAthletes, canImport = false }:
           {athletes && athletes.length > 0 ? (
             filteredAthletes.length > 0 ? (
               <>
-                <div className="space-y-3 md:hidden">
-                  {filteredAthletes.map((athlete) => {
-                    const isSigned = athlete.outreach_status === 'signed'
+                <div className="md:hidden overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                  {filteredAthletes.map((athlete, idx) => {
                     const statusLabel = OUTREACH_STATUSES.find(s => s.value === athlete.outreach_status)?.label || athlete.outreach_status
+                    const secondary = [athlete.sport, athlete.school].filter(Boolean).join(' · ')
 
                     return (
                       <button
                         key={athlete.id}
                         type="button"
                         onClick={() => openAthletePanel(athlete.id)}
-                        className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50"
+                        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-gray-50 ${
+                          idx !== 0 ? 'border-t border-gray-100' : ''
+                        }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand-100">
-                            <span className="font-medium text-brand-600">
-                              {athlete.name.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-gray-900">{athlete.name}</p>
-                                {athlete.email && (
-                                  <p className="truncate text-sm text-gray-500">{athlete.email}</p>
-                                )}
-                              </div>
-                              <span className={`flex-shrink-0 rounded px-2 py-1 text-xs font-medium ${STATUS_COLORS[athlete.outreach_status]}`}>
-                                {statusLabel}
-                              </span>
-                            </div>
-
-                            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                              <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-wide text-gray-400">Sport</p>
-                                <p className="truncate text-gray-900">
-                                  {athlete.sport}
-                                  {athlete.position ? ` · ${athlete.position}` : ''}
-                                </p>
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-wide text-gray-400">School</p>
-                                <p className="truncate text-gray-900">{athlete.school || '-'}</p>
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-wide text-gray-400">Class</p>
-                                <p className="text-gray-900">
-                                  {CLASS_YEARS.find(c => c.value === athlete.class_year)?.label || 'N/A'}
-                                </p>
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-wide text-gray-400">Region</p>
-                                <p className="truncate text-gray-900">{athlete.region || 'Unassigned'}</p>
-                              </div>
-                            </div>
-
-                            <div className="mt-3 flex items-center justify-between gap-3">
-                              <span className={`rounded border px-2 py-1 text-xs font-medium ${
-                                isSigned
-                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                  : 'border-blue-200 bg-blue-50 text-blue-700'
-                              }`}>
-                                {isSigned ? 'Roster' : 'Recruiting'}
-                              </span>
-                              <span className="text-sm font-medium text-brand-600">Open</span>
-                            </div>
-                          </div>
+                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand-100">
+                          <span className="text-sm font-semibold text-brand-700">
+                            {athlete.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-medium text-gray-900">{athlete.name}</p>
+                          {secondary && (
+                            <p className="truncate text-sm text-gray-500">{secondary}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-shrink-0 items-center gap-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLORS[athlete.outreach_status]}`}>
+                            {statusLabel}
+                          </span>
+                          <svg className="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                          </svg>
                         </div>
                       </button>
                     )

@@ -69,7 +69,7 @@ export default async function DashboardLayout({
           <MobileHeader user={profile} />
         </div>
 
-        <main className="flex-1 flex flex-col overflow-hidden pt-16 pb-20 md:pt-0 md:pb-0">
+        <main className="flex-1 flex flex-col overflow-hidden pt-14 pb-[calc(env(safe-area-inset-bottom)+64px)] md:pt-0 md:pb-0">
           <DashboardProviders>
             {children}
           </DashboardProviders>

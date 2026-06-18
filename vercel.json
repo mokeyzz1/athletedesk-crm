@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/gmail/scheduled/process",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

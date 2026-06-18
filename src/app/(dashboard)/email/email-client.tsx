@@ -29,6 +29,18 @@ interface StaffMember {
   gmail_email: string | null
 }
 
+interface ScheduledEmail {
+  id: string
+  to_email: string
+  subject: string
+  scheduled_for: string
+  status: 'scheduled' | 'sending' | 'sent' | 'failed' | 'cancelled'
+  attempts: number
+  last_error: string | null
+  attachments: unknown
+  created_at: string
+}
+
 interface EmailClientProps {
   currentUser: User
   templates: EmailTemplate[]
@@ -36,11 +48,12 @@ interface EmailClientProps {
   staffMembers: StaffMember[]
 }
 
-type Tab = 'inbox' | 'sent' | 'templates'
+type Tab = 'inbox' | 'sent' | 'scheduled' | 'templates'
 
 export function EmailClient({ currentUser, templates, athletes, staffMembers }: EmailClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>('inbox')
   const [emails, setEmails] = useState<Email[]>([])
+  const [scheduledEmails, setScheduledEmails] = useState<ScheduledEmail[]>([])
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -55,6 +68,9 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [selectedAthleteId, setSelectedAthleteId] = useState('')
   const [sending, setSending] = useState(false)
+  const [attachments, setAttachments] = useState<File[]>([])
+  const [sendMode, setSendMode] = useState<'now' | 'schedule'>('now')
+  const [scheduledFor, setScheduledFor] = useState('')
 
   // Check Gmail connection
   useEffect(() => {
@@ -82,9 +98,13 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
       setLoading(true)
       setError(null)
       try {
-        const endpoint = activeTab === 'inbox' ? '/api/gmail/inbox' : '/api/gmail/sent'
+        const endpoint = activeTab === 'scheduled'
+          ? '/api/gmail/scheduled'
+          : activeTab === 'inbox'
+            ? '/api/gmail/inbox'
+            : '/api/gmail/sent'
         const url = new URL(endpoint, window.location.origin)
-        if (searchQuery) {
+        if (searchQuery && activeTab !== 'scheduled') {
           url.searchParams.set('q', searchQuery)
         }
 
@@ -95,10 +115,17 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
           throw new Error(data.error || 'Failed to fetch emails')
         }
 
-        setEmails(data.emails || [])
+        if (activeTab === 'scheduled') {
+          setScheduledEmails(data.scheduledEmails || [])
+          setEmails([])
+        } else {
+          setEmails(data.emails || [])
+          setScheduledEmails([])
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch emails')
         setEmails([])
+        setScheduledEmails([])
       } finally {
         setLoading(false)
       }
@@ -124,8 +151,62 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
     }
   }
 
+  const formatFileSize = (size: number) => {
+    if (size < 1024 * 1024) {
+      return `${Math.ceil(size / 1024)} KB`
+    }
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const getAttachmentCount = (value: unknown) => {
+    return Array.isArray(value) ? value.length : 0
+  }
+
+  const resetCompose = () => {
+    setShowCompose(false)
+    setComposeTo('')
+    setComposeSubject('')
+    setComposeBody('')
+    setSelectedTemplate('')
+    setSelectedAthleteId('')
+    setAttachments([])
+    setSendMode('now')
+    setScheduledFor('')
+  }
+
+  const handleAttachmentChange = (files: FileList | null) => {
+    if (!files) return
+    const nextFiles = [...attachments, ...Array.from(files)]
+    const totalSize = nextFiles.reduce((sum, file) => sum + file.size, 0)
+
+    if (nextFiles.length > 10) {
+      setError('You can attach up to 10 files')
+      return
+    }
+
+    if (totalSize > 20 * 1024 * 1024) {
+      setError('Attachments must be 20 MB or less total')
+      return
+    }
+
+    setAttachments(nextFiles)
+    setError(null)
+  }
+
   const handleSend = async () => {
     if (!composeTo || !composeSubject || !composeBody) return
+
+    if (sendMode === 'schedule') {
+      if (!scheduledFor) {
+        setError('Choose a scheduled send time')
+        return
+      }
+
+      if (new Date(scheduledFor) <= new Date()) {
+        setError('Scheduled time must be in the future')
+        return
+      }
+    }
 
     setSending(true)
     try {
@@ -138,31 +219,31 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
         athleteId = matchedAthlete?.id || null
       }
 
-      const res = await fetch('/api/gmail/send', {
+      const formData = new FormData()
+      formData.append('to', composeTo)
+      formData.append('subject', composeSubject)
+      formData.append('body', composeBody)
+      if (athleteId) formData.append('athleteId', athleteId)
+      if (sendMode === 'schedule') {
+        formData.append('scheduledFor', new Date(scheduledFor).toISOString())
+      }
+      attachments.forEach(file => formData.append('attachments', file))
+
+      const res = await fetch(sendMode === 'schedule' ? '/api/gmail/scheduled' : '/api/gmail/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: composeTo,
-          subject: composeSubject,
-          body: composeBody,
-          athleteId,
-        }),
+        body: formData,
       })
 
       if (!res.ok) {
-        throw new Error('Failed to send email')
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error || 'Failed to send email')
       }
 
-      // Reset compose form
-      setShowCompose(false)
-      setComposeTo('')
-      setComposeSubject('')
-      setComposeBody('')
-      setSelectedTemplate('')
-      setSelectedAthleteId('')
+      resetCompose()
 
-      // Refresh sent emails
-      if (activeTab === 'sent') {
+      if (sendMode === 'schedule') {
+        setActiveTab('scheduled')
+      } else if (activeTab === 'sent') {
         setActiveTab('inbox')
         setTimeout(() => setActiveTab('sent'), 100)
       }
@@ -170,6 +251,23 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
       setError(err instanceof Error ? err.message : 'Failed to send email')
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleCancelScheduledEmail = async (id: string) => {
+    try {
+      const res = await fetch(`/api/gmail/scheduled/${id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to cancel scheduled email')
+      }
+
+      setScheduledEmails(emails => emails.map(email =>
+        email.id === id ? { ...email, status: 'cancelled' } : email
+      ))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel scheduled email')
     }
   }
 
@@ -281,6 +379,16 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
               Sent
             </button>
             <button
+              onClick={() => { setActiveTab('scheduled'); setSelectedEmail(null) }}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'scheduled'
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Scheduled
+            </button>
+            <button
               onClick={() => { setActiveTab('templates'); setSelectedEmail(null) }}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'templates'
@@ -292,7 +400,7 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
             </button>
           </div>
 
-          {activeTab !== 'templates' && (
+          {activeTab !== 'templates' && activeTab !== 'scheduled' && (
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,6 +453,67 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
                 </div>
               )}
             </div>
+          </div>
+        ) : activeTab === 'scheduled' ? (
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-600"></div>
+              </div>
+            ) : error ? (
+              <div className="p-4 text-center text-red-600">{error}</div>
+            ) : scheduledEmails.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p>No scheduled emails</p>
+              </div>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+                {scheduledEmails.map((email) => (
+                  <div key={email.id} className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium text-gray-900 truncate">{email.subject || '(no subject)'}</p>
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                          email.status === 'scheduled'
+                            ? 'bg-blue-100 text-blue-700'
+                            : email.status === 'sent'
+                              ? 'bg-green-100 text-green-700'
+                              : email.status === 'failed'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {email.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">To: {email.to_email}</p>
+                      <p className="text-sm text-gray-500">
+                        {email.status === 'sent' ? 'Sent' : 'Scheduled'} for {new Date(email.scheduled_for).toLocaleString()}
+                      </p>
+                      <div className="flex gap-3 text-xs text-gray-500 mt-1">
+                        {getAttachmentCount(email.attachments) > 0 && (
+                          <span>{getAttachmentCount(email.attachments)} attachment{getAttachmentCount(email.attachments) === 1 ? '' : 's'}</span>
+                        )}
+                        {email.attempts > 0 && <span>{email.attempts} attempt{email.attempts === 1 ? '' : 's'}</span>}
+                      </div>
+                      {email.last_error && (
+                        <p className="mt-2 text-xs text-red-600">{email.last_error}</p>
+                      )}
+                    </div>
+                    {email.status === 'scheduled' && (
+                      <button
+                        onClick={() => handleCancelScheduledEmail(email.id)}
+                        className="self-start md:self-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -462,7 +631,7 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">New Email</h3>
               <button
-                onClick={() => setShowCompose(false)}
+                onClick={resetCompose}
                 className="p-1 hover:bg-gray-100 rounded"
               >
                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -560,12 +729,86 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Attachments</label>
+                <label className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.586-6.586a4 4 0 00-5.656-5.656l-6.586 6.586a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                  Add files
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      handleAttachmentChange(e.target.files)
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+                {attachments.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {attachments.map((file, index) => (
+                      <div key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-md border border-gray-200 px-3 py-2 text-sm">
+                        <span className="truncate text-gray-700">{file.name}</span>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>{formatFileSize(file.size)}</span>
+                          <button
+                            type="button"
+                            onClick={() => setAttachments(attachments.filter((_, fileIndex) => fileIndex !== index))}
+                            className="text-gray-400 hover:text-red-600"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Send</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSendMode('now')}
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+                      sendMode === 'now'
+                        ? 'border-brand-600 bg-brand-50 text-brand-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Send now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSendMode('schedule')}
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+                      sendMode === 'schedule'
+                        ? 'border-brand-600 bg-brand-50 text-brand-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Schedule
+                  </button>
+                </div>
+                {sendMode === 'schedule' && (
+                  <input
+                    type="datetime-local"
+                    value={scheduledFor}
+                    onChange={(e) => setScheduledFor(e.target.value)}
+                    className="mt-2 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                )}
+              </div>
             </div>
 
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
               <button
-                onClick={() => setShowCompose(false)}
+                onClick={resetCompose}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                 disabled={sending}
               >
@@ -573,20 +816,20 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
               </button>
               <button
                 onClick={handleSend}
-                disabled={sending || !composeTo || !composeSubject || !composeBody}
+                disabled={sending || !composeTo || !composeSubject || !composeBody || (sendMode === 'schedule' && !scheduledFor)}
                 className="btn-primary disabled:opacity-50"
               >
                 {sending ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Sending...
+                    {sendMode === 'schedule' ? 'Scheduling...' : 'Sending...'}
                   </>
                 ) : (
                   <>
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                    Send
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                    {sendMode === 'schedule' ? 'Schedule Email' : 'Send'}
                   </>
                 )}
               </button>

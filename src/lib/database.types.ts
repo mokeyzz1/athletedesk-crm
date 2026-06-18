@@ -27,6 +27,7 @@ export type PaymentStatus = 'pending' | 'invoiced' | 'paid'
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
 export type IntegrationProvider = 'google_calendar' | 'calendly' | 'docusign' | 'apollo'
 export type InviteType = 'new_org' | 'join_org'
+export type ScheduledEmailStatus = 'scheduled' | 'sending' | 'sent' | 'failed' | 'cancelled'
 
 // New types for recruiting database
 export type ClassYear = '2025' | '2026' | '2027' | '2028' | '2029' | '2030' | 'pro' | 'n_a'
@@ -442,6 +443,65 @@ export interface Database {
           updated_at?: string
           recipient_email?: string | null
           recipient_name?: string | null
+        }
+      }
+      scheduled_emails: {
+        Row: {
+          id: string
+          organization_id: string
+          created_by: string
+          athlete_id: string | null
+          to_email: string
+          recipient_name: string | null
+          subject: string
+          body: string
+          scheduled_for: string
+          status: ScheduledEmailStatus
+          attempts: number
+          last_error: string | null
+          sent_at: string | null
+          gmail_message_id: string | null
+          attachments: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          created_by: string
+          athlete_id?: string | null
+          to_email: string
+          recipient_name?: string | null
+          subject: string
+          body: string
+          scheduled_for: string
+          status?: ScheduledEmailStatus
+          attempts?: number
+          last_error?: string | null
+          sent_at?: string | null
+          gmail_message_id?: string | null
+          attachments?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          created_by?: string
+          athlete_id?: string | null
+          to_email?: string
+          recipient_name?: string | null
+          subject?: string
+          body?: string
+          scheduled_for?: string
+          status?: ScheduledEmailStatus
+          attempts?: number
+          last_error?: string | null
+          sent_at?: string | null
+          gmail_message_id?: string | null
+          attachments?: Json
+          created_at?: string
+          updated_at?: string
         }
       }
       recruiting_pipeline: {
@@ -1360,6 +1420,7 @@ export type RecruitingPipeline = Database['public']['Tables']['recruiting_pipeli
 export type BrandOutreach = Database['public']['Tables']['brand_outreach']['Row']
 export type FinancialTracking = Database['public']['Tables']['financial_tracking']['Row']
 export type ActivityEvent = Database['public']['Tables']['activity_events']['Row']
+export type ScheduledEmail = Database['public']['Tables']['scheduled_emails']['Row']
 
 export type UserInsert = Database['public']['Tables']['users']['Insert']
 export type AthleteInsert = Database['public']['Tables']['athletes']['Insert']
@@ -1367,6 +1428,8 @@ export type CommunicationLogInsert = Database['public']['Tables']['communication
 export type RecruitingPipelineInsert = Database['public']['Tables']['recruiting_pipeline']['Insert']
 export type BrandOutreachInsert = Database['public']['Tables']['brand_outreach']['Insert']
 export type FinancialTrackingInsert = Database['public']['Tables']['financial_tracking']['Insert']
+export type ScheduledEmailInsert = Database['public']['Tables']['scheduled_emails']['Insert']
+export type ScheduledEmailUpdate = Database['public']['Tables']['scheduled_emails']['Update']
 
 export type Document = Database['public']['Tables']['documents']['Row']
 export type DocumentInsert = Database['public']['Tables']['documents']['Insert']

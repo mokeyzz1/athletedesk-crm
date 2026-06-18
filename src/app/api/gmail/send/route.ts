@@ -1,9 +1,14 @@
 import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!
+import {
+  GmailAttachment,
+  GmailSender,
+  MAX_EMAIL_ATTACHMENTS,
+  MAX_EMAIL_ATTACHMENT_BYTES,
+  sendGmailEmail,
+  validateAttachmentLimits,
+} from '@/lib/gmail/send'
 
 const sendEmailSchema = z.object({
   to: z.string().email('Invalid recipient email').max(254),
@@ -13,111 +18,59 @@ const sendEmailSchema = z.object({
   recipientName: z.string().max(200).optional(),
 })
 
-interface UserWithGmail {
-  id: string
-  gmail_access_token: string | null
-  gmail_refresh_token: string | null
-  gmail_token_expiry: string | null
-  gmail_email: string | null
-  email_signature: string | null
-}
+async function readFormAttachments(formData: FormData): Promise<GmailAttachment[]> {
+  const files = formData.getAll('attachments').filter((value): value is File => value instanceof File)
 
-async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
-  try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
+  if (files.length > MAX_EMAIL_ATTACHMENTS) {
+    throw new Error(`You can attach up to ${MAX_EMAIL_ATTACHMENTS} files`)
+  }
+
+  const totalSize = files.reduce((sum, file) => sum + file.size, 0)
+  if (totalSize > MAX_EMAIL_ATTACHMENT_BYTES) {
+    throw new Error('Attachments must be 20 MB or less total')
+  }
+
+  const attachments: GmailAttachment[] = []
+  for (const file of files) {
+    if (file.size === 0) continue
+
+    attachments.push({
+      filename: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      content: Buffer.from(await file.arrayBuffer()),
     })
-
-    const data = await response.json()
-    if (data.access_token) {
-      return { access_token: data.access_token, expires_in: data.expires_in }
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-function stripHtmlWrapper(html: string): string {
-  // Remove DOCTYPE, html, head, and body tags but keep the body content
-  return html
-    .replace(/<!DOCTYPE[^>]*>/gi, '')
-    .replace(/<\/?html[^>]*>/gi, '')
-    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')  // Remove head with any attributes
-    .replace(/<\/?body[^>]*>/gi, '')
-    .replace(/<\/?meta[^>]*>/gi, '')  // Remove meta tags
-    .replace(/<\/?title[^>]*>[\s\S]*?<\/title>/gi, '')  // Remove title tags
-    .trim()
-}
-
-function createRawEmail(to: string, from: string, subject: string, body: string, isHtml: boolean = false): string {
-  const contentType = isHtml ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8'
-  const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, 'utf8').toString('base64')}?=`
-
-  // For HTML emails, wrap in proper document structure
-  const emailBody = isHtml
-    ? `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333;">
-${body}
-</body>
-</html>`
-    : body
-
-  const email = [
-    `To: ${to}`,
-    `From: ${from}`,
-    `Subject: ${encodedSubject}`,
-    `MIME-Version: 1.0`,
-    `Content-Type: ${contentType}`,
-    `Content-Transfer-Encoding: base64`,
-    '',
-    Buffer.from(emailBody, 'utf8').toString('base64'),
-  ].join('\r\n')
-
-  return Buffer.from(email).toString('base64url')
-}
-
-function appendSignature(body: string, signature: string | null): { body: string; isHtml: boolean } {
-  if (!signature) {
-    return { body, isHtml: false }
   }
 
-  // If signature contains HTML tags, format as HTML email
-  const hasHtmlSignature = /<[a-z][\s\S]*>/i.test(signature)
+  const limitError = validateAttachmentLimits(attachments)
+  if (limitError) {
+    throw new Error(limitError)
+  }
 
-  if (hasHtmlSignature) {
-    // Strip any document wrapper from signature (WiseStamp might include it)
-    const cleanSignature = stripHtmlWrapper(signature)
+  return attachments
+}
 
-    // Convert plain text body to HTML-safe and combine with HTML signature
-    const htmlBody = body
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\n/g, '<br>')
+async function parseRequest(request: NextRequest) {
+  const contentType = request.headers.get('content-type') || ''
+
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await request.formData()
+    const payload = {
+      to: String(formData.get('to') || ''),
+      subject: String(formData.get('subject') || ''),
+      body: String(formData.get('body') || ''),
+      athleteId: formData.get('athleteId') ? String(formData.get('athleteId')) : null,
+      recipientName: formData.get('recipientName') ? String(formData.get('recipientName')) : undefined,
+    }
 
     return {
-      body: `<div>${htmlBody}</div><br><br><div>${cleanSignature}</div>`,
-      isHtml: true,
+      payload,
+      attachments: await readFormAttachments(formData),
     }
-  } else {
-    // Plain text signature
-    return {
-      body: `${body}\n\n--\n${signature}`,
-      isHtml: false,
-    }
+  }
+
+  return {
+    payload: await request.json(),
+    attachments: [] as GmailAttachment[],
   }
 }
 
@@ -129,95 +82,45 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user's Gmail tokens and email signature
   const { data: userDataRaw } = await supabase
     .from('users')
-    .select('id, gmail_access_token, gmail_refresh_token, gmail_token_expiry, gmail_email, email_signature')
+    .select('id, organization_id, gmail_access_token, gmail_refresh_token, gmail_token_expiry, gmail_email, email_signature')
     .eq('auth_user_id', user.id)
     .single()
 
-  const userData = userDataRaw as UserWithGmail | null
+  const userData = userDataRaw as GmailSender | null
 
   if (!userData?.gmail_access_token || !userData?.gmail_refresh_token) {
     return NextResponse.json({ error: 'Gmail not connected' }, { status: 400 })
   }
 
-  let accessToken = userData.gmail_access_token
-
-  // Check if token is expired and refresh if needed
-  if (userData.gmail_token_expiry && new Date(userData.gmail_token_expiry) <= new Date()) {
-    const newTokens = await refreshAccessToken(userData.gmail_refresh_token)
-    if (!newTokens) {
-      return NextResponse.json({ error: 'Failed to refresh Gmail token. Please reconnect.' }, { status: 401 })
-    }
-
-    accessToken = newTokens.access_token
-
-    // Update stored token
-    await supabase
-      .from('users')
-      .update({
-        gmail_access_token: newTokens.access_token,
-        gmail_token_expiry: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
-      } as never)
-      .eq('id', userData.id)
-  }
-
-  const rawBody = await request.json()
-  const parsed = sendEmailSchema.safeParse(rawBody)
-
-  if (!parsed.success) {
-    const firstError = parsed.error.issues[0]
-    return NextResponse.json({ error: firstError?.message || 'Invalid input' }, { status: 400 })
-  }
-
-  const { to, subject, body: emailBody, athleteId, recipientName } = parsed.data
-
-  if (!userData.gmail_email) {
-    return NextResponse.json({ error: 'Gmail email not found' }, { status: 400 })
-  }
-
   try {
-    // Append email signature if set
-    const { body: emailWithSignature, isHtml } = appendSignature(emailBody, userData.email_signature)
+    const { payload, attachments } = await parseRequest(request)
+    const parsed = sendEmailSchema.safeParse(payload)
 
-    // Create raw email
-    const rawEmail = createRawEmail(to, userData.gmail_email, subject, emailWithSignature, isHtml)
-
-    // Send via Gmail API
-    const sendResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ raw: rawEmail }),
-    })
-
-    if (!sendResponse.ok) {
-      const error = await sendResponse.json()
-      console.error('Gmail send error:', error)
-      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]
+      return NextResponse.json({ error: firstError?.message || 'Invalid input' }, { status: 400 })
     }
 
-    // Always create communication log entry (counts toward email stats)
-    await supabase
-      .from('communications_log')
-      .insert({
-        athlete_id: athleteId || null,
-        staff_member_id: userData.id,
-        type: 'email',
-        subject: subject,
-        notes: `Sent via AthleteDesk Gmail integration.\n\n${emailBody}`,
-        communication_date: new Date().toISOString(),
-        follow_up_completed: false,
-        recipient_email: athleteId ? null : to,
-        recipient_name: athleteId ? null : (recipientName || null),
-      } as never)
+    const { to, subject, body, athleteId, recipientName } = parsed.data
+    await sendGmailEmail({
+      supabase,
+      sender: userData,
+      to,
+      subject,
+      body,
+      athleteId,
+      recipientName,
+      attachments,
+    })
 
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('Error sending email:', err)
-    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Failed to send email' },
+      { status: 500 }
+    )
   }
 }

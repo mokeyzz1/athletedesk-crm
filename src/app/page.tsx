@@ -1,4 +1,17 @@
+'use client'
+
+import Image from 'next/image'
 import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { MotionPathPlugin } from 'gsap/MotionPathPlugin'
+import Lenis from 'lenis'
+import LiveDashboard from '@/components/landing/live-dashboard'
+import ProductScroll from '@/components/landing/product-scroll'
+import LifecycleFlow from '@/components/landing/lifecycle-flow'
+import WorkflowRelay from '@/components/landing/workflow-relay'
 import {
   DEMO_USER_EMAIL,
   DEMO_PASSWORD_HINT,
@@ -6,670 +19,790 @@ import {
   buildDemoAccessMailto,
 } from '@/lib/demo'
 
-function HandoffCard({
-  role,
-  accent,
-  badgeTone,
-  description,
-  bullets,
-  triggerLabel,
+const logoSrc = '/brand/athletedesk-logo-transparent.png'
+
+const navItems = [
+  { label: 'Difference', href: '#difference' },
+  { label: 'Product', href: '#product' },
+  { label: 'Workflow', href: '#workflow' },
+]
+
+const metrics = [
+  { label: 'Active prospects', value: '128', delta: '+18 this week' },
+  { label: 'Signed athletes', value: '30', delta: '12 in brand work' },
+  { label: 'Follow-ups due', value: '24', delta: '7 high priority' },
+]
+
+const pipeline = [
+  { stage: 'Contacted', count: '43', names: ['Jordan Cross', 'Tyler Ross', 'Mina Patel'], dot: 'bg-blue-500' },
+  { stage: 'Interested', count: '19', names: ['Maya Brooks', 'Devon Hayes'], dot: 'bg-brand-500' },
+  { stage: 'Signed', count: '30', names: ['Ari Collins', 'Marcus Lee'], dot: 'bg-emerald-500' },
+]
+
+const lifecycle = [
+  ['01', 'Recruit', 'Import lists, qualify athletes, and move prospects through status.'],
+  ['02', 'Represent', 'Keep emails, notes, tasks, meetings, and ownership tied to the athlete.'],
+  ['03', 'Monetize', 'Track brand outreach, contracts, fees, payments, and revenue activity.'],
+]
+
+const productRows = [
+  {
+    label: 'Pipeline',
+    title: 'Recruiting that looks like your agency actually works.',
+    body: 'Filter by sport, school, class, region, scout, agent, marketing owner, and status without building a custom CRM from scratch.',
+  },
+  {
+    label: 'Comms',
+    title: 'Gmail is part of the athlete record.',
+    body: 'Send, schedule, and log outreach without losing context in personal inboxes or side threads.',
+  },
+  {
+    label: 'Revenue',
+    title: 'Brand deals and payments stay attached to the athlete.',
+    body: 'Know which relationships are active, which contracts are moving, and which payments still need attention.',
+  },
+]
+
+/* ---------- motion helpers ---------- */
+
+// word-by-word masked reveal (driven by GSAP on load)
+function SplitReveal({ text, className }: { text: string; className?: string }) {
+  return (
+    <span className={className} aria-label={text}>
+      {text.split(' ').map((word, i) => (
+        <span key={`${word}-${i}`} className="inline-block overflow-hidden align-bottom" aria-hidden="true">
+          <span className="split-word inline-block opacity-0 will-change-transform">
+            {word}
+            {i < text.split(' ').length - 1 ? ' ' : ''}
+          </span>
+        </span>
+      ))}
+    </span>
+  )
+}
+
+// scroll-into-view fade/slide
+function Reveal({
+  children,
+  className,
+  delay = 0,
+  y = 30,
 }: {
-  role: string
-  accent: string
-  badgeTone: string
-  description: string
-  bullets: string[]
-  triggerLabel?: string
+  children: React.ReactNode
+  className?: string
+  delay?: number
+  y?: number
 }) {
   return (
-    <div className="relative">
-      <div className={`relative rounded-3xl border ${accent} p-6 backdrop-blur-sm`}>
-        <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] ${badgeTone}`}>
-          <span className="h-1 w-1 rounded-full bg-current" />
-          {role}
-        </div>
-        <p className="mt-4 text-base font-medium text-white">{description}</p>
-        <ul className="mt-4 space-y-2">
-          {bullets.map(b => (
-            <li key={b} className="flex items-start gap-2 text-sm text-brand-200">
-              <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{b}</span>
-            </li>
-          ))}
-        </ul>
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-70px' }}
+      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+// magnetic wrapper (cursor-follow) for hero buttons
+function Magnetic({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const xTo = gsap.quickTo(el, 'x', { duration: 0.5, ease: 'power3' })
+    const yTo = gsap.quickTo(el, 'y', { duration: 0.5, ease: 'power3' })
+    const move = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect()
+      xTo((e.clientX - (r.left + r.width / 2)) * 0.35)
+      yTo((e.clientY - (r.top + r.height / 2)) * 0.35)
+    }
+    const reset = () => {
+      xTo(0)
+      yTo(0)
+    }
+    el.addEventListener('mousemove', move)
+    el.addEventListener('mouseleave', reset)
+    return () => {
+      el.removeEventListener('mousemove', move)
+      el.removeEventListener('mouseleave', reset)
+    }
+  }, [])
+  return (
+    <span ref={ref} className="inline-block will-change-transform">
+      {children}
+    </span>
+  )
+}
+
+function BrandLogo({ dark = false }: { dark?: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="relative h-8 w-11 overflow-hidden">
+        <Image src={logoSrc} alt="AthleteDesk logo" fill sizes="44px" className="object-contain object-center" priority />
       </div>
-      {triggerLabel && (
-        <div className="mt-3 text-center text-xs font-medium text-brand-400 lg:absolute lg:-right-3 lg:top-1/2 lg:mt-0 lg:-translate-y-1/2 lg:translate-x-full lg:whitespace-nowrap lg:text-left">
-          <span className="rounded-full border border-white/10 bg-brand-950/80 px-3 py-1 backdrop-blur">{triggerLabel}</span>
-        </div>
-      )}
+      <span className={`text-[15px] font-bold uppercase tracking-tight ${dark ? 'text-white' : 'text-neutral-900'}`}>
+        AthleteDesk
+      </span>
     </div>
   )
 }
 
-function BentoCard({
-  eyebrow,
-  title,
-  body,
-  icon,
-}: {
-  eyebrow: string
-  title: string
-  body: string
-  icon: string
-}) {
+function ArrowIcon() {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:bg-white/[0.05]">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/15 text-brand-300">
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={icon} />
-        </svg>
-      </div>
-      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.15em] text-brand-400">{eyebrow}</p>
-      <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-brand-200">{body}</p>
-    </div>
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4 10h11m0 0-4-4m4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
 
-function HeroDashboardMockup() {
-  const sidebarItems: { d: string; active?: boolean }[] = [
-    { d: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', active: true },
-    { d: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-    { d: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-    { d: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
-    { d: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-    { d: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-    { d: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-  ]
-  const stats = [
-    { label: 'Total Athletes', value: '737' },
-    { label: 'Signed Clients', value: '30' },
-    { label: 'In Portal', value: '120' },
-    { label: 'Brand Talks', value: '16' },
-  ]
-  const athletes = [
-    { initials: 'ML', name: 'Marcus Lee', meta: 'Football · Alabama', pill: 'Signed', pillTone: 'bg-green-100 text-green-700' },
-    { initials: 'SK', name: 'Sarah Kim', meta: 'Track · Oregon', pill: 'Interested', pillTone: 'bg-yellow-100 text-yellow-700' },
-    { initials: 'JC', name: 'Jordan Cruz', meta: 'Basketball · UCLA', pill: 'In Conversation', pillTone: 'bg-indigo-100 text-indigo-700' },
-    { initials: 'DH', name: 'Devon Hayes', meta: 'Wrestling · Iowa', pill: 'Contacted', pillTone: 'bg-blue-100 text-blue-700' },
-  ]
-
+function CheckIcon() {
   return (
-    <div className="relative">
-      <div className="absolute -inset-8 -z-10 rounded-[2rem] bg-gradient-to-tr from-brand-500/30 via-brand-400/10 to-emerald-500/20 blur-2xl" />
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-brand-950 shadow-2xl shadow-black/50">
-        {/* Browser chrome */}
-        <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.04] px-3 py-2.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
-          <div className="ml-3 flex-1 truncate rounded-md bg-black/30 px-2 py-0.5 text-center text-[10px] text-white/40">
-            app.athletedesk.com/dashboard
+    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4.5 10.4 8 13.7 15.5 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/* ---------- product mockup ---------- */
+
+function ProductVisual() {
+  return (
+    <div className="hero-product-inner relative">
+      <div className="absolute -inset-10 -z-10 rounded-[3rem] bg-gradient-to-tr from-brand-400/20 via-transparent to-blue-500/10 blur-3xl" />
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white shadow-[0_50px_140px_-30px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
+        <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-4 py-2.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
+            <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
+            <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
           </div>
+          <div className="rounded-md bg-white px-3 py-1 text-[11px] font-medium text-neutral-400 ring-1 ring-neutral-200">
+            app.athletedesk.io/agency
+          </div>
+          <div className="w-10" />
         </div>
-        {/* App body */}
-        <div className="flex bg-gray-50">
-          {/* Real-looking sidebar with left-rail accent */}
-          <div className="flex w-12 flex-shrink-0 flex-col items-center bg-brand-900 py-3">
-            <div className="mb-3 flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[10px] font-bold text-brand-600">AD</div>
-            <div className="flex flex-col items-center gap-1">
-              {sidebarItems.map((item, i) => (
-                <div key={i} className="relative flex h-7 w-9 items-center justify-center">
-                  {item.active && (
-                    <span className="absolute -left-1 top-1 bottom-1 w-0.5 rounded-r-full bg-white" />
-                  )}
-                  <svg className={`h-4 w-4 ${item.active ? 'text-white' : 'text-brand-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={item.d} />
-                  </svg>
-                </div>
+
+        <div className="grid grid-cols-[60px_1fr] bg-neutral-950">
+          <aside className="flex flex-col items-center gap-2.5 border-r border-white/5 py-4">
+            <div className="relative h-7 w-9">
+              <Image src={logoSrc} alt="AthleteDesk logo" fill sizes="36px" className="object-contain" />
+            </div>
+            <div className="mt-3 flex flex-col items-center gap-2">
+              {[0, 1, 2, 3, 4].map(item => (
+                <div key={item} className={`h-7 w-7 rounded-lg ${item === 1 ? 'bg-brand-500' : 'bg-white/[0.06]'}`} />
               ))}
             </div>
-          </div>
+          </aside>
 
-          {/* Content */}
-          <div className="min-w-0 flex-1">
-            {/* Greeting bar */}
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <p className="text-sm font-semibold text-gray-900">Good morning, Ava 👋</p>
-              <p className="text-[11px] text-gray-500">You have 3 follow-ups due today</p>
-            </div>
-
-            <div className="space-y-3 p-3 sm:p-4">
-              {/* Stat cards — matches real dashboard */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {stats.map(s => (
-                  <div key={s.label} className="rounded border border-gray-200 bg-white p-2.5">
-                    <p className="truncate text-[9px] font-medium uppercase tracking-wide text-gray-500">{s.label}</p>
-                    <p className="mt-1 text-xl font-semibold text-gray-900">{s.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Recent Athletes card */}
-              <div className="rounded border border-gray-200 bg-white p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-900">Recent Athletes</p>
-                  <span className="text-[10px] font-medium text-brand-600">View all</span>
+          <div className="min-w-0 bg-neutral-50">
+            <div className="border-b border-neutral-200 bg-white px-5 py-4">
+              <div className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-500">Agency command</p>
+                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-neutral-900">Maya Brooks</h2>
+                  <p className="mt-1 text-sm text-neutral-500">Track &amp; Field · Ohio State · Junior · Midwest</p>
                 </div>
-                <div className="space-y-0.5">
-                  {athletes.map(a => (
-                    <div key={a.name} className="flex items-center gap-2 rounded px-1.5 py-1.5 hover:bg-gray-50">
-                      <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 text-[9px] font-bold text-brand-700">
-                        {a.initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[11px] font-medium text-gray-900">{a.name}</p>
-                        <p className="truncate text-[10px] text-gray-500">{a.meta}</p>
-                      </div>
-                      <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium ${a.pillTone}`}>
-                        {a.pill}
-                      </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {metrics.map(metric => (
+                    <div key={metric.label} className="min-w-[110px] rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">{metric.label}</p>
+                      <p className="mt-1 text-xl font-bold tracking-tight text-neutral-900">{metric.value}</p>
+                      <p className="mt-0.5 text-[11px] font-semibold text-neutral-600">{metric.delta}</p>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
-function PipelineMockup() {
-  // Matches OUTREACH_COLUMNS in the real recruiting page
-  const cols: { name: string; border: string; bg: string; items: { name: string; meta: string }[] }[] = [
-    {
-      name: 'Contacted',
-      border: 'border-blue-300',
-      bg: 'bg-blue-50',
-      items: [
-        { name: 'Devon Hayes', meta: 'Wrestling · 2026' },
-        { name: 'Tyler Ross', meta: 'Football · 2025' },
-      ],
-    },
-    {
-      name: 'Interested',
-      border: 'border-yellow-300',
-      bg: 'bg-yellow-50',
-      items: [
-        { name: 'Sarah Kim', meta: 'Track · 2025' },
-        { name: 'Alex Park', meta: 'Basketball · 2026' },
-      ],
-    },
-    {
-      name: 'Signed',
-      border: 'border-green-300',
-      bg: 'bg-green-50',
-      items: [
-        { name: 'Marcus Lee', meta: 'Football · 2025' },
-      ],
-    },
-  ]
-  return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="grid grid-cols-3 gap-px bg-gray-100">
-        {cols.map(col => (
-          <div key={col.name} className="bg-white">
-            <div className={`border-b-2 ${col.border} bg-gray-50 px-2 py-1.5`}>
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold text-gray-700">{col.name}</p>
-                <span className="text-[9px] font-medium text-gray-500">{col.items.length}</span>
-              </div>
-            </div>
-            <div className={`${col.bg} space-y-1.5 p-1.5`}>
-              {col.items.map(item => (
-                <div key={item.name} className="rounded border border-gray-200 bg-white p-1.5 shadow-sm">
-                  <p className="text-[10px] font-medium text-gray-900">{item.name}</p>
-                  <p className="text-[9px] text-gray-500">{item.meta}</p>
+            <div className="grid grid-cols-[1.1fr_0.9fr] gap-4 p-4">
+              <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Recruiting</p>
+                    <h3 className="mt-1 text-base font-bold tracking-tight text-neutral-900">Pipeline movement</h3>
+                  </div>
+                  <span className="rounded-full bg-neutral-900 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-brand-300">Handoff ready</span>
                 </div>
-              ))}
+
+                <div className="mt-5 grid grid-cols-3 gap-3">
+                  {pipeline.map(col => (
+                    <div key={col.stage} className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+                      <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`h-1.5 w-1.5 rounded-full ${col.dot}`} />
+                          <p className="text-xs font-bold text-neutral-700">{col.stage}</p>
+                        </div>
+                        <span className="text-xs font-semibold text-neutral-400">{col.count}</span>
+                      </div>
+                      <div className="space-y-2 p-2">
+                        {col.names.map(name => (
+                          <div key={name} className="rounded-md border border-neutral-200 bg-white p-2 shadow-sm">
+                            <p className="text-xs font-bold text-neutral-800">{name}</p>
+                            <p className="mt-1 text-[11px] text-neutral-500">Next: follow-up email</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Timeline</p>
+                    <h3 className="mt-1 text-base font-bold tracking-tight text-neutral-900">Athlete record</h3>
+                  </div>
+                  <span className="rounded-full bg-brand-500 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Interested</span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {[
+                    ['9:12 AM', 'Scout marked athlete interested'],
+                    ['10:04 AM', 'Agent assigned automatically'],
+                    ['11:30 AM', 'Note added by agent'],
+                    ['Tomorrow', 'Scheduled Gmail follow-up'],
+                    ['Friday', 'Intro call booked'],
+                  ].map(([time, text]) => (
+                    <div key={text} className="grid grid-cols-[72px_1fr] gap-3 text-sm">
+                      <p className="text-xs font-semibold text-neutral-400">{time}</p>
+                      <p className="border-l-2 border-brand-400 pl-3 text-neutral-700">{text}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function InboxMockup() {
-  // Matches the real email list styling
-  const threads: { initials: string; from: string; subject: string; preview: string; when: string; unread: boolean }[] = [
-    { initials: 'CP', from: 'Coach Patterson', subject: 'Re: Visit weekend', preview: 'Looks good — we can host him Saturday morning.', when: '2h', unread: true },
-    { initials: 'SK', from: 'Sarah Kim', subject: 'Updated 400m times', preview: 'Just ran a 52.1 at regionals this weekend!', when: '5h', unread: true },
-    { initials: 'ML', from: 'Marcus Lee — parent', subject: 'NIL paperwork question', preview: 'Wanted to confirm the W-9 deadline before…', when: '1d', unread: false },
-    { initials: 'JC', from: 'Jordan Cruz', subject: 'Re: Apparel deal', preview: 'I\'m in. When can we get on a call?', when: '2d', unread: false },
-  ]
-  return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span className="text-[11px] text-gray-500">Inbox</span>
-          <span className="ml-auto rounded bg-brand-100 px-1.5 py-0.5 text-[9px] font-semibold text-brand-700">2 unread</span>
         </div>
       </div>
-      <div>
-        {threads.map((t, idx) => (
-          <div
-            key={t.from}
-            className={`flex items-start gap-2 px-3 py-2 ${idx > 0 ? 'border-t border-gray-100' : ''} ${t.unread ? 'bg-blue-50/40' : 'bg-white'}`}
-          >
-            <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 text-[9px] font-bold text-brand-700">
-              {t.initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <p className={`truncate text-[11px] ${t.unread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>{t.from}</p>
-                <span className="text-[9px] text-gray-400">{t.when}</span>
-              </div>
-              <p className={`truncate text-[11px] ${t.unread ? 'font-medium text-gray-900' : 'text-gray-600'}`}>{t.subject}</p>
-              <p className="truncate text-[10px] text-gray-500">{t.preview}</p>
-            </div>
-            {t.unread && <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-500" />}
-          </div>
-        ))}
+    </div>
+  )
+}
+
+// renders the desktop mockup at a fixed width and scales it to fit any screen,
+// so it always reads as a desktop app (never reflows to a phone layout)
+function DesktopMock() {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [dims, setDims] = useState({ scale: 1, height: 0 })
+
+  useEffect(() => {
+    const compute = () => {
+      const wrap = wrapRef.current
+      const inner = innerRef.current
+      if (!wrap || !inner) return
+      const scale = Math.min(1, wrap.clientWidth / 1000)
+      setDims({ scale, height: inner.offsetHeight * scale })
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    if (wrapRef.current) ro.observe(wrapRef.current)
+    return () => ro.disconnect()
+  }, [])
+
+  return (
+    <div ref={wrapRef} className="relative w-full overflow-hidden" style={{ height: dims.height || undefined }}>
+      <div className="absolute left-1/2" style={{ width: 1000, marginLeft: -500 }}>
+        <div ref={innerRef} style={{ transform: `scale(${dims.scale})`, transformOrigin: 'top center' }}>
+          <ProductVisual />
+        </div>
       </div>
     </div>
   )
 }
 
-const workflow = [
-  {
-    step: '01',
-    title: 'Import or add prospects',
-    body: 'Upload an Excel list by region or add athletes one-by-one. Sport, school, contact info, recruiting status — all on the athlete profile.',
-  },
-  {
-    step: '02',
-    title: 'Scouts work the pipeline',
-    body: 'Log calls, emails, and meetings. Mark prospects "interested" and the system auto-hands them off to the right agent.',
-  },
-  {
-    step: '03',
-    title: 'Agents close, marketing takes over',
-    body: 'When an athlete signs, marketing is automatically assigned to manage their brand deals and roster activity.',
-  },
-  {
-    step: '04',
-    title: 'Track revenue & report',
-    body: 'Every deal, every fee, every follow-up. Monthly dashboards, team productivity, and full activity audit trail.',
-  },
-]
+function WorkflowSection({ workflowRef }: { workflowRef: React.RefObject<HTMLElement> }) {
+  return (
+    <section ref={workflowRef} id="workflow" className="bg-neutral-950 text-white">
+      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="max-w-2xl">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-brand-300">
+            <span className="h-2 w-2 bg-brand-400" /> Agency workflow
+          </p>
+          <h2 className="mt-6 text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl">
+            One athlete record, moving through the whole business.
+          </h2>
+          <p className="mt-5 text-lg leading-7 text-neutral-400">
+            Scout to agent to marketing to admin — the same record carries every note, email,
+            and status as it hands off. No re-typing, no lost context.
+          </p>
+        </div>
 
-const faqs = [
-  {
-    q: 'Who is this built for?',
-    a: 'Full-service NIL agencies and sports agencies managing athletes across multiple sports and regions. In production with agencies running football, basketball, track & field, and wrestling rosters — 700+ athletes across 7 regions.',
-  },
-  {
-    q: 'What sports does it support?',
-    a: 'Sport-agnostic. Currently in use for football, basketball, track & field, and wrestling. Sport-specific fields where it matters; flexible where it doesn\'t.',
-  },
-  {
-    q: 'How does Gmail integration work?',
-    a: 'Connect your Gmail with one click. Emails sent from the CRM go through your Gmail account and auto-log to the athlete\'s communication history. Your inbox is searchable inside the app.',
-  },
-  {
-    q: 'Can I import existing athlete data?',
-    a: 'Yes. Excel and CSV import with multi-sheet support (one sheet per region), smart column mapping, and auto-creation of regions and teams. Hundreds of rows in one upload.',
-  },
-  {
-    q: 'How does the demo work?',
-    a: 'Click "Try the Demo" to open a seeded sandbox with athletes, tasks, pipeline movement, communications, and deals. It is safe to explore and does not touch any live client workspace.',
-  },
-  {
-    q: 'How do I get my own account?',
-    a: 'Demo accounts are open. Real agency accounts are invite-only while we onboard new clients. Email us to request access.',
-  },
-]
+        <WorkflowRelay />
+      </div>
+    </section>
+  )
+}
+
+/* ---------- page ---------- */
 
 export default function Home() {
+  const workflowRef = useRef<HTMLElement>(null)
+  const heroRef = useRef<HTMLElement>(null)
+  const [pastHero, setPastHero] = useState(false)
+  const [navHidden, setNavHidden] = useState(false)
+
+  useEffect(() => {
+    gsap.registerPlugin(ScrollTrigger, MotionPathPlugin)
+
+    const lenis = new Lenis({ lerp: 0.1, smoothWheel: true })
+    lenis.on('scroll', () => ScrollTrigger.update())
+    const raf = (time: number) => lenis.raf(time * 1000)
+    gsap.ticker.add(raf)
+    gsap.ticker.lagSmoothing(0)
+
+    const ctx = gsap.context(() => {
+      // hero entrance — gsap owns the start state so the % reveal is reliable
+      gsap.set('.split-word', { yPercent: 110, opacity: 1 })
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+      tl.to('.split-word', { yPercent: 0, stagger: 0.05, duration: 0.95 }, 0.15)
+        .fromTo('.hero-sub', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, 0.6)
+        .fromTo('.hero-cta', { y: 18, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.08, duration: 0.6 }, 0.72)
+        .fromTo('.hero-chips', { y: 18, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.1, duration: 0.6 }, 0.84)
+        .fromTo('.hero-hint', { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6 }, 1.05)
+
+      // nav matches the section it's over: dark on the hero, light on the body
+      ScrollTrigger.create({
+        trigger: heroRef.current,
+        start: 'bottom top+=66',
+        onEnter: () => setPastHero(true),
+        onLeaveBack: () => setPastHero(false),
+      })
+
+      // hide the landing nav while the dashboard takes over (so it doesn't cover it)
+      ScrollTrigger.create({
+        trigger: heroRef.current,
+        start: '36% top',
+        onEnter: () => setNavHidden(true),
+        onLeaveBack: () => setNavHidden(false),
+      })
+
+      // iOS-style sheet: the dashboard slides up and takes over (snappy), then holds
+      // hold the hero (chips readable) for a beat, THEN slide the dashboard up.
+      // linear ease = the sheet tracks scroll 1:1, so it feels dragged, not forced.
+      const sheetST = { trigger: heroRef.current, start: '22% top', end: '46% top', scrub: 1.1 } as const
+      gsap.fromTo(
+        '.sheet',
+        { yPercent: 100, opacity: 1 },
+        { yPercent: 0, opacity: 1, ease: 'none', scrollTrigger: sheetST }
+      )
+      // the hero recedes gently behind it (subtle, so the blend reads soft)
+      gsap.fromTo(
+        '.hero-recede',
+        { scale: 1, opacity: 1, filter: 'blur(0px)' },
+        { scale: 0.95, opacity: 0.45, filter: 'blur(7px)', ease: 'none', scrollTrigger: sheetST }
+      )
+
+      // bring the dashboard to life as it takes over — all at once
+      const liveTrigger = { trigger: heroRef.current, start: '38% top', once: true }
+
+      gsap.utils.toArray<HTMLElement>('.ld-num').forEach(el => {
+        const target = parseFloat(el.dataset.target || '0')
+        const prefix = el.dataset.prefix || ''
+        const obj = { v: 0 }
+        gsap.to(obj, {
+          v: target,
+          duration: 1.8,
+          ease: 'power2.out',
+          scrollTrigger: liveTrigger,
+          onUpdate: () => {
+            el.textContent = prefix + Math.round(obj.v).toLocaleString()
+          },
+        })
+      })
+
+      gsap.fromTo(
+        '.ld-card',
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.05, scrollTrigger: liveTrigger }
+      )
+
+      // workflow handoff relay — record travels Scout → Agent → Marketing → Admin
+      const relay = document.querySelector('.relay-wrap')
+      if (relay) {
+        const lefts = ['12.5%', '37.5%', '62.5%', '87.5%']
+        const statuses = [
+          { label: 'New prospect', cls: 'bg-sky-100 text-sky-700' },
+          { label: 'In conversation', cls: 'bg-amber-100 text-amber-700' },
+          { label: 'Signed', cls: 'bg-violet-100 text-violet-700' },
+          { label: 'Active client', cls: 'bg-emerald-100 text-emerald-700' },
+        ]
+        const stationEls = gsap.utils.toArray<HTMLElement>('.relay-station, .relay-station-v')
+        const labelEls = gsap.utils.toArray<HTMLElement>('.relay-label')
+        const textEls = gsap.utils.toArray<HTMLElement>('.relay-text')
+        const recordEl = document.querySelector('.relay-record') as HTMLElement | null
+        const statusEl = document.querySelector('.relay-record-status') as HTMLElement | null
+
+        const activate = (idx: number) => {
+          stationEls.forEach(el => el.classList.toggle('relay-on', Number(el.dataset.i) <= idx))
+          labelEls.forEach((el, i) => el.classList.toggle('relay-label-on', i === idx))
+          textEls.forEach((el, i) => { el.style.opacity = i <= idx ? '1' : '0.4' })
+          if (statusEl) {
+            const s = statuses[idx]
+            statusEl.textContent = s.label
+            statusEl.className =
+              'relay-record-status mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ' + s.cls
+          }
+        }
+        activate(0)
+
+        // line draw + record travel, scrubbed to scroll
+        gsap.to('.relay-line-fg', {
+          scaleX: 1,
+          ease: 'none',
+          scrollTrigger: { trigger: relay, start: 'top 62%', end: 'bottom 82%', scrub: 1 },
+        })
+        gsap.to('.relay-line-fg-v', {
+          scaleY: 1,
+          ease: 'none',
+          scrollTrigger: { trigger: relay, start: 'top 70%', end: 'bottom 85%', scrub: 1 },
+        })
+
+        let current = -1
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: relay,
+            start: 'top 60%',
+            end: 'bottom 80%',
+            scrub: 1,
+            onUpdate: self => {
+              const p = self.progress
+              const idx = p < 0.26 ? 0 : p < 0.52 ? 1 : p < 0.78 ? 2 : 3
+              if (idx !== current) { current = idx; activate(idx) }
+            },
+          },
+        })
+        if (recordEl) {
+          for (let i = 1; i < lefts.length; i++) {
+            tl.to(recordEl, { left: lefts[i], ease: 'power1.inOut', duration: 1 }).to({}, { duration: 0.4 })
+          }
+        }
+      }
+
+      // lifecycle flow — token travels Recruit → Represent → Monetize, line draws, stages light up
+      const lifeWrap = document.querySelector('.life-wrap')
+      const fg = document.querySelector('.life-line-fg') as SVGPathElement | null
+      if (lifeWrap && fg) {
+        const len = fg.getTotalLength()
+        gsap.set(fg, { strokeDasharray: len, strokeDashoffset: len })
+        const lifeST = { trigger: lifeWrap, start: 'top 78%', end: 'top 30%', scrub: 1 } as const
+        gsap.to(fg, { strokeDashoffset: 0, ease: 'none', scrollTrigger: lifeST })
+        gsap.to('.life-token', {
+          motionPath: { path: '#lifePath', align: '#lifePath', alignOrigin: [0.5, 0.5] },
+          ease: 'none',
+          scrollTrigger: lifeST,
+        })
+        const nodes = gsap.utils.toArray<SVGCircleElement>('.life-node')
+        const labels = gsap.utils.toArray<HTMLElement>('.life-label')
+        ScrollTrigger.create({
+          trigger: lifeWrap,
+          start: 'top 78%',
+          end: 'top 30%',
+          scrub: 1,
+          onUpdate: self => {
+            ;[0, 0.5, 1].forEach((threshold, i) => {
+              const active = self.progress >= threshold - 0.03
+              const node = nodes[i]
+              if (node) {
+                node.setAttribute('fill', active ? '#0ea5e9' : '#ffffff')
+                node.setAttribute('stroke', active ? '#0ea5e9' : '#d6d3cd')
+              }
+              if (labels[i]) labels[i].style.opacity = active ? '1' : '0.4'
+            })
+          },
+        })
+      }
+
+      // horizontal product scroll — panels move sideways as you scroll down
+      const track = document.querySelector('.hscroll-track') as HTMLElement | null
+      const wrap = document.querySelector('.hscroll-wrap') as HTMLElement | null
+      if (track && wrap) {
+        const panelEls = gsap.utils.toArray<HTMLElement>('.hpanel')
+        const dots = Array.from(document.querySelectorAll<HTMLElement>('.hp-dot'))
+
+        const hTween = gsap.to(track, {
+          x: () => -(track.scrollWidth - window.innerWidth),
+          ease: 'none',
+          scrollTrigger: {
+            trigger: wrap,
+            start: 'top top',
+            end: () => `+=${track.scrollWidth - window.innerWidth}`,
+            pin: true,
+            scrub: 1,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+            onUpdate: self => {
+              const idx = Math.round(self.progress * (panelEls.length - 1))
+              dots.forEach((d, i) => {
+                d.classList.toggle('bg-sky-400', i === idx)
+                d.classList.toggle('w-6', i === idx)
+                d.classList.toggle('bg-white/25', i !== idx)
+              })
+            },
+          },
+        })
+
+        panelEls.forEach(panel => {
+          const enter = { trigger: panel, containerAnimation: hTween, start: 'left 82%' } as const
+          const text = panel.querySelector('.hp-text')
+          const visual = panel.querySelector('.hp-visual')
+          const rises = panel.querySelectorAll('.hp-rise')
+          const chart = panel.querySelector('.hp-chart')
+
+          // dramatic entrance as the panel slides into view (vertical, stays in its lane)
+          if (text) gsap.from(text, { y: 44, opacity: 0, duration: 0.8, ease: 'power3.out', scrollTrigger: enter })
+          if (visual) gsap.from(visual, { y: 56, opacity: 0, duration: 0.9, ease: 'power3.out', scrollTrigger: enter })
+          if (rises.length)
+            gsap.from(rises, { y: 44, opacity: 0, stagger: 0.1, duration: 0.6, ease: 'power2.out', scrollTrigger: { trigger: panel, containerAnimation: hTween, start: 'left 68%' } })
+          if (chart)
+            gsap.fromTo(chart, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 1, ease: 'power2.out', scrollTrigger: { trigger: panel, containerAnimation: hTween, start: 'left 62%' } })
+
+          // parallax — visual and text drift vertically at different rates (Apple depth)
+          const cross = { trigger: panel, containerAnimation: hTween, start: 'left right', end: 'right left', scrub: true } as const
+          if (visual) gsap.fromTo(visual, { yPercent: -7 }, { yPercent: 7, ease: 'none', scrollTrigger: cross })
+          if (text) gsap.fromTo(text, { yPercent: 4 }, { yPercent: -4, ease: 'none', scrollTrigger: cross })
+        })
+      }
+    })
+
+    return () => {
+      ctx.revert()
+      gsap.ticker.remove(raf)
+      lenis.destroy()
+    }
+  }, [])
+
   return (
-    <div className="min-h-screen bg-brand-950 text-white">
-      {/* Nav */}
-      <header className="border-b border-white/5">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white">
-              <span className="text-sm font-bold text-brand-600">AD</span>
-            </div>
-            <span className="text-lg font-semibold">AthleteDesk</span>
+    <main className="min-h-screen bg-[#f4f4f1] text-neutral-900">
+      {/* NAV */}
+      <header
+        className={`sticky top-0 z-50 transition-all duration-300 ${
+          navHidden && !pastHero
+            ? 'pointer-events-none -translate-y-full opacity-0'
+            : pastHero
+              ? 'border-b border-neutral-200 bg-[#f4f4f1]/95 backdrop-blur-xl'
+              : 'border-b border-white/10 bg-neutral-950'
+        }`}
+      >
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
+          <BrandLogo dark={!pastHero} />
+          <div className={`hidden items-center gap-8 text-sm font-semibold md:flex ${pastHero ? 'text-neutral-500' : 'text-neutral-400'}`}>
+            {navItems.map(item => (
+              <a key={item.href} href={item.href} className={`transition-colors ${pastHero ? 'hover:text-neutral-900' : 'hover:text-white'}`}>
+                {item.label}
+              </a>
+            ))}
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href="/login"
-              className="hidden text-sm font-medium text-white/70 transition-colors hover:text-white sm:inline"
-            >
+          <div className="flex items-center gap-2">
+            <Link href="/login" className={`inline-flex px-3 py-2 text-sm font-bold transition-colors sm:px-4 ${pastHero ? 'text-neutral-600 hover:text-neutral-900' : 'text-neutral-300 hover:text-white'}`}>
               Sign in
             </Link>
             <Link
               href="/api/demo"
-              className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition-transform hover:scale-[1.02]"
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-400"
             >
-              Try the demo
+              Demo <ArrowIcon />
             </Link>
           </div>
         </nav>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-0 bg-gradient-to-br from-brand-900 via-brand-950 to-black" />
-        <div className="absolute -top-32 left-1/2 -z-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-brand-500/20 blur-3xl" />
-        <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-12 sm:px-6 sm:pt-20 lg:pb-28 lg:pl-4 lg:pr-8 lg:pt-24 xl:pl-2">
-          <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.35fr] lg:gap-12">
-            <div className="text-left">
-              <h1 className="text-5xl font-bold tracking-tight leading-[1.05] sm:text-6xl lg:text-[4.75rem]">
-                Recruit. Sign.{' '}
-                <span className="bg-gradient-to-r from-brand-300 to-emerald-300 bg-clip-text text-transparent">
-                  Run brand deals.
-                </span>
-              </h1>
-              <p className="mt-5 max-w-xl text-lg text-brand-200">
-                One CRM built for sports agencies.
-              </p>
+      {/* HERO + iOS-style sheet takeover */}
+      <section ref={heroRef} className="relative h-[190vh] bg-neutral-950 text-white">
+        <div className="sticky top-0 h-screen overflow-hidden">
+          {/* hero layer — recedes behind the sheet */}
+          <div className="hero-recede absolute inset-0 z-0 will-change-transform">
+            {/* grid + glows */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.5]"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)',
+                backgroundSize: '64px 64px',
+                maskImage: 'radial-gradient(ellipse 60% 50% at 50% 18%, black 30%, transparent 72%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 60% 50% at 50% 18%, black 30%, transparent 72%)',
+              }}
+            />
+            <div className="pointer-events-none absolute left-1/2 -top-32 h-[560px] w-[820px] -translate-x-1/2 rounded-full bg-brand-500/12 blur-[140px]" />
+            <div className="pointer-events-none absolute right-0 top-1/4 h-[420px] w-[420px] rounded-full bg-blue-600/12 blur-[130px]" />
 
-              <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+            {/* centered headline — fills the first screen */}
+            <div className="relative mx-auto flex h-full max-w-5xl flex-col items-center justify-center px-4 text-center sm:px-6">
+          <h1 className="mx-auto max-w-4xl text-[3.2rem] font-bold uppercase leading-[0.9] tracking-tight sm:text-7xl lg:text-[6rem]">
+            <SplitReveal text="Run the full athlete business from one desk." />
+          </h1>
+
+          <p className="hero-sub mx-auto mt-8 max-w-2xl text-lg leading-8 text-neutral-300 opacity-0">
+            AthleteDesk connects recruiting, Gmail outreach, handoffs, brand deals, tasks, and revenue around one athlete record. Built for agencies that need the whole team in the room.
+          </p>
+
+          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Magnetic>
+              <Link
+                href="/api/demo"
+                className="hero-cta inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 px-8 py-3.5 text-base font-bold text-white opacity-0 transition-colors hover:bg-brand-400"
+              >
+                Try the demo <ArrowIcon />
+              </Link>
+            </Magnetic>
+            <Magnetic>
+              <Link
+                href={buildDemoAccessMailto()}
+                className="hero-cta inline-flex items-center justify-center rounded-full border border-white/20 bg-white/[0.02] px-8 py-3.5 text-base font-bold text-white opacity-0 transition-colors hover:border-white/40 hover:bg-white/[0.06]"
+              >
+                Request access
+              </Link>
+            </Magnetic>
+          </div>
+
+          {SHOW_DEMO_CREDENTIALS && (
+            <div className="hero-chips mx-auto mt-4 inline-flex flex-col gap-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-neutral-400 opacity-0 sm:flex-row sm:items-center sm:gap-3">
+              <span className="font-bold text-white">Manual sign in:</span>
+              <code className="font-mono text-neutral-300">{DEMO_USER_EMAIL}</code>
+              <span className="hidden text-white/20 sm:inline">/</span>
+              <code className="font-mono text-neutral-300">{DEMO_PASSWORD_HINT}</code>
+            </div>
+          )}
+
+          <div className="hero-chips mx-auto mt-11 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 opacity-0 sm:grid-cols-4">
+            {['No per-seat tax', 'Athlete lifecycle', 'Gmail built in', 'Brand revenue'].map(item => (
+              <div key={item} className="bg-neutral-950 px-4 py-4 text-left">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white">
+                  <CheckIcon />
+                </span>
+                <p className="mt-2.5 text-sm font-bold text-neutral-200">{item}</p>
+              </div>
+            ))}
+          </div>
+            </div>
+
+            {/* pull-up hint — signals the dashboard slides up */}
+            <div className="hero-hint absolute bottom-7 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 opacity-0">
+              <span className="h-1.5 w-11 rounded-full bg-white/30" />
+              <svg className="h-4 w-4 animate-bounce text-white/45" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 14l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          </div>
+
+          {/* dashboard sheet — slides up and takes over (iOS-style) */}
+          <div className="sheet absolute inset-0 z-10 opacity-0 will-change-transform">
+            <div className="flex h-full flex-col overflow-hidden rounded-t-[28px] border-t border-white/10 bg-white shadow-[0_-30px_90px_rgba(0,0,0,0.55)]">
+              {/* iOS grabber */}
+              <div className="flex flex-shrink-0 justify-center bg-white pt-2.5 pb-1.5">
+                <span className="h-1.5 w-11 rounded-full bg-slate-300" />
+              </div>
+              <div className="min-h-0 flex-1">
+                <LiveDashboard />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* DIFFERENCE — light */}
+      <section id="difference" className="bg-[#f4f4f1]">
+        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+          <Reveal className="max-w-3xl">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-neutral-500">
+              <span className="h-2 w-2 bg-brand-500" /> Why AthleteDesk
+            </p>
+            <h2 className="mt-5 text-4xl font-bold uppercase leading-[0.95] tracking-tight sm:text-5xl">
+              Generic CRMs manage contacts. NIL agencies manage athlete lifecycles.
+            </h2>
+          </Reveal>
+
+          {/* animated lifecycle flow */}
+          <LifecycleFlow />
+
+          <div className="mt-14 grid gap-4 lg:grid-cols-2">
+            <Reveal>
+              <div className="h-full rounded-2xl border border-neutral-300 bg-white p-8">
+                <p className="text-xs font-bold uppercase tracking-[0.25em] text-neutral-400">Generic CRM</p>
+                <h3 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-neutral-400">Contacts, companies, deals, and more seats.</h3>
+                <ul className="mt-7">
+                  {['Pricing rises as the team grows', 'NIL workflow needs custom fields and workarounds', 'Recruiting, email, deals, and revenue drift apart'].map((item, i) => (
+                    <li key={item} className={`flex gap-3 py-3.5 text-neutral-500 ${i > 0 ? 'border-t border-neutral-200' : ''}`}>
+                      <span className="mt-0.5 font-bold text-neutral-300">×</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <div className="h-full rounded-2xl border border-neutral-900 bg-neutral-950 p-8 text-white">
+                <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-300">AthleteDesk</p>
+                <h3 className="mt-4 text-2xl font-bold leading-tight tracking-tight">Athletes, handoffs, communication, and revenue in one layer.</h3>
+                <ul className="mt-7">
+                  {['Invite scouts, agents, marketing, interns, and admins', 'Built around recruit -> represent -> monetize', 'Every email, task, deal, and dollar stays attached to the athlete'].map((item, i) => (
+                    <li key={item} className={`flex gap-3 py-3.5 text-neutral-200 ${i > 0 ? 'border-t border-white/10' : ''}`}>
+                      <span className="mt-0.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-brand-500 text-white"><CheckIcon /></span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* PRODUCT — white */}
+      {/* PRODUCT — title + horizontal-scroll showcase together */}
+      <ProductScroll />
+
+      <WorkflowSection workflowRef={workflowRef} />
+
+      {/* PRICING / CTA — dark with a blue glow (blends workflow → cta → footer) */}
+      <section className="relative overflow-hidden bg-neutral-950">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[460px] w-[760px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-brand-500/15 blur-[130px]" />
+        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+          <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end">
+            <Reveal>
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-300">Pricing philosophy</p>
+              <h2 className="mt-4 max-w-3xl text-5xl font-bold uppercase leading-[0.92] tracking-tight text-white sm:text-6xl">
+                Bring the whole team. Don&apos;t pay a tax on collaboration.
+              </h2>
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-neutral-400">
+                AthleteDesk is positioned for agency workspaces, usage, and growth, not charging you every time a scout or marketer needs access.
+              </p>
+            </Reveal>
+            <Reveal delay={0.1}>
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <Link
                   href="/api/demo"
-                  className="rounded-full bg-white px-7 py-3 text-base font-semibold text-brand-900 shadow-lg shadow-brand-500/20 transition-transform hover:scale-[1.02]"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-brand-500/25 transition-colors hover:bg-brand-400"
                 >
-                  Try the demo — no signup
+                  Try the demo <ArrowIcon />
                 </Link>
                 <Link
-                  href="/login"
-                  className="rounded-full border border-white/20 px-7 py-3 text-base font-medium text-white transition-colors hover:bg-white/10"
+                  href={buildDemoAccessMailto('AthleteDesk - Access Request')}
+                  className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/[0.02] px-7 py-3.5 text-base font-bold text-white transition-colors hover:border-white/40 hover:bg-white/[0.06]"
                 >
-                  Sign in
+                  Request access
                 </Link>
               </div>
-
-              {SHOW_DEMO_CREDENTIALS && (
-                <div className="mt-4 inline-flex flex-col items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-xs text-brand-300 sm:flex-row sm:gap-3 sm:text-sm">
-                  <span className="font-medium text-white/80">Manual sign in:</span>
-                  <code className="font-mono text-brand-200">{DEMO_USER_EMAIL}</code>
-                  <span className="hidden text-white/30 sm:inline">/</span>
-                  <code className="font-mono text-brand-200">{DEMO_PASSWORD_HINT}</code>
-                </div>
-              )}
-            </div>
-
-            <div className="relative lg:-mr-8 xl:-mr-16">
-              <HeroDashboardMockup />
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
 
-      {/* Audience strip */}
-      <section className="border-y border-white/5 bg-brand-950/80">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <p className="text-center text-xs font-medium uppercase tracking-[0.2em] text-brand-300">
-            Built for full-service NIL & sports agencies
-          </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-white/70">
-            <span>Football</span>
-            <span className="text-white/20">•</span>
-            <span>Basketball</span>
-            <span className="text-white/20">•</span>
-            <span>Track & Field</span>
-            <span className="text-white/20">•</span>
-            <span>Wrestling</span>
-            <span className="text-white/20">•</span>
-            <span>Multi-sport</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Features — bento layout */}
-      <section className="bg-brand-950">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything a sports agency runs on.
-            </h2>
-            <p className="mt-4 text-lg text-brand-200">
-              Recruiting, communication, deals, contracts, and revenue — one tool, one source of truth.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Big card 1 — pipeline */}
-            <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:bg-white/[0.05] md:col-span-2 md:row-span-2 lg:col-span-2">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-brand-400">
-                <span className="h-1 w-1 rounded-full bg-brand-400" />
-                Recruiting
-              </div>
-              <h3 className="mt-3 text-2xl font-semibold">Pipeline that hands itself off.</h3>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-brand-200">
-                Kanban from prospect to signed. When a scout marks &quot;interested,&quot; it auto-hands off to the right agent. When the athlete signs, marketing takes over.
-              </p>
-              <div className="mt-6">
-                <PipelineMockup />
-              </div>
-            </div>
-
-            {/* Big card 2 — communications */}
-            <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:bg-white/[0.05] md:col-span-2 md:row-span-2 lg:col-span-2">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-emerald-400">
-                <span className="h-1 w-1 rounded-full bg-emerald-400" />
-                Communications
-              </div>
-              <h3 className="mt-3 text-2xl font-semibold">Gmail, built in.</h3>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-brand-200">
-                Send from your Gmail inside the CRM. Every email auto-logs to the athlete. Templates, follow-up reminders, threaded view per athlete.
-              </p>
-              <div className="mt-6">
-                <InboxMockup />
-              </div>
-            </div>
-
-            {/* Small cards */}
-            <BentoCard
-              eyebrow="Athletes"
-              title="One profile per athlete"
-              body="Sport, school, region, deal history, comms, documents — every record lives in one place."
-              icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-            <BentoCard
-              eyebrow="Brand deals"
-              title="Track every dollar"
-              body="Outreach, deal stages, contract status, agency fees. Monthly and lifetime revenue."
-              icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-            <BentoCard
-              eyebrow="Tasks"
-              title="Work the work"
-              body="Assign tasks to athletes. @mention teammates. Activity feed shows what changed."
-              icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-            />
-            <BentoCard
-              eyebrow="Import"
-              title="Bulk upload by region"
-              body="Excel with multi-sheet support, smart column mapping, auto-region creation."
-              icon="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Workflow */}
-      <section className="border-t border-white/5 bg-gradient-to-b from-brand-950 to-black">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              How agencies use it.
-            </h2>
-            <p className="mt-4 text-lg text-brand-200">
-              The full lifecycle, automated where it matters.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {workflow.map(step => (
-              <div
-                key={step.step}
-                className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-6"
-              >
-                <p className="text-xs font-bold tracking-[0.2em] text-brand-400">{step.step}</p>
-                <h3 className="mt-3 text-lg font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-brand-200">{step.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Handoff workflow */}
-      <section className="border-t border-white/5 bg-brand-950">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              The handoff that makes it click.
-            </h2>
-            <p className="mt-4 text-lg text-brand-200">
-              Most CRMs leave you to chase the next step. AthleteDesk passes the athlete to the right person the moment status changes.
-            </p>
-          </div>
-
-          <div className="relative mt-16">
-            {/* Connector lines (desktop only) */}
-            <div className="pointer-events-none absolute left-0 right-0 top-[110px] -z-0 hidden lg:block">
-              <div className="mx-auto flex max-w-5xl items-center justify-between px-[12%]">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-brand-500/40 to-brand-500/40" />
-                <div className="h-px flex-1 bg-gradient-to-r from-brand-500/40 via-emerald-500/40 to-transparent" />
-              </div>
-            </div>
-
-            <div className="relative grid gap-4 sm:gap-6 lg:grid-cols-3">
-              {/* Scout */}
-              <HandoffCard
-                role="Scout"
-                accent="border-blue-400/30 bg-blue-500/5"
-                badgeTone="bg-blue-500/15 text-blue-300"
-                description="Finds prospects and works the top of the funnel."
-                bullets={[
-                  'Imports prospect lists by region',
-                  'Logs every call, email, text',
-                  'Moves athletes through outreach stages',
-                ]}
-                triggerLabel="When marked “Interested” →"
-              />
-
-              {/* Agent */}
-              <HandoffCard
-                role="Agent"
-                accent="border-yellow-400/30 bg-yellow-500/5"
-                badgeTone="bg-yellow-500/15 text-yellow-300"
-                description="Closes the deal and manages the relationship."
-                bullets={[
-                  'Picks up the athlete automatically',
-                  'Handles negotiation + paperwork',
-                  'Marks pipeline stage as “Signed”',
-                ]}
-                triggerLabel="When athlete signs →"
-              />
-
-              {/* Marketing */}
-              <HandoffCard
-                role="Marketing"
-                accent="border-green-400/30 bg-green-500/5"
-                badgeTone="bg-green-500/15 text-green-300"
-                description="Runs brand deals and post-signing operations."
-                bullets={[
-                  'Owns brand outreach + deal tracking',
-                  'Manages roster activity',
-                  'Logs revenue against the athlete',
-                ]}
-              />
-            </div>
-          </div>
-
-          <p className="mx-auto mt-12 max-w-xl text-center text-sm text-brand-300">
-            Auto handoff at every stage. No dropped athletes. No spreadsheet handoffs. No &ldquo;wait, who&rsquo;s on this one?&rdquo;
-          </p>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="border-t border-white/5 bg-black">
-        <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-            Questions, answered.
-          </h2>
-
-          <dl className="mt-12 space-y-4">
-            {faqs.map(faq => (
-              <details
-                key={faq.q}
-                className="group rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 transition-colors open:bg-white/[0.05]"
-              >
-                <summary className="flex cursor-pointer items-center justify-between text-base font-medium text-white">
-                  {faq.q}
-                  <svg
-                    className="h-5 w-5 text-brand-400 transition-transform group-open:rotate-180"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <dd className="mt-3 text-sm leading-relaxed text-brand-200">{faq.a}</dd>
-              </details>
-            ))}
-          </dl>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="bg-gradient-to-br from-brand-900 to-brand-950">
-        <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            See it in action.
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-brand-200">
-            Skip the sales call. Click into a working CRM loaded with realistic data and explore.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/api/demo"
-              className="rounded-full bg-white px-7 py-3 text-base font-semibold text-brand-900 shadow-lg shadow-brand-500/20 transition-transform hover:scale-[1.02]"
-            >
-              Try the demo
-            </Link>
-            <Link
-              href={buildDemoAccessMailto()}
-              className="rounded-full border border-white/20 px-7 py-3 text-base font-medium text-white transition-colors hover:bg-white/10"
-            >
-              Request access
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-white/5 bg-black">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm text-white/50 sm:flex-row sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-white/10">
-              <span className="text-[10px] font-bold text-white">AD</span>
-            </div>
-            <span>© AthleteDesk</span>
-          </div>
-          <div className="flex items-center gap-6">
+      {/* FOOTER */}
+      <footer className="bg-neutral-950 text-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <BrandLogo dark />
+          <div className="flex flex-wrap items-center gap-6 text-sm font-bold text-neutral-400">
             <Link href="/api/demo" className="transition-colors hover:text-white">Demo</Link>
             <Link href="/login" className="transition-colors hover:text-white">Sign in</Link>
             <Link href={buildDemoAccessMailto('AthleteDesk - Contact')} className="transition-colors hover:text-white">Contact</Link>
           </div>
+          <p className="text-xs font-semibold text-neutral-500">© {new Date().getFullYear()} AthleteDesk</p>
         </div>
       </footer>
-    </div>
+    </main>
   )
 }

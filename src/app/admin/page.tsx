@@ -7,14 +7,11 @@ import {
   ArrowUturnLeftIcon,
   BuildingOffice2Icon,
   ChevronRightIcon,
-  ClockIcon,
   EnvelopeIcon,
   InboxArrowDownIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   Squares2X2Icon,
-  TrophyIcon,
-  UsersIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import type { AccessRequestStatus } from '@/lib/access-requests'
@@ -489,29 +486,25 @@ export default function AdminPage() {
           {/* Overview Tab */}
           {activeTab === 'overview' && stats && (
             <div className="mx-auto max-w-7xl space-y-6">
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-7 py-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-10">
                 {[
-                  { label: 'Organizations', value: stats.totalOrganizations, icon: BuildingOffice2Icon, tone: 'bg-sky-50 text-sky-700' },
-                  { label: 'Team members', value: stats.totalUsers, icon: UsersIcon, tone: 'bg-emerald-50 text-emerald-700' },
-                  { label: 'Athletes managed', value: stats.totalAthletes, icon: TrophyIcon, tone: 'bg-amber-50 text-amber-700' },
-                  { label: 'New requests', value: requestCounts.new, icon: InboxArrowDownIcon, tone: 'bg-rose-50 text-rose-700' },
-                  { label: 'Pending invites', value: stats.pendingInvites, icon: ClockIcon, tone: 'bg-neutral-100 text-neutral-700' },
-                ].map(stat => {
-                  const Icon = stat.icon
-                  return (
-                    <div key={stat.label} className="rounded-lg border border-neutral-200 bg-white p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-2xl font-bold text-neutral-950 sm:text-3xl">{stat.value}</p>
-                          <p className="mt-1 text-xs font-semibold text-neutral-500 sm:text-sm">{stat.label}</p>
-                        </div>
-                        <span className={`flex h-9 w-9 items-center justify-center rounded-md ${stat.tone}`}>
-                          <Icon className="h-5 w-5" />
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
+                  { label: 'Organizations', value: stats.totalOrganizations },
+                  { label: 'Team members', value: stats.totalUsers },
+                  { label: 'Athletes managed', value: stats.totalAthletes },
+                  { label: 'New requests', value: requestCounts.new, accent: true },
+                  { label: 'Pending invites', value: stats.pendingInvites },
+                ].map(stat => (
+                  <div key={stat.label} className="min-w-0">
+                    <p className={`text-4xl font-semibold tabular-nums tracking-tight sm:text-5xl ${
+                      stat.accent ? 'text-brand-600' : 'text-neutral-950'
+                    }`}>
+                      {stat.value}
+                    </p>
+                    <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-500">
+                      {stat.label}
+                    </p>
+                  </div>
+                ))}
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">

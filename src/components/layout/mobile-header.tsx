@@ -104,6 +104,18 @@ export function MobileHeader({ user }: MobileHeaderProps) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+          {user.is_super_admin && (
+            <Link
+              href="/admin"
+              onClick={() => setIsOpen(false)}
+              className="relative mb-3 flex items-center gap-3 rounded-xl border border-brand-700/70 bg-brand-900/70 px-3 py-3 text-sm font-semibold text-white"
+            >
+              <svg className="h-5 w-5 text-brand-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7m5 0h4" />
+              </svg>
+              Control Center
+            </Link>
+          )}
           {visibleNavItems.map((item) => {
             const isActive = item.href === '/dashboard'
               ? pathname === item.href

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import type { AccessRequestStatus } from '@/lib/access-requests'
 
 interface Stats {
   totalOrganizations: number
@@ -45,7 +46,7 @@ interface AccessRequest {
   email: string
   roster_size: string | null
   message: string | null
-  status: string
+  status: AccessRequestStatus
 }
 
 export default function AdminPage() {
@@ -56,6 +57,8 @@ export default function AdminPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
+  const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
+  const [requestUpdateError, setRequestUpdateError] = useState<string | null>(null)
 
   // Create invite form
   const [showCreateInvite, setShowCreateInvite] = useState(false)
@@ -226,6 +229,34 @@ export default function AdminPage() {
       setDeleteError('Could not delete invite. Please try again.')
     } finally {
       setDeletingInviteId(null)
+    }
+  }
+
+  const updateAccessRequestStatus = async (id: string, status: AccessRequestStatus) => {
+    setUpdatingRequestId(id)
+    setRequestUpdateError(null)
+
+    try {
+      const response = await fetch('/api/admin/access-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      })
+
+      if (!response.ok) {
+        const result = await response.json()
+        throw new Error(result.error || 'Failed to update access request')
+      }
+
+      setAccessRequests(requests =>
+        requests.map(request => request.id === id ? { ...request, status } : request)
+      )
+    } catch (error) {
+      setRequestUpdateError(
+        error instanceof Error ? error.message : 'Failed to update access request'
+      )
+    } finally {
+      setUpdatingRequestId(null)
     }
   }
 
@@ -550,6 +581,11 @@ export default function AdminPage() {
           {/* Invites Tab */}
           {activeTab === 'requests' && (
             <div className="max-w-5xl">
+              {requestUpdateError && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {requestUpdateError}
+                </div>
+              )}
               {accessRequests.length === 0 ? (
                 <div className="bg-white rounded-lg border border-gray-200 p-10 text-center text-sm text-gray-500">
                   No access requests yet. They&apos;ll appear here when someone submits the landing page form.
@@ -576,9 +612,26 @@ export default function AdminPage() {
                           <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.roster_size || '—'}</td>
                           <td className="px-4 py-3 max-w-[240px] truncate text-gray-500" title={r.message || ''}>{r.message || '—'}</td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                              r.status === 'new' ? 'bg-brand-50 text-brand-700' : r.status === 'contacted' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'
-                            }`}>{r.status}</span>
+                            <select
+                              aria-label={`Status for ${r.name}`}
+                              value={r.status}
+                              disabled={updatingRequestId === r.id}
+                              onChange={event => updateAccessRequestStatus(
+                                r.id,
+                                event.target.value as AccessRequestStatus
+                              )}
+                              className={`rounded-md border px-2 py-1 text-xs font-semibold capitalize outline-none focus:ring-2 focus:ring-brand-500 disabled:cursor-wait disabled:opacity-60 ${
+                                r.status === 'new'
+                                  ? 'border-brand-200 bg-brand-50 text-brand-700'
+                                  : r.status === 'contacted'
+                                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                    : 'border-gray-200 bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              <option value="new">New</option>
+                              <option value="contacted">Contacted</option>
+                              <option value="closed">Closed</option>
+                            </select>
                           </td>
                         </tr>
                       ))}

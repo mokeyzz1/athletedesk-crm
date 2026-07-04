@@ -72,7 +72,7 @@ function SplitReveal({ text, className }: { text: string; className?: string }) 
     <span className={className} aria-label={text}>
       {text.split(' ').map((word, i) => (
         <span key={`${word}-${i}`} className="inline-block overflow-hidden align-bottom" aria-hidden="true">
-          <span className="split-word inline-block opacity-0 will-change-transform">
+          <span className="split-word inline-block will-change-transform">
             {word}
             {i < text.split(' ').length - 1 ? ' ' : ''}
           </span>
@@ -841,7 +841,7 @@ export default function Home() {
             <SplitReveal text="Run the full athlete business from one desk." />
           </h1>
 
-          <p className="hero-sub mx-auto mt-6 max-w-2xl text-base leading-7 text-neutral-300 opacity-0 sm:mt-8 sm:text-lg sm:leading-8">
+          <p className="hero-sub mx-auto mt-6 max-w-2xl text-base leading-7 text-neutral-300 sm:mt-8 sm:text-lg sm:leading-8">
             AthleteDesk connects recruiting, Gmail outreach, handoffs, brand deals, tasks, and revenue around one athlete record. Built for agencies that need the whole team in the room.
           </p>
 
@@ -849,7 +849,7 @@ export default function Home() {
             <Magnetic>
               <Link
                 href="/api/demo"
-                className="hero-cta inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 px-8 py-3.5 text-base font-bold text-white opacity-0 transition-colors hover:bg-brand-400"
+                className="hero-cta inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 px-8 py-3.5 text-base font-bold text-white transition-colors hover:bg-brand-400"
               >
                 Try the demo <ArrowIcon />
               </Link>
@@ -857,7 +857,7 @@ export default function Home() {
             <Magnetic>
               <button
                 onClick={() => setAccessOpen(true)}
-                className="hero-cta inline-flex items-center justify-center rounded-full border border-white/20 bg-white/[0.02] px-8 py-3.5 text-base font-bold text-white opacity-0 transition-colors hover:border-white/40 hover:bg-white/[0.06]"
+                className="hero-cta inline-flex items-center justify-center rounded-full border border-white/20 bg-white/[0.02] px-8 py-3.5 text-base font-bold text-white transition-colors hover:border-white/40 hover:bg-white/[0.06]"
               >
                 Request access
               </button>
@@ -865,7 +865,7 @@ export default function Home() {
           </div>
 
           {SHOW_DEMO_CREDENTIALS && (
-            <div className="hero-chips mx-auto mt-4 inline-flex flex-col gap-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-neutral-400 opacity-0 sm:flex-row sm:items-center sm:gap-3">
+            <div className="hero-chips mx-auto mt-4 inline-flex flex-col gap-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-neutral-400 sm:flex-row sm:items-center sm:gap-3">
               <span className="font-bold text-white">Manual sign in:</span>
               <code className="font-mono text-neutral-300">{DEMO_USER_EMAIL}</code>
               <span className="hidden text-white/20 sm:inline">/</span>
@@ -873,7 +873,7 @@ export default function Home() {
             </div>
           )}
 
-          <div className="hero-chips mx-auto mt-11 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 opacity-0 sm:grid-cols-4">
+          <div className="hero-chips mx-auto mt-11 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-4">
             {['No per-seat tax', 'Athlete lifecycle', 'Gmail built in', 'Brand revenue'].map(item => (
               <div key={item} className="bg-neutral-950 px-4 py-4 text-left">
                 <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white">
@@ -886,7 +886,7 @@ export default function Home() {
             </div>
 
             {/* pull-up hint — signals the dashboard slides up */}
-            <div className="hero-hint absolute bottom-7 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 opacity-0">
+            <div className="hero-hint absolute bottom-7 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2">
               <span className="h-1.5 w-11 rounded-full bg-white/30" />
               <svg className="h-4 w-4 animate-bounce text-white/45" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M5 14l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -895,7 +895,7 @@ export default function Home() {
           </div>
 
           {/* dashboard sheet — slides up and takes over (iOS-style) */}
-          <div className="sheet absolute inset-0 z-10 opacity-0 will-change-transform">
+          <div className="sheet pointer-events-none absolute inset-0 z-10 opacity-0 will-change-transform">
             <div className="flex h-full flex-col overflow-hidden rounded-t-[28px] border-t border-white/10 bg-white shadow-[0_-30px_90px_rgba(0,0,0,0.55)]">
               {/* iOS grabber */}
               <div className="flex flex-shrink-0 justify-center bg-white pt-2.5 pb-1.5">

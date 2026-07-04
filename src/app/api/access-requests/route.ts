@@ -1,8 +1,10 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { createAccessRequestDedupeKey } from '@/lib/access-requests'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 const accessRequestSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
@@ -34,16 +36,25 @@ export async function POST(request: Request) {
   }
 
   const serviceClient = createServiceClient()
+  const normalizedEmail = parsed.data.email.toLowerCase()
+
   // table not yet in generated database.types.ts — cast until types are regenerated
   const { error } = await serviceClient.from('access_requests').insert({
     name: parsed.data.name,
     agency: parsed.data.agency,
-    email: parsed.data.email,
+    email: normalizedEmail,
     roster_size: parsed.data.rosterSize ?? null,
     message: parsed.data.message || null,
+    dedupe_key: createAccessRequestDedupeKey(normalizedEmail),
   } as never)
 
   if (error) {
+    // Duplicate requests receive the same response so the endpoint does not
+    // disclose whether an email address has already submitted.
+    if (error.code === '23505') {
+      return NextResponse.json({ ok: true })
+    }
+
     console.error('access request insert failed:', error)
     return NextResponse.json({ error: 'Something went wrong — please try again.' }, { status: 500 })
   }

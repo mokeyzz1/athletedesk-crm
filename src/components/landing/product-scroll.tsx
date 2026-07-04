@@ -122,7 +122,7 @@ export default function ProductScroll() {
       {/* section title — content sits right under it */}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-[15vh] sm:px-6 lg:px-8">
         <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-sky-400">
-          <span className="h-2 w-2 bg-sky-400" /> Product
+          <span className="h-2 w-2 bg-sky-400" /> Front Office
         </p>
         <h2 className="mt-3 max-w-2xl text-3xl font-bold uppercase leading-[1] tracking-tight sm:text-4xl">
           Designed around the agency work that happens every morning.
@@ -146,8 +146,8 @@ export default function ProductScroll() {
         ))}
       </div>
 
-      {/* progress dots */}
-      <div className="pointer-events-none absolute bottom-7 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5">
+      {/* progress dots — desktop only; on phones they overlapped panel content */}
+      <div className="pointer-events-none absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-2.5 md:flex">
         {panels.map((p, i) => (
           <span key={p.title} data-dot={i} className="hp-dot h-2 w-2 rounded-full bg-white/25 transition-all duration-300" />
         ))}

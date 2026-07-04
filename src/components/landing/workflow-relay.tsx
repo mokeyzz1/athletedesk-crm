@@ -1,28 +1,39 @@
 /* Animated handoff relay (Scout → Agent → Marketing → Admin).
-   One athlete record travels between avatar stations as you scroll; the rail line
-   draws itself, each station lights up, and the record's status updates at every
-   handoff. Driven from the landing page's GSAP context:
-   .relay-wrap, .relay-line-fg, .relay-station[data-i], .relay-record,
-   .relay-record-status. */
+   One athlete record travels between avatar stations as you scroll; connector
+   segments draw themselves between (never through) the avatars, each station
+   wakes up in color, and the record's status updates at every handoff.
+   Avatars are custom transparent WebP portraits in public/avatars/. Driven from
+   the landing page's GSAP context:
+   .relay-wrap, .relay-seg-fg[data-i], .relay-line-fg-v, .relay-station[data-i],
+   .relay-station-v[data-i], .relay-avatar, .relay-record, .relay-card,
+   .relay-record-status, .relay-label, .relay-text. */
 
-function Avatar() {
+import React from 'react'
+
+const stations = [
+  { role: 'Scout', img: '/avatars/scout.webp', imageClass: 'scale-[1.1]', title: 'Finds the athlete', detail: 'Imports regional lists, logs outreach, and qualifies prospects.' },
+  { role: 'Agent', img: '/avatars/agent.webp', imageClass: 'scale-[1.1]', title: 'Owns the relationship', detail: 'Gets the handoff with notes, email history, and tasks attached.' },
+  { role: 'Marketing', img: '/avatars/marketing-woman.webp', imageClass: 'translate-y-1 scale-[1.28]', title: 'Builds the deal flow', detail: 'Runs brand outreach and keeps contract stages connected.' },
+  { role: 'Admin', img: '/avatars/admin-new.webp', imageClass: 'translate-y-1 scale-[1.22]', title: 'Sees the business', detail: 'Reviews revenue, productivity, and pipeline health — no chasing.' },
+]
+
+function StationAvatar({ s, station }: { s: (typeof stations)[number]; station: 'relay-station' | 'relay-station-v' }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8">
-      <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.42 0-8 2.6-8 5.8 0 .66.54 1.2 1.2 1.2h13.6c.66 0 1.2-.54 1.2-1.2 0-3.2-3.58-5.8-8-5.8z" />
-    </svg>
+    <div
+      data-i={stations.indexOf(s)}
+      className={`${station} relative z-10 flex h-20 w-20 flex-shrink-0 items-end justify-center overflow-hidden rounded-full border-2 border-white/15 bg-[#d9d8d3] shadow-[0_10px_28px_-8px_rgba(0,0,0,0.7)] transition-all duration-300`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="relay-avatar h-full w-full">
+        <img src={s.img} alt="" aria-hidden="true" className={`h-full w-full object-contain ${s.imageClass}`} />
+      </div>
+    </div>
   )
 }
 
-const stations = [
-  { role: 'Scout', title: 'Finds the athlete', detail: 'Imports regional lists, logs outreach, and qualifies prospects.' },
-  { role: 'Agent', title: 'Owns the relationship', detail: 'Gets the handoff with notes, email history, and tasks attached.' },
-  { role: 'Marketing', title: 'Builds the deal flow', detail: 'Runs brand outreach and keeps contract stages connected.' },
-  { role: 'Admin', title: 'Sees the business', detail: 'Reviews revenue, productivity, and pipeline health — no chasing.' },
-]
-
 export default function WorkflowRelay() {
   return (
-    <div className="relay-wrap relative mt-16">
+    <div className="relay-wrap relative mt-16 lg:mt-28">
       {/* ============ DESKTOP: horizontal relay ============ */}
       <div className="hidden lg:block">
         {/* role labels — sit on TOP of each avatar */}
@@ -39,30 +50,38 @@ export default function WorkflowRelay() {
           ))}
         </div>
 
-        {/* avatar rail + connector line + traveling record */}
+        {/* avatar rail + connector segments + traveling record */}
         <div className="relative mt-5 grid grid-cols-4">
-          {/* track */}
-          <div className="absolute left-[12.5%] right-[12.5%] top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-white/10" />
-          {/* drawn progress line */}
-          <div className="relay-line-fg absolute left-[12.5%] top-1/2 h-[3px] w-[75%] -translate-y-1/2 origin-left scale-x-0 rounded-full bg-gradient-to-r from-brand-400 to-brand-500" />
-
-          {stations.map((s, i) => (
-            <div key={s.role} className="relative z-10 flex justify-center">
+          {/* connector segments — stop short of each avatar, never through it.
+              absolute children of the grid = no grid cells taken */}
+          {[0, 1, 2].map(i => (
+            <React.Fragment key={`seg-${i}`}>
+              {/* track */}
+              <div
+                className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-white/10"
+                style={{ left: `calc(12.5% + ${i * 25}% + 54px)`, width: 'calc(25% - 108px)' }}
+              />
+              {/* drawn progress segment */}
               <div
                 data-i={i}
-                className="relay-station flex h-20 w-20 items-center justify-center rounded-full border border-white/15 bg-neutral-900 text-neutral-500 shadow-[0_0_0_6px_rgba(10,10,12,1)] transition-all duration-300"
-              >
-                <Avatar />
-              </div>
+                className="relay-seg-fg absolute top-1/2 h-[3px] origin-left -translate-y-1/2 rounded-full bg-gradient-to-r from-brand-400 to-brand-500 shadow-[0_0_12px_rgba(56,189,248,0.55)]"
+                style={{ left: `calc(12.5% + ${i * 25}% + 54px)`, width: 'calc(25% - 108px)' }}
+              />
+            </React.Fragment>
+          ))}
+
+          {stations.map(s => (
+            <div key={s.role} className="relative z-10 flex justify-center">
+              <StationAvatar s={s} station="relay-station" />
             </div>
           ))}
 
           {/* traveling athlete record */}
           <div
-            className="relay-record pointer-events-none absolute bottom-[calc(50%+3.25rem)] left-[12.5%] z-20 w-44 -translate-x-1/2"
+            className="relay-record pointer-events-none absolute bottom-[calc(50%+5.5rem)] left-[12.5%] z-20 w-44 -translate-x-1/2"
             style={{ left: '12.5%' }}
           >
-            <div className="rounded-xl border border-white/10 bg-white p-3 text-slate-900 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.7)]">
+            <div className="relay-card rounded-xl border border-white/10 bg-white p-3 text-slate-900 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.7)]">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">JC</div>
                 <div className="min-w-0">
@@ -95,14 +114,9 @@ export default function WorkflowRelay() {
         <div className="absolute left-[39px] top-10 bottom-10 w-[3px] rounded-full bg-white/10" />
         <div className="relay-line-fg-v absolute left-[39px] top-10 w-[3px] origin-top scale-y-0 rounded-full bg-gradient-to-b from-brand-400 to-brand-500" style={{ height: 'calc(100% - 5rem)' }} />
         <div className="space-y-6">
-          {stations.map((s, i) => (
+          {stations.map(s => (
             <div key={s.role} className="relative flex items-start gap-5">
-              <div
-                data-i={i}
-                className="relay-station-v relative z-10 flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full border border-white/15 bg-neutral-900 text-neutral-500 shadow-[0_0_0_6px_rgba(10,10,12,1)] transition-all duration-300"
-              >
-                <Avatar />
-              </div>
+              <StationAvatar s={s} station="relay-station-v" />
               <div className="pt-3">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-brand-300">{s.role}</span>
                 <h3 className="mt-1 text-xl font-bold tracking-tight text-white">{s.title}</h3>

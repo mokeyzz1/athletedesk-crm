@@ -140,12 +140,24 @@
 }
 
 /* ---- landing workflow relay (avatar handoff) ---- */
+/* waiting: washed-out grayscale peep on a muted disc */
+.relay-station .relay-avatar,
+.relay-station-v .relay-avatar {
+  filter: grayscale(1);
+  opacity: 0.55;
+  transition: filter 0.35s ease, opacity 0.35s ease;
+}
+/* active: full-color peep, bright disc, brand ring + glow */
 .relay-station.relay-on,
 .relay-station-v.relay-on {
   border-color: rgba(56, 189, 248, 0.9);
-  background-color: rgba(14, 165, 233, 0.14);
-  color: #7dd3fc;
-  box-shadow: 0 0 0 6px #0a0a0c, 0 0 28px -2px rgba(56, 189, 248, 0.55);
+  background-color: #f4f4f1;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.25), 0 0 30px -2px rgba(56, 189, 248, 0.5);
+}
+.relay-station.relay-on .relay-avatar,
+.relay-station-v.relay-on .relay-avatar {
+  filter: none;
+  opacity: 1;
 }
 .relay-label.relay-label-on {
   border-color: rgba(56, 189, 248, 0.6);

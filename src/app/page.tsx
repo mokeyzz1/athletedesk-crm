@@ -22,9 +22,9 @@ import {
 const logoSrc = '/brand/athletedesk-logo-transparent.png'
 
 const navItems = [
-  { label: 'Difference', href: '#difference' },
-  { label: 'Product', href: '#product' },
-  { label: 'Workflow', href: '#workflow' },
+  { label: 'The Edge', href: '#difference' },
+  { label: 'Front Office', href: '#product' },
+  { label: 'The Handoff', href: '#workflow' },
 ]
 
 const metrics = [
@@ -316,11 +316,15 @@ function DesktopMock() {
 
 function WorkflowSection({ workflowRef }: { workflowRef: React.RefObject<HTMLElement> }) {
   return (
-    <section ref={workflowRef} id="workflow" className="bg-neutral-950 text-white">
-      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+    <section
+      ref={workflowRef}
+      id="workflow"
+      className="bg-neutral-950 text-white lg:flex lg:min-h-screen lg:flex-col lg:justify-center"
+    >
+      <div className="mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-20">
         <div className="max-w-2xl">
           <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-brand-300">
-            <span className="h-2 w-2 bg-brand-400" /> Agency workflow
+            <span className="h-2 w-2 bg-brand-400" /> The Handoff
           </p>
           <h2 className="mt-6 text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl">
             One athlete record, moving through the whole business.
@@ -342,7 +346,7 @@ function WorkflowSection({ workflowRef }: { workflowRef: React.RefObject<HTMLEle
 export default function Home() {
   const workflowRef = useRef<HTMLElement>(null)
   const heroRef = useRef<HTMLElement>(null)
-  const [pastHero, setPastHero] = useState(false)
+  const [navLight, setNavLight] = useState(false)
   const [navHidden, setNavHidden] = useState(false)
 
   useEffect(() => {
@@ -364,20 +368,25 @@ export default function Home() {
         .fromTo('.hero-chips', { y: 18, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.1, duration: 0.6 }, 0.84)
         .fromTo('.hero-hint', { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6 }, 1.05)
 
-      // nav matches the section it's over: dark on the hero, light on the body
-      ScrollTrigger.create({
-        trigger: heroRef.current,
-        start: 'bottom top+=66',
-        onEnter: () => setPastHero(true),
-        onLeaveBack: () => setPastHero(false),
-      })
-
-      // hide the landing nav while the dashboard takes over (so it doesn't cover it)
+      // nav matches what's under it: hidden while the dashboard takeover fills
+      // the screen, light over the light Edge section, dark everywhere else
       ScrollTrigger.create({
         trigger: heroRef.current,
         start: '36% top',
+        end: 'bottom top+=66',
         onEnter: () => setNavHidden(true),
+        onLeave: () => setNavHidden(false),
+        onEnterBack: () => setNavHidden(true),
         onLeaveBack: () => setNavHidden(false),
+      })
+      ScrollTrigger.create({
+        trigger: '#difference',
+        start: 'top top+=66',
+        end: 'bottom top+=66',
+        onEnter: () => setNavLight(true),
+        onLeave: () => setNavLight(false),
+        onEnterBack: () => setNavLight(true),
+        onLeaveBack: () => setNavLight(false),
       })
 
       // iOS-style sheet: the dashboard slides up and takes over (snappy), then holds
@@ -420,7 +429,10 @@ export default function Home() {
         { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.05, scrollTrigger: liveTrigger }
       )
 
-      // workflow handoff relay — record travels Scout → Agent → Marketing → Admin
+      // workflow handoff relay — record travels Scout → Agent → Marketing → Admin.
+      // Desktop PINS the section: the page holds still and all scroll goes into
+      // the handoff, so the pass can't be blown past. Each leg ends with a dwell
+      // (the handoff beat) and the receiving avatar pops as the record lands.
       const relay = document.querySelector('.relay-wrap')
       if (relay) {
         const lefts = ['12.5%', '37.5%', '62.5%', '87.5%']
@@ -434,9 +446,10 @@ export default function Home() {
         const labelEls = gsap.utils.toArray<HTMLElement>('.relay-label')
         const textEls = gsap.utils.toArray<HTMLElement>('.relay-text')
         const recordEl = document.querySelector('.relay-record') as HTMLElement | null
+        const cardEl = document.querySelector('.relay-card') as HTMLElement | null
         const statusEl = document.querySelector('.relay-record-status') as HTMLElement | null
 
-        const activate = (idx: number) => {
+        const activate = (idx: number, pop = true) => {
           stationEls.forEach(el => el.classList.toggle('relay-on', Number(el.dataset.i) <= idx))
           labelEls.forEach((el, i) => el.classList.toggle('relay-label-on', i === idx))
           textEls.forEach((el, i) => { el.style.opacity = i <= idx ? '1' : '0.4' })
@@ -446,40 +459,84 @@ export default function Home() {
             statusEl.className =
               'relay-record-status mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ' + s.cls
           }
+          if (!pop) return
+          // handoff beat — receiving avatar, label, and status pill react to the catch
+          const station = document.querySelector(
+            `.relay-station[data-i="${idx}"], .relay-station-v[data-i="${idx}"]`
+          )
+          if (station) gsap.fromTo(station, { scale: 1.16 }, { scale: 1, duration: 0.45, ease: 'back.out(3)' })
+          if (statusEl) gsap.fromTo(statusEl, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(2)' })
+          if (labelEls[idx]) gsap.fromTo(labelEls[idx], { y: -5 }, { y: 0, duration: 0.4, ease: 'bounce.out' })
         }
-        activate(0)
+        activate(0, false)
 
-        // line draw + record travel, scrubbed to scroll
-        gsap.to('.relay-line-fg', {
-          scaleX: 1,
-          ease: 'none',
-          scrollTrigger: { trigger: relay, start: 'top 62%', end: 'bottom 82%', scrub: 1 },
-        })
-        gsap.to('.relay-line-fg-v', {
-          scaleY: 1,
-          ease: 'none',
-          scrollTrigger: { trigger: relay, start: 'top 70%', end: 'bottom 85%', scrub: 1 },
+        // gsap owns the line start states (CSS-class starts are unreliable)
+        gsap.set('.relay-seg-fg', { scaleX: 0 })
+        gsap.set('.relay-line-fg-v', { scaleY: 0 })
+
+        // idle bob — the crew feels alive even before the record moves
+        gsap.utils.toArray<HTMLElement>('.relay-avatar').forEach((el, i) => {
+          gsap.to(el, { y: -3, duration: 1.7, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: i * 0.4 })
         })
 
-        let current = -1
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: relay,
-            start: 'top 60%',
-            end: 'bottom 80%',
-            scrub: 1,
-            onUpdate: self => {
-              const p = self.progress
-              const idx = p < 0.26 ? 0 : p < 0.52 ? 1 : p < 0.78 ? 2 : 3
+        const mm = gsap.matchMedia()
+
+        // desktop: pinned handoff sequence
+        mm.add('(min-width: 1024px)', () => {
+          let current = 0
+          const arrivals: number[] = []
+          const rtl = gsap.timeline({
+            scrollTrigger: {
+              trigger: workflowRef.current,
+              start: 'top top',
+              end: '+=1800',
+              pin: true,
+              scrub: 1,
+              anticipatePin: 1,
+            },
+            onUpdate: () => {
+              const t = rtl.time()
+              let idx = 0
+              arrivals.forEach((a, i) => { if (t >= a - 0.12) idx = i + 1 })
               if (idx !== current) { current = idx; activate(idx) }
             },
-          },
-        })
-        if (recordEl) {
+          })
+
+          rtl.to({}, { duration: 0.35 }) // settle beat once the pin catches
           for (let i = 1; i < lefts.length; i++) {
-            tl.to(recordEl, { left: lefts[i], ease: 'power1.inOut', duration: 1 }).to({}, { duration: 0.4 })
+            // record + its own segment draw together on the same eased leg —
+            // each segment stops at the avatar's edge, never through it
+            if (recordEl) rtl.to(recordEl, { left: lefts[i], duration: 1, ease: 'power1.inOut' })
+            rtl.to(`.relay-seg-fg[data-i="${i - 1}"]`, { scaleX: 1, duration: 1, ease: 'power1.inOut' }, '<')
+            // the card tilts into the move and settles on landing — feels carried
+            if (cardEl) {
+              rtl.to(cardEl, { rotation: 2.5, duration: 0.5, ease: 'power1.in' }, '<')
+                 .to(cardEl, { rotation: 0, duration: 0.5, ease: 'power1.out' }, '<0.5')
+            }
+            arrivals.push(rtl.duration())
+            rtl.to({}, { duration: 0.5 }) // dwell — the handoff moment
           }
-        }
+        })
+
+        // mobile: vertical line draws with scroll; stations light as the tip reaches them
+        mm.add('(max-width: 1023px)', () => {
+          let current = 0
+          gsap.to('.relay-line-fg-v', {
+            scaleY: 1,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: relay,
+              start: 'top 78%',
+              end: 'bottom 45%',
+              scrub: 1,
+              onUpdate: self => {
+                const p = self.progress
+                const idx = p < 0.3 ? 0 : p < 0.63 ? 1 : p < 0.96 ? 2 : 3
+                if (idx !== current) { current = idx; activate(idx) }
+              },
+            },
+          })
+        })
       }
 
       // lifecycle flow — token travels Recruit → Represent → Monetize, line draws, stages light up
@@ -580,24 +637,24 @@ export default function Home() {
       {/* NAV */}
       <header
         className={`sticky top-0 z-50 transition-all duration-300 ${
-          navHidden && !pastHero
+          navHidden
             ? 'pointer-events-none -translate-y-full opacity-0'
-            : pastHero
+            : navLight
               ? 'border-b border-neutral-200 bg-[#f4f4f1]/95 backdrop-blur-xl'
-              : 'border-b border-white/10 bg-neutral-950'
+              : 'border-b border-white/10 bg-neutral-950/85 backdrop-blur-xl'
         }`}
       >
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
-          <BrandLogo dark={!pastHero} />
-          <div className={`hidden items-center gap-8 text-sm font-semibold md:flex ${pastHero ? 'text-neutral-500' : 'text-neutral-400'}`}>
+          <BrandLogo dark={!navLight} />
+          <div className={`hidden items-center gap-8 text-sm font-semibold md:flex ${navLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
             {navItems.map(item => (
-              <a key={item.href} href={item.href} className={`transition-colors ${pastHero ? 'hover:text-neutral-900' : 'hover:text-white'}`}>
+              <a key={item.href} href={item.href} className={`transition-colors ${navLight ? 'hover:text-neutral-900' : 'hover:text-white'}`}>
                 {item.label}
               </a>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/login" className={`inline-flex px-3 py-2 text-sm font-bold transition-colors sm:px-4 ${pastHero ? 'text-neutral-600 hover:text-neutral-900' : 'text-neutral-300 hover:text-white'}`}>
+            <Link href="/login" className={`inline-flex px-3 py-2 text-sm font-bold transition-colors sm:px-4 ${navLight ? 'text-neutral-600 hover:text-neutral-900' : 'text-neutral-300 hover:text-white'}`}>
               Sign in
             </Link>
             <Link
@@ -629,13 +686,14 @@ export default function Home() {
             <div className="pointer-events-none absolute left-1/2 -top-32 h-[560px] w-[820px] -translate-x-1/2 rounded-full bg-brand-500/12 blur-[140px]" />
             <div className="pointer-events-none absolute right-0 top-1/4 h-[420px] w-[420px] rounded-full bg-blue-600/12 blur-[130px]" />
 
-            {/* centered headline — fills the first screen */}
-            <div className="relative mx-auto flex h-full max-w-5xl flex-col items-center justify-center px-4 text-center sm:px-6">
-          <h1 className="mx-auto max-w-4xl text-[3.2rem] font-bold uppercase leading-[0.9] tracking-tight sm:text-7xl lg:text-[6rem]">
+            {/* centered headline — fills the first screen (tighter type on
+                phones so the stack clears the nav and the fold) */}
+            <div className="relative mx-auto flex h-full max-w-5xl flex-col items-center justify-center px-4 pt-12 text-center sm:px-6 sm:pt-0">
+          <h1 className="mx-auto max-w-4xl text-[2.75rem] font-bold uppercase leading-[0.9] tracking-tight sm:text-7xl lg:text-[6rem]">
             <SplitReveal text="Run the full athlete business from one desk." />
           </h1>
 
-          <p className="hero-sub mx-auto mt-8 max-w-2xl text-lg leading-8 text-neutral-300 opacity-0">
+          <p className="hero-sub mx-auto mt-6 max-w-2xl text-base leading-7 text-neutral-300 opacity-0 sm:mt-8 sm:text-lg sm:leading-8">
             AthleteDesk connects recruiting, Gmail outreach, handoffs, brand deals, tasks, and revenue around one athlete record. Built for agencies that need the whole team in the room.
           </p>
 
@@ -708,7 +766,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
           <Reveal className="max-w-3xl">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-neutral-500">
-              <span className="h-2 w-2 bg-brand-500" /> Why AthleteDesk
+              <span className="h-2 w-2 bg-brand-500" /> The Edge
             </p>
             <h2 className="mt-5 text-4xl font-bold uppercase leading-[0.95] tracking-tight sm:text-5xl">
               Generic CRMs manage contacts. NIL agencies manage athlete lifecycles.
@@ -762,9 +820,11 @@ export default function Home() {
         <div className="pointer-events-none absolute left-1/2 top-0 h-[460px] w-[760px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-brand-500/15 blur-[130px]" />
         <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
           <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end">
-            <Reveal>
+            {/* min-w-0 keeps the long uppercase words from widening the grid
+                track past the viewport on phones */}
+            <Reveal className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-300">Pricing philosophy</p>
-              <h2 className="mt-4 max-w-3xl text-5xl font-bold uppercase leading-[0.92] tracking-tight text-white sm:text-6xl">
+              <h2 className="mt-4 max-w-3xl break-words text-4xl font-bold uppercase leading-[0.95] tracking-tight text-white sm:text-5xl md:text-6xl sm:leading-[0.92]">
                 Bring the whole team. Don&apos;t pay a tax on collaboration.
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-neutral-400">

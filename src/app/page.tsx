@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, MotionConfig } from 'framer-motion'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin'
@@ -113,6 +113,7 @@ function Magnetic({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const xTo = gsap.quickTo(el, 'x', { duration: 0.5, ease: 'power3' })
     const yTo = gsap.quickTo(el, 'y', { duration: 0.5, ease: 'power3' })
     const move = (e: MouseEvent) => {
@@ -342,6 +343,89 @@ function WorkflowSection({ workflowRef }: { workflowRef: React.RefObject<HTMLEle
   )
 }
 
+/* ---------- FAQ ---------- */
+
+const faqs = [
+  {
+    q: 'Do we have to leave Gmail?',
+    a: 'No. AthleteDesk connects to the Gmail accounts your team already uses — send, schedule, and log outreach from your own addresses, with every email tied to the athlete record.',
+  },
+  {
+    q: 'How do we get our athletes in?',
+    a: 'Import from Excel or CSV — hundreds at a time, with column mapping and region sheets. Most agencies migrate their entire database in an afternoon.',
+  },
+  {
+    q: 'Is our data separate from other agencies?',
+    a: 'Yes. Every agency runs in its own isolated workspace with row-level security. Your athletes, emails, and deals are never visible to anyone else.',
+  },
+  {
+    q: 'What does it cost?',
+    a: 'No per-seat fees and no percentage of your deals. Pricing is per workspace, based on roster size — request access and we’ll walk you through it.',
+  },
+  {
+    q: 'Can we try it before committing?',
+    a: 'Yes — the live demo is one click, no signup. It’s a real workspace with realistic data, so you can feel the actual product, not a video.',
+  },
+]
+
+function FaqSection() {
+  const [openIdx, setOpenIdx] = useState<number | null>(0)
+  return (
+    <section id="faq" className="bg-neutral-950 text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: faqs.map(f => ({
+              '@type': 'Question',
+              name: f.q,
+              acceptedAnswer: { '@type': 'Answer', text: f.a },
+            })),
+          }),
+        }}
+      />
+      <div className="mx-auto max-w-3xl px-4 py-24 sm:px-6 lg:py-28">
+        <Reveal>
+          <p className="flex items-center justify-center gap-2 text-center text-xs font-bold uppercase tracking-[0.25em] text-brand-300">
+            <span className="h-2 w-2 bg-brand-400" /> Questions
+          </p>
+          <h2 className="mt-5 text-center text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl">
+            Asked by every agency. Answered here.
+          </h2>
+        </Reveal>
+        <div className="mt-12 divide-y divide-white/10 border-y border-white/10">
+          {faqs.map((f, i) => {
+            const open = openIdx === i
+            return (
+              <div key={f.q}>
+                <button
+                  onClick={() => setOpenIdx(open ? null : i)}
+                  aria-expanded={open}
+                  className="flex w-full items-center justify-between gap-6 py-5 text-left"
+                >
+                  <span className="text-base font-bold sm:text-lg">{f.q}</span>
+                  <span
+                    className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-white/20 text-neutral-400 transition-transform duration-300 ${open ? 'rotate-45 border-brand-400 text-brand-400' : ''}`}
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                  </span>
+                </button>
+                <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                  <div className="overflow-hidden">
+                    <p className="pb-5 pr-10 text-[15px] leading-7 text-neutral-400">{f.a}</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 /* ---------- page ---------- */
 
 export default function Home() {
@@ -354,21 +438,31 @@ export default function Home() {
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger, MotionPathPlugin)
 
-    const lenis = new Lenis({ lerp: 0.1, smoothWheel: true })
-    lenis.on('scroll', () => ScrollTrigger.update())
-    const raf = (time: number) => lenis.raf(time * 1000)
-    gsap.ticker.add(raf)
-    gsap.ticker.lagSmoothing(0)
+    // prefers-reduced-motion: native scroll, no autonomous animation. Scrubbed
+    // (scroll-driven) triggers stay — they only move as far as the user scrolls.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    const lenis = reduceMotion ? null : new Lenis({ lerp: 0.1, smoothWheel: true })
+    const raf = (time: number) => lenis?.raf(time * 1000)
+    if (lenis) {
+      lenis.on('scroll', () => ScrollTrigger.update())
+      gsap.ticker.add(raf)
+      gsap.ticker.lagSmoothing(0)
+    }
 
     const ctx = gsap.context(() => {
       // hero entrance — gsap owns the start state so the % reveal is reliable
-      gsap.set('.split-word', { yPercent: 110, opacity: 1 })
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
-      tl.to('.split-word', { yPercent: 0, stagger: 0.05, duration: 0.95 }, 0.15)
-        .fromTo('.hero-sub', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, 0.6)
-        .fromTo('.hero-cta', { y: 18, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.08, duration: 0.6 }, 0.72)
-        .fromTo('.hero-chips', { y: 18, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.1, duration: 0.6 }, 0.84)
-        .fromTo('.hero-hint', { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6 }, 1.05)
+      if (reduceMotion) {
+        gsap.set('.split-word, .hero-sub, .hero-cta, .hero-chips, .hero-hint', { yPercent: 0, y: 0, opacity: 1 })
+      } else {
+        gsap.set('.split-word', { yPercent: 110, opacity: 1 })
+        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+        tl.to('.split-word', { yPercent: 0, stagger: 0.05, duration: 0.95 }, 0.15)
+          .fromTo('.hero-sub', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, 0.6)
+          .fromTo('.hero-cta', { y: 18, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.08, duration: 0.6 }, 0.72)
+          .fromTo('.hero-chips', { y: 18, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.1, duration: 0.6 }, 0.84)
+          .fromTo('.hero-hint', { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6 }, 1.05)
+      }
 
       // nav matches what's under it: hidden while the dashboard takeover fills
       // the screen, light over the light Edge section, dark everywhere else
@@ -413,6 +507,10 @@ export default function Home() {
       gsap.utils.toArray<HTMLElement>('.ld-num').forEach(el => {
         const target = parseFloat(el.dataset.target || '0')
         const prefix = el.dataset.prefix || ''
+        if (reduceMotion) {
+          el.textContent = prefix + Math.round(target).toLocaleString()
+          return
+        }
         const obj = { v: 0 }
         gsap.to(obj, {
           v: target,
@@ -425,15 +523,21 @@ export default function Home() {
         })
       })
 
-      gsap.fromTo(
-        '.ld-card',
-        { opacity: 0, y: 18 },
-        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.05, scrollTrigger: liveTrigger }
-      )
+      if (!reduceMotion) {
+        gsap.fromTo(
+          '.ld-card',
+          { opacity: 0, y: 18 },
+          { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.05, scrollTrigger: liveTrigger }
+        )
+      }
 
       // proof strip — stats count up once when the strip scrolls into view
       gsap.utils.toArray<HTMLElement>('.proof-num').forEach(el => {
         const target = parseFloat(el.dataset.target || '0')
+        if (reduceMotion) {
+          el.textContent = Math.round(target).toLocaleString()
+          return
+        }
         const obj = { v: 0 }
         gsap.to(obj, {
           v: target,
@@ -446,10 +550,118 @@ export default function Home() {
         })
       })
 
+
+      // lifecycle flow — token travels Recruit → Represent → Monetize, line draws, stages light up
+      const lifeWrap = document.querySelector('.life-wrap')
+      const fg = document.querySelector('.life-line-fg') as SVGPathElement | null
+      if (lifeWrap && fg) {
+        const len = fg.getTotalLength()
+        gsap.set(fg, { strokeDasharray: len, strokeDashoffset: len })
+        const lifeST = { trigger: lifeWrap, start: 'top 72%', end: 'top 15%', scrub: 1 } as const
+        gsap.to(fg, { strokeDashoffset: 0, ease: 'none', scrollTrigger: lifeST })
+        gsap.to('.life-token', {
+          motionPath: { path: '#lifePath', align: '#lifePath', alignOrigin: [0.5, 0.5] },
+          ease: 'none',
+          scrollTrigger: lifeST,
+        })
+        const nodes = gsap.utils.toArray<SVGCircleElement>('.life-node')
+        const labels = gsap.utils.toArray<HTMLElement>('.life-label')
+        ScrollTrigger.create({
+          trigger: lifeWrap,
+          start: 'top 72%',
+          end: 'top 15%',
+          scrub: 1,
+          onUpdate: self => {
+            ;[0, 0.5, 1].forEach((threshold, i) => {
+              const active = self.progress >= threshold - 0.03
+              const node = nodes[i]
+              if (node) {
+                node.setAttribute('fill', active ? '#0ea5e9' : '#ffffff')
+                node.setAttribute('stroke', active ? '#0ea5e9' : '#d6d3cd')
+              }
+              if (labels[i]) labels[i].style.opacity = active ? '1' : '0.4'
+            })
+          },
+        })
+      }
+
+      // horizontal product scroll — desktop only (mobile renders stacked cards,
+      // so the pin must not exist there)
+      const hmm = gsap.matchMedia()
+      hmm.add('(min-width: 1024px)', () => {
+      const track = document.querySelector('.hscroll-track') as HTMLElement | null
+      const wrap = document.querySelector('.hscroll-wrap') as HTMLElement | null
+      if (track && wrap) {
+        const panelEls = gsap.utils.toArray<HTMLElement>('.hpanel')
+        const dots = Array.from(document.querySelectorAll<HTMLElement>('.hp-dot'))
+
+        // fade panels by distance from viewport center so outgoing text never
+        // sits clipped at the screen edge
+        const fadeByDistance = () => {
+          const mid = window.innerWidth / 2
+          panelEls.forEach(p => {
+            const r = p.getBoundingClientRect()
+            const d = Math.abs(r.left + r.width / 2 - mid)
+            const t = Math.min(1, d / (window.innerWidth * 0.7))
+            gsap.set(p, { opacity: 1 - t * 0.75 })
+          })
+        }
+
+        const hTween = gsap.to(track, {
+          x: () => -(track.scrollWidth - window.innerWidth),
+          ease: 'none',
+          scrollTrigger: {
+            trigger: wrap,
+            start: 'top top',
+            end: () => `+=${track.scrollWidth - window.innerWidth}`,
+            pin: true,
+            scrub: 1,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+            onUpdate: self => {
+              const idx = Math.round(self.progress * (panelEls.length - 1))
+              dots.forEach((d, i) => {
+                d.classList.toggle('bg-sky-400', i === idx)
+                d.classList.toggle('w-6', i === idx)
+                d.classList.toggle('bg-white/25', i !== idx)
+              })
+              fadeByDistance()
+            },
+          },
+        })
+        fadeByDistance()
+
+        panelEls.forEach(panel => {
+          const enter = { trigger: panel, containerAnimation: hTween, start: 'left 82%' } as const
+          const text = panel.querySelector('.hp-text')
+          const visual = panel.querySelector('.hp-visual')
+          const rises = panel.querySelectorAll('.hp-rise')
+          const chart = panel.querySelector('.hp-chart')
+
+          // dramatic entrance as the panel slides into view (vertical, stays in its lane)
+          if (text) gsap.from(text, { y: 44, opacity: 0, duration: 0.8, ease: 'power3.out', scrollTrigger: enter })
+          if (visual) gsap.from(visual, { y: 56, opacity: 0, duration: 0.9, ease: 'power3.out', scrollTrigger: enter })
+          if (rises.length)
+            gsap.from(rises, { y: 44, opacity: 0, stagger: 0.1, duration: 0.6, ease: 'power2.out', scrollTrigger: { trigger: panel, containerAnimation: hTween, start: 'left 68%' } })
+          if (chart)
+            gsap.fromTo(chart, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 1, ease: 'power2.out', scrollTrigger: { trigger: panel, containerAnimation: hTween, start: 'left 62%' } })
+
+          // parallax — visual and text drift vertically at different rates (Apple depth)
+          const cross = { trigger: panel, containerAnimation: hTween, start: 'left right', end: 'right left', scrub: true } as const
+          if (visual) gsap.fromTo(visual, { yPercent: -7 }, { yPercent: 7, ease: 'none', scrollTrigger: cross })
+          if (text) gsap.fromTo(text, { yPercent: 4 }, { yPercent: -4, ease: 'none', scrollTrigger: cross })
+        })
+      }
+      })
+
       // workflow handoff relay — record travels Scout → Agent → Marketing → Admin.
       // Desktop PINS the section: the page holds still and all scroll goes into
       // the handoff, so the pass can't be blown past. Each leg ends with a dwell
       // (the handoff beat) and the receiving avatar pops as the record lands.
+      // IMPORTANT: created AFTER the product pin — pins must be created in
+      // document order or the later section computes its positions without the
+      // earlier pin's scroll distance (that bug = a blank band before this
+      // section and the relay arriving pre-finished).
       const relay = document.querySelector('.relay-wrap')
       if (relay) {
         const lefts = ['12.5%', '37.5%', '62.5%', '87.5%']
@@ -476,7 +688,7 @@ export default function Home() {
             statusEl.className =
               'relay-record-status mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ' + s.cls
           }
-          if (!pop) return
+          if (!pop || reduceMotion) return
           // handoff beat — receiving avatar, label, and status pill react to the catch
           const station = document.querySelector(
             `.relay-station[data-i="${idx}"], .relay-station-v[data-i="${idx}"]`
@@ -492,9 +704,11 @@ export default function Home() {
         gsap.set('.relay-line-fg-v', { scaleY: 0 })
 
         // idle bob — the crew feels alive even before the record moves
-        gsap.utils.toArray<HTMLElement>('.relay-avatar').forEach((el, i) => {
-          gsap.to(el, { y: -3, duration: 1.7, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: i * 0.4 })
-        })
+        if (!reduceMotion) {
+          gsap.utils.toArray<HTMLElement>('.relay-avatar').forEach((el, i) => {
+            gsap.to(el, { y: -3, duration: 1.7, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: i * 0.4 })
+          })
+        }
 
         const mm = gsap.matchMedia()
 
@@ -510,6 +724,7 @@ export default function Home() {
               pin: true,
               scrub: 1,
               anticipatePin: 1,
+              invalidateOnRefresh: true,
             },
             onUpdate: () => {
               const t = rtl.time()
@@ -555,101 +770,17 @@ export default function Home() {
           })
         })
       }
-
-      // lifecycle flow — token travels Recruit → Represent → Monetize, line draws, stages light up
-      const lifeWrap = document.querySelector('.life-wrap')
-      const fg = document.querySelector('.life-line-fg') as SVGPathElement | null
-      if (lifeWrap && fg) {
-        const len = fg.getTotalLength()
-        gsap.set(fg, { strokeDasharray: len, strokeDashoffset: len })
-        const lifeST = { trigger: lifeWrap, start: 'top 78%', end: 'top 30%', scrub: 1 } as const
-        gsap.to(fg, { strokeDashoffset: 0, ease: 'none', scrollTrigger: lifeST })
-        gsap.to('.life-token', {
-          motionPath: { path: '#lifePath', align: '#lifePath', alignOrigin: [0.5, 0.5] },
-          ease: 'none',
-          scrollTrigger: lifeST,
-        })
-        const nodes = gsap.utils.toArray<SVGCircleElement>('.life-node')
-        const labels = gsap.utils.toArray<HTMLElement>('.life-label')
-        ScrollTrigger.create({
-          trigger: lifeWrap,
-          start: 'top 78%',
-          end: 'top 30%',
-          scrub: 1,
-          onUpdate: self => {
-            ;[0, 0.5, 1].forEach((threshold, i) => {
-              const active = self.progress >= threshold - 0.03
-              const node = nodes[i]
-              if (node) {
-                node.setAttribute('fill', active ? '#0ea5e9' : '#ffffff')
-                node.setAttribute('stroke', active ? '#0ea5e9' : '#d6d3cd')
-              }
-              if (labels[i]) labels[i].style.opacity = active ? '1' : '0.4'
-            })
-          },
-        })
-      }
-
-      // horizontal product scroll — panels move sideways as you scroll down
-      const track = document.querySelector('.hscroll-track') as HTMLElement | null
-      const wrap = document.querySelector('.hscroll-wrap') as HTMLElement | null
-      if (track && wrap) {
-        const panelEls = gsap.utils.toArray<HTMLElement>('.hpanel')
-        const dots = Array.from(document.querySelectorAll<HTMLElement>('.hp-dot'))
-
-        const hTween = gsap.to(track, {
-          x: () => -(track.scrollWidth - window.innerWidth),
-          ease: 'none',
-          scrollTrigger: {
-            trigger: wrap,
-            start: 'top top',
-            end: () => `+=${track.scrollWidth - window.innerWidth}`,
-            pin: true,
-            scrub: 1,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-            onUpdate: self => {
-              const idx = Math.round(self.progress * (panelEls.length - 1))
-              dots.forEach((d, i) => {
-                d.classList.toggle('bg-sky-400', i === idx)
-                d.classList.toggle('w-6', i === idx)
-                d.classList.toggle('bg-white/25', i !== idx)
-              })
-            },
-          },
-        })
-
-        panelEls.forEach(panel => {
-          const enter = { trigger: panel, containerAnimation: hTween, start: 'left 82%' } as const
-          const text = panel.querySelector('.hp-text')
-          const visual = panel.querySelector('.hp-visual')
-          const rises = panel.querySelectorAll('.hp-rise')
-          const chart = panel.querySelector('.hp-chart')
-
-          // dramatic entrance as the panel slides into view (vertical, stays in its lane)
-          if (text) gsap.from(text, { y: 44, opacity: 0, duration: 0.8, ease: 'power3.out', scrollTrigger: enter })
-          if (visual) gsap.from(visual, { y: 56, opacity: 0, duration: 0.9, ease: 'power3.out', scrollTrigger: enter })
-          if (rises.length)
-            gsap.from(rises, { y: 44, opacity: 0, stagger: 0.1, duration: 0.6, ease: 'power2.out', scrollTrigger: { trigger: panel, containerAnimation: hTween, start: 'left 68%' } })
-          if (chart)
-            gsap.fromTo(chart, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 1, ease: 'power2.out', scrollTrigger: { trigger: panel, containerAnimation: hTween, start: 'left 62%' } })
-
-          // parallax — visual and text drift vertically at different rates (Apple depth)
-          const cross = { trigger: panel, containerAnimation: hTween, start: 'left right', end: 'right left', scrub: true } as const
-          if (visual) gsap.fromTo(visual, { yPercent: -7 }, { yPercent: 7, ease: 'none', scrollTrigger: cross })
-          if (text) gsap.fromTo(text, { yPercent: 4 }, { yPercent: -4, ease: 'none', scrollTrigger: cross })
-        })
-      }
     })
 
     return () => {
       ctx.revert()
       gsap.ticker.remove(raf)
-      lenis.destroy()
+      lenis?.destroy()
     }
   }, [])
 
   return (
+    <MotionConfig reducedMotion="user">
     <main className="min-h-screen bg-[#f4f4f1] text-neutral-900">
       {/* NAV */}
       <header
@@ -872,6 +1003,8 @@ export default function Home() {
 
       <WorkflowSection workflowRef={workflowRef} />
 
+      <FaqSection />
+
       {/* PRICING / CTA — dark with a blue glow (blends workflow → cta → footer) */}
       <section className="relative overflow-hidden bg-neutral-950">
         <div className="pointer-events-none absolute left-1/2 top-0 h-[460px] w-[760px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-brand-500/15 blur-[130px]" />
@@ -925,5 +1058,6 @@ export default function Home() {
 
       <RequestAccessModal open={accessOpen} onClose={() => setAccessOpen(false)} />
     </main>
+    </MotionConfig>
   )
 }

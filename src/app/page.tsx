@@ -859,6 +859,8 @@ export default function Home() {
             <Link href="/api/demo" className="transition-colors hover:text-white">Demo</Link>
             <Link href="/login" className="transition-colors hover:text-white">Sign in</Link>
             <Link href={buildDemoAccessMailto('AthleteDesk - Contact')} className="transition-colors hover:text-white">Contact</Link>
+            <Link href="/privacy" className="transition-colors hover:text-white">Privacy</Link>
+            <Link href="/terms" className="transition-colors hover:text-white">Terms</Link>
           </div>
           <p className="text-xs font-semibold text-neutral-500">© {new Date().getFullYear()} AthleteDesk</p>
         </div>

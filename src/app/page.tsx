@@ -12,6 +12,7 @@ import LiveDashboard from '@/components/landing/live-dashboard'
 import ProductScroll from '@/components/landing/product-scroll'
 import LifecycleFlow from '@/components/landing/lifecycle-flow'
 import WorkflowRelay from '@/components/landing/workflow-relay'
+import RequestAccessModal from '@/components/landing/request-access-modal'
 import {
   DEMO_USER_EMAIL,
   DEMO_PASSWORD_HINT,
@@ -348,6 +349,7 @@ export default function Home() {
   const heroRef = useRef<HTMLElement>(null)
   const [navLight, setNavLight] = useState(false)
   const [navHidden, setNavHidden] = useState(false)
+  const [accessOpen, setAccessOpen] = useState(false)
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger, MotionPathPlugin)
@@ -428,6 +430,21 @@ export default function Home() {
         { opacity: 0, y: 18 },
         { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.05, scrollTrigger: liveTrigger }
       )
+
+      // proof strip — stats count up once when the strip scrolls into view
+      gsap.utils.toArray<HTMLElement>('.proof-num').forEach(el => {
+        const target = parseFloat(el.dataset.target || '0')
+        const obj = { v: 0 }
+        gsap.to(obj, {
+          v: target,
+          duration: 1.6,
+          ease: 'power2.out',
+          scrollTrigger: { trigger: '.proof-wrap', start: 'top 75%', once: true },
+          onUpdate: () => {
+            el.textContent = Math.round(obj.v).toLocaleString()
+          },
+        })
+      })
 
       // workflow handoff relay — record travels Scout → Agent → Marketing → Admin.
       // Desktop PINS the section: the page holds still and all scroll goes into
@@ -707,12 +724,12 @@ export default function Home() {
               </Link>
             </Magnetic>
             <Magnetic>
-              <Link
-                href={buildDemoAccessMailto()}
+              <button
+                onClick={() => setAccessOpen(true)}
                 className="hero-cta inline-flex items-center justify-center rounded-full border border-white/20 bg-white/[0.02] px-8 py-3.5 text-base font-bold text-white opacity-0 transition-colors hover:border-white/40 hover:bg-white/[0.06]"
               >
                 Request access
-              </Link>
+              </button>
             </Magnetic>
           </div>
 
@@ -757,6 +774,46 @@ export default function Home() {
                 <LiveDashboard />
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* PROOF — born inside a real agency (numbers count up on scroll).
+          Logo runs grayscale as a trust mark; a white gradient seam blends
+          the dashboard sheet above into the light body. */}
+      <section className="proof-wrap relative bg-[#f4f4f1]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-white to-transparent" />
+        <div className="mx-auto max-w-5xl px-4 pt-16 pb-14 sm:px-6 lg:pt-20 lg:pb-16">
+          <Reveal>
+            <p className="flex items-center justify-center gap-2 text-center text-xs font-bold uppercase tracking-[0.25em] text-brand-600">
+              <span className="h-2 w-2 bg-brand-500" /> Built inside a working NIL agency
+            </p>
+            <div className="mx-auto mt-8 flex max-w-3xl flex-col items-center gap-5 sm:flex-row sm:gap-7">
+              <Image
+                src="/brand/one-time-management-logo.webp"
+                alt="One Time Management"
+                width={93}
+                height={100}
+                className="h-16 w-auto flex-shrink-0 opacity-55 grayscale sm:h-20"
+              />
+              <span className="hidden h-14 w-px bg-neutral-300 sm:block" aria-hidden="true" />
+              <p className="text-center text-lg leading-8 text-neutral-600 sm:text-left">
+                AthleteDesk was built and battle-tested with <span className="font-bold text-neutral-900">One Time Management</span>,
+                a full-service NIL agency that runs its entire operation on it today.
+              </p>
+            </div>
+          </Reveal>
+          <div className="mx-auto mt-12 flex max-w-3xl items-stretch justify-center divide-x divide-neutral-300/80">
+            {[
+              { target: 777, label: 'athletes managed' },
+              { target: 518, label: 'engaged prospects' },
+              { target: 37, label: 'signed clients' },
+            ].map(stat => (
+              <div key={stat.label} className="flex-1 px-4 text-center sm:px-10">
+                <p className="proof-num text-3xl font-bold tracking-tight text-neutral-900 sm:text-5xl" data-target={stat.target}>0</p>
+                <p className="mt-1.5 text-[11px] font-semibold uppercase leading-4 tracking-wide text-neutral-500 sm:text-[13px]">{stat.label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -839,12 +896,12 @@ export default function Home() {
                 >
                   Try the demo <ArrowIcon />
                 </Link>
-                <Link
-                  href={buildDemoAccessMailto('AthleteDesk - Access Request')}
+                <button
+                  onClick={() => setAccessOpen(true)}
                   className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/[0.02] px-7 py-3.5 text-base font-bold text-white transition-colors hover:border-white/40 hover:bg-white/[0.06]"
                 >
                   Request access
-                </Link>
+                </button>
               </div>
             </Reveal>
           </div>
@@ -865,6 +922,8 @@ export default function Home() {
           <p className="text-xs font-semibold text-neutral-500">© {new Date().getFullYear()} AthleteDesk</p>
         </div>
       </footer>
+
+      <RequestAccessModal open={accessOpen} onClose={() => setAccessOpen(false)} />
     </main>
   )
 }

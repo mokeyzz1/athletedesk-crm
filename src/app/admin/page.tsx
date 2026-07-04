@@ -37,13 +37,25 @@ interface Invite {
   accepted_by_user: { id: string; name: string; email: string } | null
 }
 
+interface AccessRequest {
+  id: string
+  created_at: string
+  name: string
+  agency: string
+  email: string
+  roster_size: string | null
+  message: string | null
+  status: string
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'organizations' | 'invites'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'organizations' | 'invites' | 'requests'>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
+  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
 
   // Create invite form
   const [showCreateInvite, setShowCreateInvite] = useState(false)
@@ -60,10 +72,11 @@ export default function AdminPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [statsRes, orgsRes, invitesRes] = await Promise.all([
+      const [statsRes, orgsRes, invitesRes, requestsRes] = await Promise.all([
         fetch('/api/admin/stats'),
         fetch('/api/admin/organizations'),
         fetch('/api/admin/invites'),
+        fetch('/api/admin/access-requests'),
       ])
 
       if (statsRes.ok) {
@@ -77,6 +90,10 @@ export default function AdminPage() {
       if (invitesRes.ok) {
         const invitesData = await invitesRes.json()
         setInvites(invitesData.invites || [])
+      }
+      if (requestsRes.ok) {
+        const requestsData = await requestsRes.json()
+        setAccessRequests(requestsData.requests || [])
       }
     } finally {
       setLoading(false)
@@ -234,6 +251,11 @@ export default function AdminPage() {
     { id: 'invites', label: 'Invites', icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+      </svg>
+    )},
+    { id: 'requests', label: 'Access Requests', icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661l-2.09-6.487a2.25 2.25 0 00-2.142-1.56H6.582a2.25 2.25 0 00-2.142 1.56l-2.09 6.487a2.25 2.25 0 00-.1.661z" />
       </svg>
     )},
   ]
@@ -526,6 +548,47 @@ export default function AdminPage() {
           )}
 
           {/* Invites Tab */}
+          {activeTab === 'requests' && (
+            <div className="max-w-5xl">
+              {accessRequests.length === 0 ? (
+                <div className="bg-white rounded-lg border border-gray-200 p-10 text-center text-sm text-gray-500">
+                  No access requests yet. They&apos;ll appear here when someone submits the landing page form.
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['Received', 'Name', 'Agency', 'Email', 'Roster', 'Message', 'Status'].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {accessRequests.map(r => (
+                        <tr key={r.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-500">{new Date(r.created_at).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{r.name}</td>
+                          <td className="px-4 py-3 text-gray-700">{r.agency}</td>
+                          <td className="px-4 py-3">
+                            <a href={`mailto:${r.email}`} className="text-brand-600 hover:text-brand-700 font-medium">{r.email}</a>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.roster_size || '—'}</td>
+                          <td className="px-4 py-3 max-w-[240px] truncate text-gray-500" title={r.message || ''}>{r.message || '—'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              r.status === 'new' ? 'bg-brand-50 text-brand-700' : r.status === 'contacted' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'
+                            }`}>{r.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'invites' && (
             <div className="space-y-4 max-w-5xl">
               {/* Create Button */}

@@ -485,13 +485,13 @@ export default function AdminPage() {
 
           {/* Overview Tab */}
           {activeTab === 'overview' && stats && (
-            <div className="mx-auto max-w-7xl space-y-6">
+            <div className="mx-auto max-w-7xl space-y-7">
               <div className="grid grid-cols-2 gap-x-8 gap-y-7 py-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-10">
                 {[
                   { label: 'Organizations', value: stats.totalOrganizations },
                   { label: 'Team members', value: stats.totalUsers },
                   { label: 'Athletes managed', value: stats.totalAthletes },
-                  { label: 'New requests', value: requestCounts.new, accent: true },
+                  { label: 'New requests', value: requestCounts.new, accent: requestCounts.new > 0 },
                   { label: 'Pending invites', value: stats.pendingInvites },
                 ].map(stat => (
                   <div key={stat.label} className="min-w-0">
@@ -507,9 +507,9 @@ export default function AdminPage() {
                 ))}
               </div>
 
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-                <section className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
-                  <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
+              <div className="grid gap-8 border-t border-neutral-300 pt-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+                <section>
+                  <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
                     <div>
                       <h2 className="text-sm font-bold text-neutral-950">Recent access requests</h2>
                       <p className="mt-0.5 text-xs text-neutral-500">Newest agencies entering the funnel</p>
@@ -521,7 +521,7 @@ export default function AdminPage() {
                       View inbox <ChevronRightIcon className="h-4 w-4" />
                     </button>
                   </div>
-                  <div className="divide-y divide-neutral-100">
+                  <div className="divide-y divide-neutral-200 border-b border-neutral-200">
                     {accessRequests.slice(0, 5).map(request => (
                       <button
                         key={request.id}
@@ -529,7 +529,7 @@ export default function AdminPage() {
                           setSelectedRequestId(request.id)
                           setActiveTab('requests')
                         }}
-                        className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-neutral-50"
+                        className="flex w-full items-center gap-4 py-4 text-left transition-colors hover:bg-white/60"
                       >
                         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-neutral-950 text-xs font-bold text-white">
                           {request.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}
@@ -549,13 +549,13 @@ export default function AdminPage() {
                       </button>
                     ))}
                     {accessRequests.length === 0 && (
-                      <div className="px-5 py-12 text-center text-sm text-neutral-500">No access requests yet</div>
+                      <div className="py-12 text-center text-sm text-neutral-500">No access requests yet</div>
                     )}
                   </div>
                 </section>
 
-                <section className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
-                  <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
+                <section className="xl:border-l xl:border-neutral-300 xl:pl-8">
+                  <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
                     <div>
                       <h2 className="text-sm font-bold text-neutral-950">Agency activity</h2>
                       <p className="mt-0.5 text-xs text-neutral-500">Largest workspaces by athlete count</p>
@@ -568,7 +568,7 @@ export default function AdminPage() {
                       <ChevronRightIcon className="h-5 w-5" />
                     </button>
                   </div>
-                  <div className="divide-y divide-neutral-100">
+                  <div className="divide-y divide-neutral-200 border-b border-neutral-200">
                     {[...organizations]
                       .sort((a, b) => b.athleteCount - a.athleteCount)
                       .slice(0, 5)
@@ -576,7 +576,7 @@ export default function AdminPage() {
                         <button
                           key={org.id}
                           onClick={() => viewOrganization(org.id)}
-                          className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-neutral-50"
+                          className="flex w-full items-center gap-3 py-4 text-left hover:bg-white/60"
                         >
                           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-neutral-100 text-xs font-bold text-neutral-700">
                             {org.name.charAt(0).toUpperCase()}
@@ -592,28 +592,12 @@ export default function AdminPage() {
                         </button>
                       ))}
                     {organizations.length === 0 && (
-                      <div className="px-5 py-12 text-center text-sm text-neutral-500">No organizations yet</div>
+                      <div className="py-12 text-center text-sm text-neutral-500">No organizations yet</div>
                     )}
                   </div>
                 </section>
               </div>
 
-              <div className="flex flex-col justify-between gap-4 rounded-lg border border-neutral-200 bg-neutral-950 px-5 py-5 text-white sm:flex-row sm:items-center">
-                <div>
-                  <p className="text-sm font-bold">Onboard a new agency</p>
-                  <p className="mt-1 text-sm text-neutral-400">Create a secure invite and send it directly to the owner.</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setActiveTab('invites')
-                    setShowCreateInvite(true)
-                  }}
-                  className="inline-flex items-center justify-center gap-2 rounded-md bg-brand-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-400"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Create invite
-                </button>
-              </div>
             </div>
           )}
 

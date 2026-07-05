@@ -352,7 +352,7 @@ export function Sidebar({ user }: SidebarProps) {
               <div className="flex items-center justify-center h-12 px-3">
                 <div className="flex items-center space-x-2 overflow-hidden">
                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-brand-600 font-bold text-sm">AD</span>
+                    <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-4 w-auto" />
                   </div>
                   {!isCollapsed && (
                     <span className="text-white font-semibold text-lg whitespace-nowrap">AthleteDesk</span>

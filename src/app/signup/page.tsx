@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 function SignupContent() {
   const [isLoading, setIsLoading] = useState(false)
@@ -145,8 +146,8 @@ function SignupContent() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-brand-600 rounded-xl flex items-center justify-center mb-4">
-            <span className="text-white font-bold text-2xl">AD</span>
+          <div className="mx-auto w-16 h-16 bg-white rounded-xl flex items-center justify-center mb-4 ring-1 ring-gray-200 shadow-sm">
+            <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-7 w-auto" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900">
             Create your account
@@ -268,8 +269,8 @@ export default function SignupPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-brand-600 rounded-xl flex items-center justify-center mb-4 animate-pulse">
-            <span className="text-white font-bold text-2xl">AD</span>
+          <div className="mx-auto w-16 h-16 bg-white rounded-xl flex items-center justify-center mb-4 ring-1 ring-gray-200 shadow-sm animate-pulse">
+            <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-7 w-auto" />
           </div>
           <p className="text-gray-500">Loading...</p>
         </div>

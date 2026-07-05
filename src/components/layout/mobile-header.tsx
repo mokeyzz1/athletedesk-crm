@@ -87,7 +87,7 @@ export function MobileHeader({ user }: MobileHeaderProps) {
         <div className="flex items-center justify-between px-5 pb-3 pt-5">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
-              <span className="text-xs font-bold text-brand-600">AD</span>
+              <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-4 w-auto" />
             </div>
             <span className="text-sm font-semibold text-white">AthleteDesk</span>
           </div>

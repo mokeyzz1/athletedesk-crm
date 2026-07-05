@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 function LoginContent() {
   const [isLoading, setIsLoading] = useState(false)
@@ -76,8 +77,8 @@ function LoginContent() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <Link href="/" className="inline-block">
-            <div className="mx-auto w-14 h-14 bg-brand-600 rounded-xl flex items-center justify-center mb-3">
-              <span className="text-white font-bold text-xl">AD</span>
+            <div className="mx-auto w-14 h-14 bg-white rounded-xl flex items-center justify-center mb-3 ring-1 ring-gray-200 shadow-sm">
+              <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-6 w-auto" />
             </div>
           </Link>
           <h2 className="text-2xl font-bold text-gray-900">
@@ -199,8 +200,8 @@ export default function LoginPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="mx-auto w-14 h-14 bg-brand-600 rounded-xl flex items-center justify-center mb-3 animate-pulse">
-            <span className="text-white font-bold text-xl">AD</span>
+          <div className="mx-auto w-14 h-14 bg-white rounded-xl flex items-center justify-center mb-3 ring-1 ring-gray-200 shadow-sm animate-pulse">
+            <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-6 w-auto" />
           </div>
           <p className="text-gray-500">Loading…</p>
         </div>

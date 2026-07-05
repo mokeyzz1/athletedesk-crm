@@ -126,8 +126,8 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-2xl font-bold text-white">AD</span>
+            <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center ring-1 ring-gray-200 shadow-sm">
+              <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-7 w-auto" />
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">

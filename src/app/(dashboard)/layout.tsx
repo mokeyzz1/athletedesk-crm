@@ -5,6 +5,8 @@ import { MobileHeader } from '@/components/layout/mobile-header'
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 import { DashboardProviders } from '@/components/layout/dashboard-providers'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
+import { DemoBanner } from '@/components/layout/demo-banner'
+import { isDemoUser } from '@/lib/demo'
 import type { User } from '@/lib/database.types'
 
 // Disable caching to ensure fresh impersonation state
@@ -52,7 +54,10 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex flex-col min-h-screen md:h-screen overflow-x-hidden bg-gray-50">
+      <div className="flex flex-col min-h-screen md:h-screen overflow-x-hidden bg-gray-50">
+      {/* Demo mode banner */}
+      {isDemoUser(profile.email) && <DemoBanner />}
+
       {/* Impersonation banner */}
       {impersonatedOrgName && (
         <ImpersonationBanner organizationName={impersonatedOrgName} />

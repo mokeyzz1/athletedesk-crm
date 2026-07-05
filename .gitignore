@@ -9,6 +9,10 @@
 
 # Next.js
 /.next/
+.next/
+# stray/renamed build-cache copies (e.g. .next-bad-build-output-*, .next-stale-*)
+.next-*/
+.next-*
 /out/
 
 # Production

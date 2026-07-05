@@ -29,7 +29,9 @@ export function DeleteAthleteButton({ athleteId, athleteName }: DeleteAthleteBut
       router.refresh()
     } else {
       console.error('Failed to delete athlete:', deleteError)
-      setError('Could not delete athlete. Please try again.')
+      // surface the demo read-only message from the DB; otherwise a generic note
+      const isReadOnly = /read-only demo/i.test(deleteError.message || '')
+      setError(isReadOnly ? deleteError.message : 'Could not delete athlete. Please try again.')
       setDeleting(false)
     }
   }

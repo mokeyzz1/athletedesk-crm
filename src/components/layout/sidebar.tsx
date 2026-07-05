@@ -352,7 +352,7 @@ export function Sidebar({ user }: SidebarProps) {
               <div className="flex items-center justify-center h-12 px-3">
                 <div className="flex items-center space-x-2 overflow-hidden">
                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-brand-600 font-bold text-sm">AD</span>
+                    <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-4 w-auto" />
                   </div>
                   {!isCollapsed && (
                     <span className="text-white font-semibold text-lg whitespace-nowrap">AthleteDesk</span>
@@ -535,6 +535,32 @@ export function Sidebar({ user }: SidebarProps) {
             {/* Navigation */}
             <div className="flex-1 flex flex-col overflow-y-auto">
               <nav className="flex-1 px-2 py-4 space-y-4">
+                {user.is_super_admin && (
+                  <div>
+                    {!isCollapsed && (
+                      <p className="px-2 mb-2 text-xs font-semibold text-brand-400 uppercase tracking-wider">
+                        Administration
+                      </p>
+                    )}
+                    <Link
+                      href="/admin"
+                      title={isCollapsed ? 'Control Center' : undefined}
+                      className={`group relative flex items-center rounded-md py-2 text-sm font-semibold text-brand-100 transition-colors hover:bg-brand-800/60 hover:text-white ${
+                        isCollapsed ? 'justify-center px-2' : 'px-2'
+                      }`}
+                    >
+                      <svg
+                        className={`h-5 w-5 flex-shrink-0 text-brand-300 group-hover:text-white ${!isCollapsed ? 'mr-3' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7m5 0h4" />
+                      </svg>
+                      {!isCollapsed && <span>Control Center</span>}
+                    </Link>
+                  </div>
+                )}
                 {navigationGroups.map((group, groupIndex) => (
                   <div key={groupIndex}>
                     {group.label && !isCollapsed && (

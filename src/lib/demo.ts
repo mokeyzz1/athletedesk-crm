@@ -2,7 +2,7 @@ export const DEMO_USER_EMAIL =
   process.env.NEXT_PUBLIC_DEMO_USER_EMAIL || 'demo@athletedesk.app'
 
 export const DEMO_CONTACT_EMAIL =
-  process.env.NEXT_PUBLIC_DEMO_CONTACT_EMAIL || 'moseskorom82@gmail.com'
+  process.env.NEXT_PUBLIC_DEMO_CONTACT_EMAIL || 'admin@turnlogicai.com'
 
 export const DEMO_PASSWORD_HINT = process.env.NEXT_PUBLIC_DEMO_PASSWORD_HINT || ''
 

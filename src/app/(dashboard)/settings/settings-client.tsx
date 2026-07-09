@@ -1085,7 +1085,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     <div className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                         <Image
-                          src="https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_48dp.png"
+                          src="/brand/gmail-icon.png"
                           alt="Gmail"
                           width={32}
                           height={32}

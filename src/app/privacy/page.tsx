@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { DEMO_CONTACT_EMAIL } from '@/lib/demo'
 
@@ -7,13 +8,21 @@ export const metadata: Metadata = {
   description: 'How AthleteDesk collects, uses, and protects your data.',
 }
 
-const updated = 'July 4, 2026'
+const updated = 'July 9, 2026'
 
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-[#f4f4f1] text-neutral-900">
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:py-24">
-        <Link href="/" className="text-sm font-bold text-brand-600 hover:text-brand-500">← AthleteDesk</Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/" aria-label="Go to AthleteDesk home" className="flex items-center gap-2.5">
+            <span className="relative h-8 w-11 overflow-hidden">
+              <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk logo" fill sizes="44px" className="object-contain object-center" priority />
+            </span>
+            <span className="text-sm font-bold uppercase tracking-tight text-neutral-900">AthleteDesk</span>
+          </Link>
+          <Link href="/" className="text-sm font-bold text-brand-600 hover:text-brand-500">Home</Link>
+        </div>
         <h1 className="mt-6 text-4xl font-bold tracking-tight">Privacy Policy</h1>
         <p className="mt-2 text-sm text-neutral-500">Last updated: {updated}</p>
 
@@ -22,8 +31,9 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-bold text-neutral-900">Who we are</h2>
             <p className="mt-2">
               AthleteDesk (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides a CRM platform for sports agencies at
-              athletedesk.io. This policy explains what we collect, why, and the choices you have. It applies to
-              the AthleteDesk web application and this website.
+              athletedesk.io. This policy explains what we collect, why we collect it, how we protect it, and
+              the choices available to account holders and agency administrators. It applies to the AthleteDesk
+              web application and website.
             </p>
           </section>
 
@@ -32,8 +42,8 @@ export default function PrivacyPage() {
             <ul className="mt-2 list-disc space-y-2 pl-5">
               <li><strong>Account information</strong> — your name, email address, and profile details when you sign in with Google or accept an organization invite.</li>
               <li><strong>Workspace data</strong> — athlete records, communications logs, tasks, documents, deal and revenue records that your organization enters into the CRM. Your organization owns this data.</li>
-              <li><strong>Gmail data (optional)</strong> — if you connect Gmail, we access your mailbox to send email on your behalf and display messages related to your athletes. See &ldquo;Google user data&rdquo; below.</li>
-              <li><strong>Usage and diagnostics</strong> — basic logs and error reports (via Sentry) so we can keep the product reliable.</li>
+              <li><strong>Gmail data (optional)</strong> — if you connect Gmail, we access the Gmail data needed to send messages on your behalf, display relevant messages, and connect communication history to athlete records. See &ldquo;Google user data&rdquo; below.</li>
+              <li><strong>Usage and diagnostics</strong> — basic logs, device/browser metadata, and error reports so we can secure the service and keep the product reliable.</li>
             </ul>
           </section>
 
@@ -46,9 +56,10 @@ export default function PrivacyPage() {
               </a>, including the Limited Use requirements. Specifically:
             </p>
             <ul className="mt-2 list-disc space-y-2 pl-5">
-              <li>Gmail access is used only to send emails you compose, to show email threads connected to your athletes, and to log communications you choose to log.</li>
-              <li>We never sell Google user data, never use it for advertising, and never allow humans to read it except with your explicit permission, for security purposes, or as required by law.</li>
-              <li>OAuth tokens are stored encrypted and can be revoked at any time from Settings or your Google account permissions page.</li>
+              <li>Gmail access is used only to provide user-facing email features inside AthleteDesk, including sending messages you compose, showing connected email history, and logging communications to athlete records.</li>
+              <li>We do not sell Google user data, use it for advertising, or use it to train generalized AI models.</li>
+              <li>Human access to Google user data is limited to cases where you give permission, where access is needed for security or abuse investigation, or where required by law.</li>
+              <li>OAuth tokens can be revoked from AthleteDesk settings or from your Google account permissions page.</li>
             </ul>
           </section>
 
@@ -76,7 +87,8 @@ export default function PrivacyPage() {
             <p className="mt-2">
               Workspace data is retained while your organization&apos;s account is active. You can delete records
               inside the app at any time. To delete your account or your organization&apos;s workspace entirely,
-              email us and we will complete the deletion within 30 days.
+              email us and we will review and complete the deletion request within 30 days unless a longer
+              retention period is required for security, legal, or billing reasons.
             </p>
           </section>
 
@@ -92,7 +104,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-bold text-neutral-900">Changes and contact</h2>
             <p className="mt-2">
               If we make material changes to this policy we will update this page and the date above. Questions or
-              requests: <a className="font-semibold text-brand-600 hover:text-brand-500" href={`mailto:${DEMO_CONTACT_EMAIL}`}>{DEMO_CONTACT_EMAIL}</a>.
+              requests can be sent to <a className="font-semibold text-brand-600 hover:text-brand-500" href={`mailto:${DEMO_CONTACT_EMAIL}`}>{DEMO_CONTACT_EMAIL}</a>.
             </p>
           </section>
         </div>

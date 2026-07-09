@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
+import { buildDemoAccessMailto } from '@/lib/demo'
 
 function InviteOnlyContent() {
   const searchParams = useSearchParams()
@@ -74,7 +75,7 @@ function InviteOnlyContent() {
 
             <div className="space-y-4">
               <a
-                href="mailto:hello@athletedesk.app?subject=AthleteDesk%20Access%20Request"
+                href={buildDemoAccessMailto()}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Request Access

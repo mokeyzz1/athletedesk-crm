@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ArrowUturnLeftIcon,
   BuildingOffice2Icon,
@@ -354,9 +355,14 @@ export default function AdminPage() {
     <div className="flex h-screen bg-[#f7f8fa] text-neutral-900">
       <aside className="hidden w-64 flex-col border-r border-white/10 bg-neutral-950 md:flex">
         <div className="flex h-[76px] items-center gap-3 border-b border-white/10 px-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-500 text-sm font-black text-white">
-            AD
-          </div>
+          <Image
+            src="/brand/athletedesk-logo-transparent.png"
+            alt="AthleteDesk"
+            width={78}
+            height={36}
+            className="h-7 w-auto flex-shrink-0"
+            priority
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-white">AthleteDesk</p>
             <p className="text-xs font-medium text-neutral-500">Control center</p>

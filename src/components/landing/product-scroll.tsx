@@ -4,6 +4,7 @@
    via .hp-rise (animated against the horizontal containerAnimation). */
 
 import type { ReactNode } from 'react'
+import Image from 'next/image'
 import RevenueChart from './revenue-chart'
 
 function Pill({ children, tone = 'bg-sky-50 text-sky-700' }: { children: ReactNode; tone?: string }) {
@@ -44,6 +45,22 @@ function InboxVisual() {
   ]
   return (
     <div className="space-y-2">
+      <div className="hp-rise mb-3 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <Image
+            src="/brand/gmail-icon.png"
+            alt="Gmail"
+            width={24}
+            height={24}
+            className="h-6 w-6"
+          />
+          <div>
+            <p className="text-[12px] font-bold text-slate-900">Gmail connected</p>
+            <p className="text-[11px] text-slate-400">Outreach syncs to the athlete record</p>
+          </div>
+        </div>
+        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Live</span>
+      </div>
       {threads.map(t => (
         <div key={t.from} className={`hp-rise flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 ${t.unread ? 'bg-sky-50/60' : 'bg-white'}`}>
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700">{t.i}</div>

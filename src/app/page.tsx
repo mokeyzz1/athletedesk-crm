@@ -141,14 +141,14 @@ function Magnetic({ children }: { children: React.ReactNode }) {
 
 function BrandLogo({ dark = false }: { dark?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5">
+    <Link href="/" aria-label="Go to AthleteDesk home" className="flex items-center gap-2.5">
       <div className="relative h-8 w-11 overflow-hidden">
         <Image src={logoSrc} alt="AthleteDesk logo" fill sizes="44px" className="object-contain object-center" priority />
       </div>
       <span className={`text-[15px] font-bold uppercase tracking-tight ${dark ? 'text-white' : 'text-neutral-900'}`}>
         AthleteDesk
       </span>
-    </div>
+    </Link>
   )
 }
 
@@ -347,24 +347,28 @@ function WorkflowSection({ workflowRef }: { workflowRef: React.RefObject<HTMLEle
 
 const faqs = [
   {
-    q: 'Do we have to leave Gmail?',
-    a: 'No. AthleteDesk connects to the Gmail accounts your team already uses — send, schedule, and log outreach from your own addresses, with every email tied to the athlete record.',
+    q: 'Do we have to move the team out of Gmail?',
+    a: 'No. AthleteDesk connects to the Gmail accounts your team already uses, so outreach can be sent, scheduled, and logged from the same addresses your athletes and brands already know.',
   },
   {
-    q: 'How do we get our athletes in?',
-    a: 'Import from Excel or CSV — hundreds at a time, with column mapping and region sheets. Most agencies migrate their entire database in an afternoon.',
+    q: 'Can we import the spreadsheets we already use?',
+    a: 'Yes. AthleteDesk supports Excel and CSV imports with column mapping, region sheets, and preview steps, so agencies can bring over large recruiting lists without hand-entering every athlete.',
   },
   {
-    q: 'Is our data separate from other agencies?',
-    a: 'Yes. Every agency runs in its own isolated workspace with row-level security. Your athletes, emails, and deals are never visible to anyone else.',
+    q: 'What happens when a scout hands an athlete to an agent?',
+    a: 'The athlete record moves with the work. Notes, emails, status, tasks, ownership, and next steps stay attached, so the next person does not have to rebuild context from a group chat or spreadsheet.',
   },
   {
-    q: 'What does it cost?',
-    a: 'No per-seat fees and no percentage of your deals. Pricing is per workspace, based on roster size — request access and we’ll walk you through it.',
+    q: 'Is our agency data separated from everyone else?',
+    a: 'Yes. Each agency gets its own isolated workspace with organization-level database security. Your athletes, communications, documents, deals, and revenue records are not visible to other agencies.',
   },
   {
-    q: 'Can we try it before committing?',
-    a: 'Yes — the live demo is one click, no signup. It’s a real workspace with realistic data, so you can feel the actual product, not a video.',
+    q: 'Why not just use HubSpot, Airtable, or a spreadsheet?',
+    a: 'Those tools can track contacts. AthleteDesk is organized around the athlete lifecycle: recruiting, representation, Gmail outreach, handoffs, brand deals, tasks, documents, and revenue in one place.',
+  },
+  {
+    q: 'Do we pay more every time we add a scout or marketer?',
+    a: 'No. AthleteDesk is built around agency workspaces, not per-seat taxes. Invite the people who need to work the athlete pipeline without turning collaboration into a pricing penalty.',
   },
 ]
 

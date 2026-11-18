@@ -1,6 +1,7 @@
 'use client'
 
 import { getFieldsForSport, supportedSports, type SportField } from '@/lib/sport-fields'
+import { useAthletePanel } from '@/contexts/athlete-panel-context'
 
 interface SportSpecificFieldsProps {
   sport: string
@@ -60,6 +61,9 @@ interface SportSelectProps {
 }
 
 export function SportSelect({ value, onChange, required }: SportSelectProps) {
+  const { sportsFocus } = useAthletePanel()
+  // Agency's sports first; the saved value stays selectable so editing can't blank it
+  const sports = Array.from(new Set([...sportsFocus, ...supportedSports, ...(value && value !== 'Other' ? [value] : [])]))
   return (
     <div>
       <label htmlFor="sport" className="label">Sport {required && '*'}</label>
@@ -72,7 +76,7 @@ export function SportSelect({ value, onChange, required }: SportSelectProps) {
         className="mt-1 input"
       >
         <option value="">Select a sport</option>
-        {supportedSports.map((sport) => (
+        {sports.map((sport) => (
           <option key={sport} value={sport}>{sport}</option>
         ))}
         <option value="Other">Other</option>

@@ -10,6 +10,7 @@ import {
   type ParsedWorkbook,
 } from '@/lib/export'
 import type { AthleteInsert, Json } from '@/lib/database.types'
+import { useAthletePanel } from '@/contexts/athlete-panel-context'
 
 interface AthleteImportModalProps {
   isOpen: boolean
@@ -92,7 +93,9 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
   const [skippedRows, setSkippedRows] = useState<{ row: number; reason: string; value: string }[]>([])
   const [duplicates, setDuplicates] = useState<Set<number>>(new Set())
   const [skipDuplicates, setSkipDuplicates] = useState(true)
-  const [selectedSport, setSelectedSport] = useState<string>('Football')
+  const { sportsFocus } = useAthletePanel()
+  const sportOptions = Array.from(new Set([...sportsFocus, ...SPORTS]))
+  const [selectedSport, setSelectedSport] = useState<string>(sportsFocus[0] ?? 'Football')
   const [importType, setImportType] = useState<ImportType | null>(null)
   const [detectedType, setDetectedType] = useState<{ detected: ImportType; confidence: 'high' | 'low' } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -735,7 +738,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                   onChange={(e) => setSelectedSport(e.target.value)}
                   className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-brand-500 focus:border-brand-500 sm:w-auto"
                 >
-                  {SPORTS.map(sport => (
+                  {sportOptions.map(sport => (
                     <option key={sport} value={sport}>{sport}</option>
                   ))}
                 </select>

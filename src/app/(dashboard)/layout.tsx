@@ -51,6 +51,17 @@ export default async function DashboardLayout({
     impersonatedOrgName = orgData?.name || null
   }
 
+  // Sports the agency picked at onboarding; used to order and default sport pickers
+  const effectiveOrgId = (profile.is_super_admin && profile.viewing_organization_id) || profile.organization_id
+  const { data: orgSettings } = effectiveOrgId
+    ? await serviceClient
+        .from('organizations')
+        .select('settings')
+        .eq('id', effectiveOrgId)
+        .single() as { data: { settings: { sports_focus?: string[] } | null } | null }
+    : { data: null }
+  const sportsFocus = (orgSettings?.settings?.sports_focus ?? []).filter(s => s !== 'Other')
+
   return (
     <div className="flex flex-col min-h-screen md:h-screen overflow-x-hidden bg-gray-50">
       {/* Impersonation banner */}
@@ -70,7 +81,7 @@ export default async function DashboardLayout({
         </div>
 
         <main className="flex-1 flex flex-col pt-14 pb-[calc(env(safe-area-inset-bottom)+72px)] overflow-x-hidden md:pt-0 md:pb-0 md:overflow-hidden">
-          <DashboardProviders>
+          <DashboardProviders sportsFocus={sportsFocus}>
             {children}
           </DashboardProviders>
         </main>

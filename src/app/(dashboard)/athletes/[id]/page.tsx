@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import type { Athlete, CommunicationLog, RecruitingPipeline, FinancialTracking, BrandOutreach, Document, UserRole, ActivityEvent } from '@/lib/database.types'
+import { OUTREACH_STATUSES, type Athlete, type CommunicationLog, type RecruitingPipeline, type FinancialTracking, type BrandOutreach, type Document, type UserRole, type ActivityEvent } from '@/lib/database.types'
 import { type SocialMediaData, calculateTotalFollowing, formatFollowerCount } from '@/lib/sport-fields'
 import { FaInstagram, FaXTwitter, FaTiktok, FaYoutube } from 'react-icons/fa6'
 import { AthleteDocuments } from './athlete-documents'
@@ -173,10 +173,10 @@ export default async function AthletePage({ params }: AthletePageProps) {
 
   const getStatusBadge = (status: string) => {
     const statusClasses: Record<string, string> = {
-      not_recruiting: 'badge-gray',
-      open_to_contact: 'badge-blue',
-      actively_recruiting: 'badge-green',
-      committed: 'badge-yellow',
+      contacted: 'badge-blue',
+      in_conversation: 'badge-blue',
+      interested: 'badge-yellow',
+      circling_back: 'badge-yellow',
       signed: 'badge-green',
     }
     return statusClasses[status] || 'badge-gray'
@@ -200,8 +200,8 @@ export default async function AthletePage({ params }: AthletePageProps) {
               {athlete.sport} {athlete.position && `- ${athlete.position}`}
             </p>
             <div className="flex items-center gap-2 mt-2">
-              <span className={getStatusBadge(athlete.recruiting_status)}>
-                {athlete.recruiting_status.replace(/_/g, ' ')}
+              <span className={getStatusBadge(athlete.outreach_status)}>
+                {OUTREACH_STATUSES.find(s => s.value === athlete.outreach_status)?.label ?? athlete.outreach_status}
               </span>
               {athlete.transfer_portal_status !== 'not_in_portal' && (
                 <span className="badge-yellow">

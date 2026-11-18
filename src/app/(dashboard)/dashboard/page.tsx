@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import type { DashboardSummary, PendingFollowUp, Athlete, FinancialTracking, BrandOutreach, Task, OutreachStatus, User } from '@/lib/database.types'
+import { OUTREACH_STATUSES, type DashboardSummary, type PendingFollowUp, type Athlete, type FinancialTracking, type BrandOutreach, type Task, type OutreachStatus, type User } from '@/lib/database.types'
 import { Greeting } from '@/components/greeting'
 import { UpcomingMeetingsCard } from '@/components/calendar/upcoming-meetings-card'
 import { DateDisplay, TimeAgo } from '@/components/ui/date-display'
@@ -45,7 +45,6 @@ export default async function DashboardPage() {
     teamGoalsResult,
     summaryResult,
     signedClientsResult,
-    pipelineResult,
     followUpsResult,
     overdueResult,
     todayFollowUpsResult,
@@ -67,15 +66,14 @@ export default async function DashboardPage() {
     // Dashboard summary
     supabase.from('dashboard_summary').select('*').single(),
     // Counts
-    supabase.from('athletes').select('*', { count: 'exact', head: true }).eq('recruiting_status', 'signed'),
-    supabase.from('athletes').select('*', { count: 'exact', head: true }).in('recruiting_status', ['actively_recruiting', 'open_to_contact']),
+    supabase.from('athletes').select('*', { count: 'exact', head: true }).eq('outreach_status', 'signed'),
     // Follow-ups
     supabase.from('pending_follow_ups').select('*').limit(5),
     supabase.from('communications_log').select('*', { count: 'exact', head: true }).eq('follow_up_completed', false).not('follow_up_date', 'is', null).lt('follow_up_date', todayStr),
     supabase.from('communications_log').select('*', { count: 'exact', head: true }).eq('follow_up_completed', false).eq('follow_up_date', todayStr),
     supabase.from('communications_log').select('*', { count: 'exact', head: true }).eq('follow_up_completed', false).eq('follow_up_date', tomorrowStr),
     // Recent data
-    supabase.from('athletes').select('id, name, sport, school, recruiting_status').order('created_at', { ascending: false }).limit(5),
+    supabase.from('athletes').select('id, name, sport, school, outreach_status').order('created_at', { ascending: false }).limit(5),
     supabase.from('financial_tracking').select('*, athletes(name)').gte('deal_date', startOfMonth.toISOString()).lt('deal_date', endOfMonth.toISOString()).order('deal_date', { ascending: false }).limit(5),
     supabase.from('communications_log').select('id, athlete_id, type, subject, communication_date, athletes(name)').order('created_at', { ascending: false }).limit(3),
     supabase.from('financial_tracking').select('id, athlete_id, deal_name, deal_value, created_at, athletes(name)').order('created_at', { ascending: false }).limit(3),
@@ -94,12 +92,11 @@ export default async function DashboardPage() {
   const teamGoalsSummary = teamGoalsResult
   const summary = summaryResult.data as DashboardSummary | null
   const signedClientsCount = signedClientsResult.count
-  const pipelineCount = pipelineResult.count
   const followUps = followUpsResult.data as PendingFollowUp[] | null
   const overdueFollowUpsCount = overdueResult.count
   const todayFollowUpsCount = todayFollowUpsResult.count
   const tomorrowFollowUpsCount = tomorrowFollowUpsResult.count
-  const recentAthletes = recentAthletesResult.data as Pick<Athlete, 'id' | 'name' | 'sport' | 'school' | 'recruiting_status'>[] | null
+  const recentAthletes = recentAthletesResult.data as Pick<Athlete, 'id' | 'name' | 'sport' | 'school' | 'outreach_status'>[] | null
   const monthlyDeals = monthlyDealsResult.data as (FinancialTracking & { athletes: { name: string } | null })[] | null
 
   // Calculate monthly deal totals
@@ -655,8 +652,8 @@ export default async function DashboardPage() {
                         {athlete.sport} {athlete.school && `· ${athlete.school}`}
                       </p>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded font-medium ml-2 whitespace-nowrap bg-gray-100 text-gray-700 capitalize">
-                      {athlete.recruiting_status.replace(/_/g, ' ')}
+                    <span className="text-xs px-2 py-0.5 rounded font-medium ml-2 whitespace-nowrap bg-gray-100 text-gray-700">
+                      {OUTREACH_STATUSES.find(s => s.value === athlete.outreach_status)?.label ?? athlete.outreach_status}
                     </span>
                   </Link>
                 </li>

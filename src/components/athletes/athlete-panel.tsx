@@ -535,7 +535,7 @@ export function AthletePanel({
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Status</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="recruiting_status" className="label">Recruiting Status *</label>
+                    <label htmlFor="recruiting_status" className="label">Availability *</label>
                     <select
                       name="recruiting_status"
                       id="recruiting_status"

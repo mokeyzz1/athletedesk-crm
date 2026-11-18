@@ -305,29 +305,9 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
     setImportProgress({ current: 0, total: dataToImport.length })
 
-    const uniqueRegions = Array.from(new Set(
-      previewData
-        .map(row => row.region ? String(row.region) : null)
-        .filter((r): r is string => r !== null && r.trim() !== '')
-    ))
-
-    if (uniqueRegions.length > 0) {
-      const { data: existingRegions } = await supabase
-        .from('recruiting_regions')
-        .select('name')
-
-      const existingNames = new Set((existingRegions as { name: string }[] || []).map(r => r.name))
-      const newRegions = uniqueRegions.filter(r => !existingNames.has(r))
-
-      if (newRegions.length > 0) {
-        await supabase
-          .from('recruiting_regions')
-          .insert(newRegions.map(name => ({ name, states: [] })) as never[])
-      }
-    }
-
     let successCount = 0
     let failedCount = 0
+    const importedRegions = new Set<string>()
 
     const batchSize = 10
     for (let i = 0; i < dataToImport.length; i += batchSize) {
@@ -376,6 +356,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
           console.error('Import error:', error)
         } else {
           successCount += athletesToInsert.length
+          athletesToInsert.forEach(a => { if (a.region?.trim()) importedRegions.add(a.region) })
 
           const effectivePipelineStage = pipelineStage || (importType === 'roster' ? 'signed_client' : 'prospect_identified')
           if (insertedAthletes && insertedAthletes.length > 0) {
@@ -399,6 +380,23 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
       failedCount += batch.length - athletesToInsert.length
       setImportProgress({ current: Math.min(i + batchSize, dataToImport.length), total: dataToImport.length })
+    }
+
+    // Create regions only for athletes that were actually saved, so skipped or
+    // failed rows (a legend tab, say) can't leave an empty region behind
+    if (importedRegions.size > 0) {
+      const { data: existingRegions } = await supabase
+        .from('recruiting_regions')
+        .select('name')
+
+      const existingNames = new Set((existingRegions as { name: string }[] || []).map(r => r.name))
+      const newRegions = Array.from(importedRegions).filter(r => !existingNames.has(r))
+
+      if (newRegions.length > 0) {
+        await supabase
+          .from('recruiting_regions')
+          .insert(newRegions.map(name => ({ name, states: [] })) as never[])
+      }
     }
 
     setImportResults({ success: successCount, failed: failedCount, duplicatesSkipped })

@@ -542,6 +542,11 @@ const US_STATE_NAMES = [
   'WISCONSIN', 'WYOMING'
 ]
 
+/** Tab names a spreadsheet app assigns by itself; they say nothing about region. */
+export function isDefaultSheetName(name: string): boolean {
+  return /^(sheet|worksheet|table)\s*\d*$/i.test(name.trim())
+}
+
 /** Graduation year of the current senior class. The school year rolls over in August. */
 export function seniorClassYear(now = new Date()): number {
   return now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear()
@@ -740,9 +745,10 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Normalize
     }
 
     // Region - use sheet name directly, no mapping
-    // Sheet names ARE the regions (Northwest, Southwest, South, Great Lakes, etc.)
-    if (!normalized.region && normalized._sourceSheet) {
-      normalized.region = String(normalized._sourceSheet)
+    // Sheet names ARE the regions (Northwest, Southwest, South, Great Lakes, etc.),
+    // except the names spreadsheets give tabs by default ("Sheet1"; CSVs too)
+    if (!normalized.region && normalized._sourceSheet && !isDefaultSheetName(String(normalized._sourceSheet))) {
+      normalized.region = String(normalized._sourceSheet).trim()
     } else if (normalized.region) {
       // Keep as-is, just trim
       normalized.region = String(normalized.region).trim()

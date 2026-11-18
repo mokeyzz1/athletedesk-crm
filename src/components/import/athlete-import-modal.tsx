@@ -786,7 +786,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
               {/* Column Mapping (collapsed by default) */}
               <details className="mb-4">
                 <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
-                  View column mapping ({mappedColumns.filter(c => c.mapped).length} matched)
+                  {mappedColumns.filter(c => c.mapped).length} of {mappedColumns.length} columns recognized. See which
                 </summary>
                 <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs space-y-1">
                   {mappedColumns.map(({ original, mapped }) => (

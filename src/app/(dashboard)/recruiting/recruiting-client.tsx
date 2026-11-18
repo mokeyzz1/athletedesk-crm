@@ -10,12 +10,14 @@ import { getLocalDateString } from '@/lib/helpers'
 import type { OutreachStatus, ClassYear, RosterTeam } from '@/lib/database.types'
 import { OUTREACH_STATUSES, CLASS_YEARS, US_STATES } from '@/lib/database.types'
 import { bulkDeleteAthletes } from '@/lib/actions/athletes'
+import { AthleteImportModal } from '@/components/import/athlete-import-modal'
 import type { RecruitingAthlete, RegionStats, ClassYearStats } from './page'
 
 interface RecruitingClientProps {
   athletes: RecruitingAthlete[]
   regionStats: RegionStats[]
   classYearStats: ClassYearStats[]
+  canImport?: boolean
 }
 
 interface SigningModalProps {
@@ -576,7 +578,8 @@ function TableView({
   )
 }
 
-export function RecruitingClient({ athletes: initialAthletes, regionStats: initialRegionStats, classYearStats: initialClassYearStats }: RecruitingClientProps) {
+export function RecruitingClient({ athletes: initialAthletes, regionStats: initialRegionStats, classYearStats: initialClassYearStats, canImport = false }: RecruitingClientProps) {
+  const [showImportModal, setShowImportModal] = useState(false)
   const [athletes, setAthletes] = useState(initialAthletes)
   const [regionStats, setRegionStats] = useState(initialRegionStats)
   const [classYearStats, setClassYearStats] = useState(initialClassYearStats)
@@ -998,13 +1001,22 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 <p className="empty-state-title">No prospects yet</p>
-                <p className="empty-state-description">Start building your recruiting database by adding athlete prospects.</p>
-                <Link href="/athletes/new" className="btn-primary mt-4 inline-flex">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Add First Prospect
-                </Link>
+                <p className="empty-state-description">
+                  {canImport ? 'Import your prospect list from a spreadsheet, or add them one by one.' : 'Start building your recruiting database by adding athlete prospects.'}
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {canImport && (
+                    <button type="button" onClick={() => setShowImportModal(true)} className="btn-secondary">
+                      Import Spreadsheet
+                    </button>
+                  )}
+                  <Link href="/athletes/new" className="btn-primary inline-flex">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add First Prospect
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -1073,6 +1085,17 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
             </div>
           </div>
         </div>
+      )}
+
+      {canImport && (
+        <AthleteImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          // The list is held in local state, so reload to show the imported prospects
+          onSuccess={() => window.location.reload()}
+          pipelineStage="prospect_identified"
+          title="Import Prospects"
+        />
       )}
     </div>
   )

@@ -298,7 +298,7 @@ export default function OnboardingPage() {
           {step === 3 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                {pendingUser.avatar_url && (
+                {pendingUser.avatar_url ? (
                   <Image
                     src={pendingUser.avatar_url}
                     alt={pendingUser.name}
@@ -306,6 +306,10 @@ export default function OnboardingPage() {
                     height={80}
                     className="mx-auto rounded-full"
                   />
+                ) : (
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-brand-100 text-2xl font-semibold text-brand-700" aria-hidden="true">
+                    {(pendingUser.name || pendingUser.email || '?').charAt(0).toUpperCase()}
+                  </div>
                 )}
                 <h3 className="mt-4 text-lg font-medium text-gray-900">
                   {pendingUser.name}

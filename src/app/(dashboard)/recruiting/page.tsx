@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { RecruitingClient } from './recruiting-client'
-import type { Athlete, OutreachStatus, ClassYear } from '@/lib/database.types'
+import type { Athlete, OutreachStatus, ClassYear, User } from '@/lib/database.types'
+import { isAdminLike, hasAnyWorkRole } from '@/lib/roles'
 import { CLASS_YEARS } from '@/lib/database.types'
 import { getAthleteEmailCounts } from '@/lib/queries/email-stats'
 
@@ -111,5 +112,11 @@ export default async function RecruitingPage() {
       }
     })
 
-  return <RecruitingClient athletes={athletes} regionStats={regionStats} classYearStats={classYearStats} />
+  // Same rule as All Athletes: admins, agents, and scouts can import
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const { data: currentUser } = await supabase.from('users').select('*').eq('auth_user_id', authUser?.id || '').single()
+  const typedUser = currentUser as User | null
+  const canImport = isAdminLike(typedUser) || hasAnyWorkRole(typedUser, ['agent', 'scout'])
+
+  return <RecruitingClient athletes={athletes} regionStats={regionStats} classYearStats={classYearStats} canImport={canImport} />
 }

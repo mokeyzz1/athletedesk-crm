@@ -6,7 +6,6 @@ const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google
 // GET - Start Google Calendar OAuth flow
 export async function GET() {
   const scopes = [
-    'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/calendar.events',
   ].join(' ')
 

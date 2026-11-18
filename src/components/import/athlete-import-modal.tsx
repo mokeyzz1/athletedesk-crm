@@ -416,7 +416,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
     setSkippedRows([])
     setDuplicates(new Set())
     setSkipDuplicates(true)
-    setSelectedSport('Football')
+    setSelectedSport(sportsFocus[0] ?? 'Football')
     setImportType(null)
     setDetectedType(null)
     setError(null)

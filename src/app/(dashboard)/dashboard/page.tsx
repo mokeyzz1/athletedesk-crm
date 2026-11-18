@@ -18,9 +18,9 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const { data: userData } = await supabase
     .from('users')
-    .select('id, name, role, roles, primary_role')
+    .select('id, name, role, roles, primary_role, is_admin, is_super_admin, gmail_email')
     .eq('auth_user_id', user?.id || '')
-    .single() as { data: User | null }
+    .single() as { data: (User & { gmail_email: string | null }) | null }
 
   const userName = userData?.name || 'there'
   const currentUserId = userData?.id || ''
@@ -59,6 +59,7 @@ export default async function DashboardPage() {
     activeBrandsResult,
     userTasksResult,
     recruitingResult,
+    teamCountResult,
   ] = await Promise.all([
     // Goal progress
     currentUserId ? getGoalProgressForUser(currentUserId) : Promise.resolve([]),
@@ -85,6 +86,8 @@ export default async function DashboardPage() {
     supabase.from('tasks').select('*, athletes:athlete_id(name)').eq('assigned_to', currentUserId).neq('status', 'done').order('due_date', { ascending: true, nullsFirst: false }).limit(5),
     // Recruiting stats
     supabase.from('athletes').select('id, region, outreach_status').neq('outreach_status', 'signed'),
+    // Team size, for the getting-started checklist
+    supabase.from('users').select('*', { count: 'exact', head: true }),
   ])
 
   // Extract results
@@ -198,7 +201,9 @@ export default async function DashboardPage() {
     regionStatsMap.set(region, current)
   })
 
-  const regionStats = Array.from(regionStatsMap.entries())
+  // Agencies that don't use regions would only see one "Unassigned" row, so skip the breakdown
+  const usesRegions = recruits.some(r => r.region)
+  const regionStats = !usesRegions ? [] : Array.from(regionStatsMap.entries())
     .map(([region, stats]) => ({
       region,
       total: stats.total,
@@ -253,6 +258,16 @@ export default async function DashboardPage() {
     return formatCurrency(value)
   }
 
+  // Getting started: only for a new agency (no athletes yet, or nobody invited yet)
+  const totalAthleteCount = recruits.length + (signedClientsCount ?? 0)
+  const teamCount = teamCountResult.count ?? 0
+  const setupSteps = [
+    { done: totalAthleteCount > 0, label: 'Add your athletes', hint: 'Import a spreadsheet or add them one by one', href: '/athletes' },
+    { done: teamCount > 1, label: 'Invite your team', hint: 'Agents, scouts, and marketing staff', href: '/settings/team' },
+    { done: !!userData?.gmail_email, label: 'Connect Gmail', hint: 'Send emails that log to each athlete', href: '/settings?integration=gmail' },
+  ]
+  const showSetup = isAdmin && (totalAthleteCount === 0 || teamCount <= 1) && setupSteps.some(s => !s.done)
+
   return (
     <div className="flex flex-col md:h-full">
       {/* Header - aligns with sidebar logo + icon row */}
@@ -272,6 +287,34 @@ export default async function DashboardPage() {
 
       {/* Scrollable Content */}
       <div className="md:flex-1 md:overflow-y-auto px-4 md:px-6 py-4 md:py-4 space-y-4 md:space-y-4">
+      {showSetup && (
+        <div className="card p-4 md:p-5">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Get your agency set up</h2>
+            <span className="text-xs text-gray-500">{setupSteps.filter(s => s.done).length} of {setupSteps.length} done</span>
+          </div>
+          <ul className="mt-3 divide-y divide-gray-100">
+            {setupSteps.map(step => (
+              <li key={step.label}>
+                <Link href={step.href} className="flex items-center gap-3 py-2.5 group">
+                  <span className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${step.done ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300'}`}>
+                    {step.done && (
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block text-sm font-medium ${step.done ? 'text-gray-400 line-through' : 'text-gray-900 group-hover:text-brand-600'}`}>{step.label}</span>
+                    {!step.done && <span className="block text-xs text-gray-500">{step.hint}</span>}
+                  </span>
+                  {!step.done && <span className="text-xs font-medium text-brand-600">Start →</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         {stats.map((stat) => (
@@ -396,12 +439,7 @@ export default async function DashboardPage() {
           <div className="mb-4">
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className={`h-full transition-all ${
-                  contactedPercentage >= 80 ? 'bg-green-500' :
-                  contactedPercentage >= 50 ? 'bg-yellow-500' :
-                  contactedPercentage >= 25 ? 'bg-orange-500' :
-                  'bg-red-500'
-                }`}
+                className="h-full bg-brand-500 transition-all"
                 style={{ width: `${contactedPercentage}%` }}
               />
             </div>
@@ -414,12 +452,7 @@ export default async function DashboardPage() {
                 <div className="w-20 text-xs text-gray-600 truncate">{stat.region}</div>
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full ${
-                      stat.percentage >= 80 ? 'bg-green-400' :
-                      stat.percentage >= 50 ? 'bg-yellow-400' :
-                      stat.percentage >= 25 ? 'bg-orange-400' :
-                      'bg-red-400'
-                    }`}
+                    className="h-full bg-brand-400"
                     style={{ width: `${stat.percentage}%` }}
                   />
                 </div>

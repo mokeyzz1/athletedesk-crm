@@ -405,15 +405,18 @@ export default function NewAthletePage() {
         <div className="border-t border-gray-200 pt-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Staff Assignments</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="assigned_scout_id" className="label">Assigned Scout</label>
-              <select name="assigned_scout_id" id="assigned_scout_id" className="mt-1 input">
-                <option value="">Unassigned</option>
-                {scouts.map(user => (
-                  <option key={user.id} value={user.id}>{user.name}</option>
-                ))}
-              </select>
-            </div>
+            {/* Hidden for agencies with nobody in the scout role */}
+            {scouts.length > 0 && (
+              <div>
+                <label htmlFor="assigned_scout_id" className="label">Assigned Scout</label>
+                <select name="assigned_scout_id" id="assigned_scout_id" className="mt-1 input">
+                  <option value="">Unassigned</option>
+                  {scouts.map(user => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label htmlFor="assigned_agent_id" className="label">Assigned Agent</label>
               <select name="assigned_agent_id" id="assigned_agent_id" className="mt-1 input">

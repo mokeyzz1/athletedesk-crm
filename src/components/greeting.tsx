@@ -26,7 +26,7 @@ export function Greeting({ name, className }: GreetingProps) {
   if (!greeting) return null
 
   return (
-    <h1 className={`text-2xl font-display font-medium tracking-tight ${className || 'text-gray-900'}`}>
+    <h1 className={`text-xl md:text-2xl font-bold ${className || 'text-gray-900'}`}>
       {greeting}, {firstName}
     </h1>
   )

@@ -394,20 +394,25 @@ export function AthletePanel({
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label htmlFor="region" className="label">Region</label>
-                    <select
-                      name="region"
-                      id="region"
-                      defaultValue={athlete.region || ''}
-                      className="mt-1 input w-full"
-                    >
-                      <option value="">Select Region</option>
-                      {recruitingRegions.map(r => (
-                        <option key={r.id} value={r.name}>{r.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Agencies without regions don't see the field; keep any existing value on save */}
+                  {recruitingRegions.length > 0 ? (
+                    <div>
+                      <label htmlFor="region" className="label">Region</label>
+                      <select
+                        name="region"
+                        id="region"
+                        defaultValue={athlete.region || ''}
+                        className="mt-1 input w-full"
+                      >
+                        <option value="">Select Region</option>
+                        {recruitingRegions.map(r => (
+                          <option key={r.id} value={r.name}>{r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <input type="hidden" name="region" value={athlete.region || ''} />
+                  )}
                   <div>
                     <label htmlFor="outreach_status" className="label">Outreach Status *</label>
                     <select
@@ -571,7 +576,8 @@ export function AthletePanel({
               <div className="border-t border-gray-200 pt-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Staff Assignments</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Scouts */}
+                  {/* Scouts: hidden for agencies with nobody in the scout role */}
+                  {(scouts.length > 0 || selectedScouts.length > 0) && (
                   <div>
                     <label className="label mb-2">Scouts ({selectedScouts.length})</label>
                     <div className="border border-gray-200 rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
@@ -596,6 +602,7 @@ export function AthletePanel({
                       )}
                     </div>
                   </div>
+                  )}
 
                   {/* Agents */}
                   <div>

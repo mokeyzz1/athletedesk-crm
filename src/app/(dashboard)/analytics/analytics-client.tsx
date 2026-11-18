@@ -16,6 +16,7 @@ import {
   Filler,
 } from 'chart.js'
 import { Bar, Line, Doughnut } from 'react-chartjs-2'
+import { CLASS_YEARS } from '@/lib/database.types'
 
 ChartJS.register(
   CategoryScale,
@@ -79,17 +80,6 @@ const PIPELINE_LABELS: Record<string, string> = {
   signed_client: 'Signed Client',
 }
 
-const CLASS_YEAR_LABELS: Record<string, string> = {
-  '2025': '2025',
-  '2026': '2026',
-  '2027': '2027',
-  '2028': '2028',
-  '2029': '2029',
-  '2030': '2030',
-  'pro': 'Pro',
-  'n_a': 'N/A',
-}
-
 export function AnalyticsClient({
   recruitingData,
   teamData,
@@ -128,12 +118,13 @@ export function AnalyticsClient({
   }
 
   // Prepare class year data
-  const classYears = ['2025', '2026', '2027', '2028', '2029', '2030', 'pro']
+  // Only class years that have prospects, in calendar order
+  const classYears = CLASS_YEARS.filter(cy => cy.value !== 'n_a' && recruitingData.classYearCounts[cy.value])
   const classYearData = {
-    labels: classYears.map(y => CLASS_YEAR_LABELS[y] || y),
+    labels: classYears.map(cy => cy.label),
     datasets: [{
       label: 'Prospects',
-      data: classYears.map(y => recruitingData.classYearCounts[y] || 0),
+      data: classYears.map(cy => recruitingData.classYearCounts[cy.value]),
       backgroundColor: 'rgba(79, 70, 229, 0.8)',
       borderRadius: 4,
     }],
@@ -356,7 +347,7 @@ export function AnalyticsClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {teamData.users
+                  {[...teamData.users]
                     .sort((a, b) => (teamData.commsPerStaff[b.id] || 0) - (teamData.commsPerStaff[a.id] || 0))
                     .slice(0, 5)
                     .map(user => (

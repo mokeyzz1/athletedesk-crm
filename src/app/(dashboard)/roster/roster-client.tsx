@@ -260,15 +260,15 @@ export function RosterClient({ athletes, canImport = false }: RosterClientProps)
                 <p className="text-sm text-gray-500">Signed Athletes</p>
               </div>
               <div className="card text-center">
-                <p className="text-xl md:text-3xl font-bold text-purple-600 break-words">{formatCurrency(totalRevenueShare)}</p>
+                <p className="text-xl md:text-3xl font-bold text-gray-900 break-words">{formatCurrency(totalRevenueShare)}</p>
                 <p className="text-sm text-gray-500">Revenue Share / Scholarship</p>
               </div>
               <div className="card text-center">
-                <p className="text-xl md:text-3xl font-bold text-green-600 break-words">{formatCurrency(totalMarketingBrand)}</p>
+                <p className="text-xl md:text-3xl font-bold text-gray-900 break-words">{formatCurrency(totalMarketingBrand)}</p>
                 <p className="text-sm text-gray-500">Marketing / Brand Deals</p>
               </div>
               <div className="card text-center">
-                <p className="text-2xl md:text-3xl font-bold text-blue-600">{formatNumber(totalReach)}</p>
+                <p className="text-2xl md:text-3xl font-bold text-gray-900">{formatNumber(totalReach)}</p>
                 <p className="text-sm text-gray-500">Social Reach</p>
               </div>
             </div>
@@ -336,13 +336,13 @@ export function RosterClient({ athletes, canImport = false }: RosterClientProps)
                           </div>
                           <div>
                             <p className="text-xs uppercase tracking-wide text-gray-400">Revenue Share</p>
-                            <p className="font-medium text-purple-700">
+                            <p className="font-medium text-gray-900">
                               {athlete.revenue_share_total > 0 ? formatCurrency(athlete.revenue_share_total) : '-'}
                             </p>
                           </div>
                           <div>
                             <p className="text-xs uppercase tracking-wide text-gray-400">Marketing/Brand</p>
-                            <p className="font-medium text-green-700">
+                            <p className="font-medium text-gray-900">
                               {athlete.marketing_brand_total > 0 ? formatCurrency(athlete.marketing_brand_total) : '-'}
                             </p>
                           </div>
@@ -442,7 +442,7 @@ export function RosterClient({ athletes, canImport = false }: RosterClientProps)
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-purple-700">
+                          <div className="text-sm font-medium text-gray-900">
                             {athlete.revenue_share_total > 0 ? formatCurrency(athlete.revenue_share_total) : '-'}
                           </div>
                           {athlete.revenue_share_count > 0 && (
@@ -452,7 +452,7 @@ export function RosterClient({ athletes, canImport = false }: RosterClientProps)
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-green-700">
+                          <div className="text-sm font-medium text-gray-900">
                             {athlete.marketing_brand_total > 0 ? formatCurrency(athlete.marketing_brand_total) : '-'}
                           </div>
                           {athlete.marketing_brand_count > 0 && (

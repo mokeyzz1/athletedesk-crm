@@ -30,7 +30,6 @@ export const sportFieldConfigs: SportFieldConfig[] = [
     fields: [
       { key: 'height', label: 'Height', type: 'text', placeholder: "6'5\"" },
       { key: 'weight', label: 'Weight', type: 'number', placeholder: '195', suffix: 'lbs' },
-      { key: 'position', label: 'Position', type: 'text', placeholder: 'e.g., Point Guard, Center' },
       { key: 'ppg', label: 'Points Per Game', type: 'number', placeholder: '18.5' },
       { key: 'recruiting_ranking', label: 'Recruiting Ranking', type: 'text', placeholder: 'e.g., 5-star, Top 50' },
       { key: 'offers', label: 'Offers', type: 'text', placeholder: 'e.g., Duke, Kentucky, Kansas' },
@@ -48,7 +47,6 @@ export const sportFieldConfigs: SportFieldConfig[] = [
   {
     sport: 'Soccer',
     fields: [
-      { key: 'position', label: 'Position', type: 'text', placeholder: 'e.g., Striker, Midfielder, Goalkeeper' },
       { key: 'goals', label: 'Goals', type: 'number', placeholder: '15' },
       { key: 'assists', label: 'Assists', type: 'number', placeholder: '8' },
       { key: 'club_team', label: 'Club Team', type: 'text', placeholder: 'e.g., LA Galaxy Academy' },
@@ -66,7 +64,6 @@ export const sportFieldConfigs: SportFieldConfig[] = [
   {
     sport: 'Baseball',
     fields: [
-      { key: 'position', label: 'Position', type: 'text', placeholder: 'e.g., Pitcher, Shortstop, Outfield' },
       { key: 'batting_average', label: 'Batting Average', type: 'text', placeholder: '.325' },
       { key: 'era', label: 'ERA (if pitcher)', type: 'text', placeholder: '2.85' },
       { key: 'velocity', label: 'Velocity (if pitcher)', type: 'text', placeholder: '95 mph' },

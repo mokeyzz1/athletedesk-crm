@@ -3,16 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import { OutreachStatus } from '@/lib/database.types'
 import { notifyAthleteAssignments } from '@/lib/actions/athletes'
 import { logActivityEvents, type LogActivityEventInput } from '@/lib/actions/activity'
+import { ORG_DEFAULT_REGION, pickDefaultAssignee, type HandoffDefaults } from '@/lib/handoffs'
 
 interface StatusUpdateRequest {
   status: OutreachStatus
   school_state?: string | null
   roster_team_id?: string | null
-}
-
-interface RegionAssignment {
-  default_agent_id: string | null
-  default_marketing_id: string | null
 }
 
 interface User {
@@ -102,64 +98,51 @@ export async function PATCH(
 
   const handoffActions: { type: 'agent' | 'marketing'; assignedUser: User | null }[] = []
 
-  // Check for Scout → Agent handoff
-  if (
+  // Scout → Agent on interested/in_conversation; Agent → Marketing on signed.
+  // The two triggers can't both fire on one status change.
+  const handoffType: 'agent' | 'marketing' | null =
     AGENT_TRIGGER_STATUSES.includes(newStatus) &&
     !AGENT_TRIGGER_STATUSES.includes(oldStatus) &&
     !athlete.assigned_agent_id &&
-    !athlete.handoff_to_agent_at &&
-    athlete.region
-  ) {
-    // Look up default agent for this region
-    const { data: regionAssignment } = await supabase
-      .from('region_assignments')
-      .select('default_agent_id, default_marketing_id')
-      .eq('region', athlete.region)
-      .single() as { data: RegionAssignment | null }
+    !athlete.handoff_to_agent_at
+      ? 'agent'
+      : newStatus === MARKETING_TRIGGER_STATUS &&
+          oldStatus !== MARKETING_TRIGGER_STATUS &&
+          !athlete.assigned_marketing_lead_id &&
+          !athlete.handoff_to_marketing_at
+        ? 'marketing'
+        : null
 
-    if (regionAssignment?.default_agent_id) {
-      // Get agent details
-      const { data: agent } = await supabase
+  if (handoffType) {
+    // Region default wins; the org-wide fallback covers agencies without regions
+    const { data: defaults } = await supabase
+      .from('region_assignments')
+      .select('region, default_agent_id, default_marketing_id')
+      .in('region', athlete.region ? [athlete.region, ORG_DEFAULT_REGION] : [ORG_DEFAULT_REGION])
+
+    const assigneeId = pickDefaultAssignee(
+      (defaults ?? []) as HandoffDefaults[],
+      athlete.region,
+      handoffType === 'agent' ? 'default_agent_id' : 'default_marketing_id'
+    )
+
+    if (assigneeId) {
+      const { data: assignee } = await supabase
         .from('users')
         .select('id, name, notify_new_assignments')
-        .eq('id', regionAssignment.default_agent_id)
+        .eq('id', assigneeId)
         .single() as { data: User | null }
 
-      if (agent) {
-        updates.assigned_agent_id = agent.id
-        updates.handoff_to_agent_at = new Date().toISOString()
-        handoffActions.push({ type: 'agent', assignedUser: agent })
-      }
-    }
-  }
-
-  // Check for Agent → Marketing handoff
-  if (
-    newStatus === MARKETING_TRIGGER_STATUS &&
-    oldStatus !== MARKETING_TRIGGER_STATUS &&
-    !athlete.assigned_marketing_lead_id &&
-    !athlete.handoff_to_marketing_at &&
-    athlete.region
-  ) {
-    // Look up default marketing lead for this region
-    const { data: regionAssignment } = await supabase
-      .from('region_assignments')
-      .select('default_agent_id, default_marketing_id')
-      .eq('region', athlete.region)
-      .single() as { data: RegionAssignment | null }
-
-    if (regionAssignment?.default_marketing_id) {
-      // Get marketing lead details
-      const { data: marketingLead } = await supabase
-        .from('users')
-        .select('id, name, notify_new_assignments')
-        .eq('id', regionAssignment.default_marketing_id)
-        .single() as { data: User | null }
-
-      if (marketingLead) {
-        updates.assigned_marketing_lead_id = marketingLead.id
-        updates.handoff_to_marketing_at = new Date().toISOString()
-        handoffActions.push({ type: 'marketing', assignedUser: marketingLead })
+      if (assignee) {
+        const now = new Date().toISOString()
+        if (handoffType === 'agent') {
+          updates.assigned_agent_id = assignee.id
+          updates.handoff_to_agent_at = now
+        } else {
+          updates.assigned_marketing_lead_id = assignee.id
+          updates.handoff_to_marketing_at = now
+        }
+        handoffActions.push({ type: handoffType, assignedUser: assignee })
       }
     }
   }

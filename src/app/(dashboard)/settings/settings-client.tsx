@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import type { User, EmailTemplate, RosterTeam, RecruitingRegion, Organization, IntegrationProvider } from '@/lib/database.types'
 import { US_STATES } from '@/lib/database.types'
 import { getPrimaryRole, isAdminLike } from '@/lib/roles'
+import { regionLabel } from '@/lib/handoffs'
 
 interface Integration {
   id: string
@@ -1695,7 +1696,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                 {/* Region Assignments */}
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Assignments by Region</h3>
-                  <p className="text-xs text-gray-500 mb-3">Click a region to assign multiple agents and marketing users. The primary user (starred) receives auto-handoffs.</p>
+                  <p className="text-xs text-gray-500 mb-3">Click a region to assign multiple agents and marketing users. The primary user (starred) receives auto-handoffs. &ldquo;All other athletes&rdquo; covers anyone without a region, or whose region has no primary set.</p>
                   {loadingHandoffs ? (
                     <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
                       <div className="animate-spin w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full mx-auto"></div>
@@ -1719,7 +1720,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                                 <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
-                                <span className="text-sm font-medium text-gray-900">{assignment.region}</span>
+                                <span className="text-sm font-medium text-gray-900">{regionLabel(assignment.region)}</span>
                                 {savingHandoff === assignment.region && (
                                   <span className="text-xs text-brand-600">Saving...</span>
                                 )}
@@ -1861,7 +1862,7 @@ export function SettingsClient({ profile, initialTemplates, initialRosterTeams, 
                     </svg>
                     <div>
                       <p className="text-sm font-medium text-blue-800">Important</p>
-                      <p className="text-sm text-blue-700">Handoffs only trigger when the athlete has a region set and hasn&apos;t already been assigned. Manual assignments take priority over automatic ones.</p>
+                      <p className="text-sm text-blue-700">Handoffs only trigger when the athlete hasn&apos;t already been assigned, and there is a primary user for their region or for &ldquo;All other athletes&rdquo;. Manual assignments take priority over automatic ones.</p>
                     </div>
                   </div>
                 </div>

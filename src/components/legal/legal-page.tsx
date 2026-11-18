@@ -109,7 +109,7 @@ export function LegalPage({ title, updated, summary, sections, current }: LegalP
 
       <footer className="border-t border-neutral-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>© {new Date().getFullYear()} AthleteDesk</p>
+          <p>© {new Date().getFullYear()} Moses Koroma LLC · TurnLogic AI</p>
           <div className="flex gap-5">
             <Link href="/privacy" className={current === 'privacy' ? 'text-neutral-900' : 'hover:text-neutral-900'}>Privacy</Link>
             <Link href="/terms" className={current === 'terms' ? 'text-neutral-900' : 'hover:text-neutral-900'}>Terms</Link>

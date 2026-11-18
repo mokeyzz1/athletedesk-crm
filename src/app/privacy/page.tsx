@@ -24,7 +24,8 @@ const sections: LegalSection[] = [
     title: 'Who we are',
     body: (
       <p>
-        AthleteDesk (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides a CRM for sports and NIL agencies at athletedesk.io.
+        AthleteDesk is a product of TurnLogic AI, a trade name of Moses Koroma LLC, a Virginia limited liability
+        company (&ldquo;we&rdquo;, &ldquo;us&rdquo;). AthleteDesk provides a CRM for sports and NIL agencies at athletedesk.io.
         This policy explains what we collect, why, how we protect it, and the choices available to account holders and
         agency administrators. It applies to the AthleteDesk website and web application.
       </p>

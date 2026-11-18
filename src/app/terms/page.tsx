@@ -23,7 +23,8 @@ const sections: LegalSection[] = [
     title: 'The service',
     body: (
       <p>
-        AthleteDesk is a CRM for sports and NIL agencies: recruiting pipelines, athlete records, communications,
+        AthleteDesk is a product of TurnLogic AI, a trade name of Moses Koroma LLC, a Virginia limited liability
+        company (&ldquo;we&rdquo;, &ldquo;us&rdquo;). AthleteDesk is a CRM for sports and NIL agencies: recruiting pipelines, athlete records, communications,
         tasks, documents, brand deals, and revenue tracking. Access is currently by invitation or approved request.
         By creating an account, accepting an invite, or using the service, you agree to these terms for yourself and,
         if you use AthleteDesk for an agency, on behalf of that agency.
@@ -132,8 +133,8 @@ const sections: LegalSection[] = [
     title: 'General',
     body: (
       <p>
-        These terms are governed by the laws of the United States and the state where AthleteDesk is based, without
-        regard to conflict-of-law rules. If we make material changes, we will update this page and the date at the
+        These terms are governed by the laws of the Commonwealth of Virginia and applicable United States federal law,
+        without regard to conflict-of-law rules. If we make material changes, we will update this page and the date at the
         top and tell agency admins; continuing to use AthleteDesk after that means you accept the changes. Questions
         can be sent to <a className={legalLink} href={`mailto:${DEMO_CONTACT_EMAIL}`}>{DEMO_CONTACT_EMAIL}</a>.
       </p>

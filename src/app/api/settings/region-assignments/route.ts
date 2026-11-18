@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { hasWorkRole, isAdminLike } from '@/lib/roles'
 import type { UserRole } from '@/lib/database.types'
+import { ORG_DEFAULT_REGION } from '@/lib/handoffs'
 
 interface RegionAssignmentUpdate {
   region: string
@@ -45,15 +46,17 @@ export async function GET() {
     (existingAssignments || []).map((a: { region: string }) => [a.region, a])
   )
 
-  // Merge: for each recruiting_region, use existing assignment or create empty one
-  const assignments = (regions || []).map((r: { name: string }) => {
-    const existing = assignmentMap.get(r.name)
+  // Merge: the org-wide fallback first, then each recruiting_region, using the
+  // existing assignment or an empty one
+  const regionNames = [ORG_DEFAULT_REGION, ...(regions || []).map((r: { name: string }) => r.name)]
+  const assignments = regionNames.map((name) => {
+    const existing = assignmentMap.get(name)
     if (existing) {
       return existing
     }
     // Return empty assignment structure for regions without assignments yet
     return {
-      region: r.name,
+      region: name,
       agent_ids: [],
       marketing_ids: [],
       primary_agent_id: null,

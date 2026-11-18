@@ -200,19 +200,19 @@ export function Sidebar({ user }: SidebarProps) {
           })
         }
 
+        // Contracts sent for signature and not yet signed, declined, or voided
         const { data: pendingContracts } = await supabase
-          .from('documents')
-          .select('id, name, athlete_id, athletes(name)')
-          .eq('status', 'pending')
-          .in('document_type', ['contract', 'agreement', 'nil_deal'])
+          .from('contracts')
+          .select('id, title, athlete_id, athletes(name)')
+          .in('status', ['sent', 'delivered'])
           .limit(5)
 
         if (pendingContracts) {
-          pendingContracts.forEach((c: { id: string; name: string; athlete_id: string; athletes: { name: string } | null }) => {
+          pendingContracts.forEach((c: { id: string; title: string; athlete_id: string; athletes: { name: string } | null }) => {
             notifs.push({
               id: `contract-${c.id}`,
               type: 'pending_contract',
-              title: c.name,
+              title: c.title,
               subtitle: `${c.athletes?.name || 'Unknown'} - awaiting signature`,
               href: `/contracts`
             })

@@ -20,13 +20,14 @@ interface DuplicateWarning {
 export default function NewAthletePage() {
   const router = useRouter()
   const supabase = createClient()
-  const { recruitingRegions } = useAthletePanel()
+  const { recruitingRegions, sportsFocus } = useAthletePanel()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [users, setUsers] = useState<User[]>([])
 
   // Form state for dynamic fields
-  const [selectedSport, setSelectedSport] = useState('')
+  // A single-sport agency never has to pick the sport
+  const [selectedSport, setSelectedSport] = useState(sportsFocus.length === 1 ? sportsFocus[0] : '')
   const [sportSpecificStats, setSportSpecificStats] = useState<Record<string, unknown>>({})
   const [socialMedia, setSocialMedia] = useState<SocialMediaData>({})
 

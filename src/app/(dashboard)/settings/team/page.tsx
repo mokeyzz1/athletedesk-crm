@@ -114,7 +114,8 @@ export default function TeamManagementPage() {
       ? ['admin', ...selectedWorkRoles]
       : selectedWorkRoles
     // Primary role for legacy: use primary work role (admin is a permission, not displayed as primary)
-    const legacyPrimaryRole: UserRole = primaryWorkRole
+    // Someone with no roles yet starts with a placeholder primary; fall back to the first role picked
+    const legacyPrimaryRole: UserRole = selectedWorkRoles.includes(primaryWorkRole) ? primaryWorkRole : selectedWorkRoles[0]
 
     const result = await updateUserRoles(editingRolesUser.id, legacyRoles, legacyPrimaryRole)
 
@@ -359,7 +360,6 @@ export default function TeamManagementPage() {
                   </div>
                 </div>
 
-                {user.id !== currentUser?.id && (
                   <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
                     <button
                       onClick={() => openRolesModal(user)}
@@ -373,15 +373,16 @@ export default function TeamManagementPage() {
                     >
                       Edit Regions
                     </button>
-                    <button
-                      onClick={() => deleteUser(user.id)}
-                      disabled={deletingUser === user.id}
-                      className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                    >
-                      {deletingUser === user.id ? 'Removing...' : 'Remove'}
-                    </button>
+                    {user.id !== currentUser?.id && (
+                      <button
+                        onClick={() => deleteUser(user.id)}
+                        disabled={deletingUser === user.id}
+                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                      >
+                        {deletingUser === user.id ? 'Removing...' : 'Remove'}
+                      </button>
+                    )}
                   </div>
-                )}
               </div>
             </div>
           </div>
@@ -475,7 +476,6 @@ export default function TeamManagementPage() {
                   {new Date(user.created_at).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {user.id !== currentUser?.id && (
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => openRolesModal(user)}
@@ -489,15 +489,16 @@ export default function TeamManagementPage() {
                       >
                         Edit Regions
                       </button>
-                      <button
-                        onClick={() => deleteUser(user.id)}
-                        disabled={deletingUser === user.id}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                      >
-                        {deletingUser === user.id ? 'Removing...' : 'Remove'}
-                      </button>
+                      {user.id !== currentUser?.id && (
+                        <button
+                          onClick={() => deleteUser(user.id)}
+                          disabled={deletingUser === user.id}
+                          className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                        >
+                          {deletingUser === user.id ? 'Removing...' : 'Remove'}
+                        </button>
+                      )}
                     </div>
-                  )}
                 </td>
               </tr>
             ))}

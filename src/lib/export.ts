@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx'
 import { getLocalDateString, parseDate } from './helpers'
-import { CLASS_YEAR_MAX, CLASS_YEAR_MIN, type ClassYear } from './database.types'
+import { CLASS_YEAR_MAX, CLASS_YEAR_MIN, seniorClassYear, type ClassYear } from './database.types'
 
 export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
@@ -547,11 +547,6 @@ export function isDefaultSheetName(name: string): boolean {
   return /^(sheet|worksheet|table)\s*\d*$/i.test(name.trim())
 }
 
-/** Graduation year of the current senior class. The school year rolls over in August. */
-export function seniorClassYear(now = new Date()): number {
-  return now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear()
-}
-
 /**
  * Turn whatever a spreadsheet has for class year (2027, '27, "Class of 2027",
  * "Junior", "Pro") into a value the database accepts. Years outside the
@@ -570,8 +565,8 @@ export function normalizeClassYear(raw: unknown, now = new Date()): ClassYear {
   if (lower.includes('pro')) return 'pro'
 
   const senior = seniorClassYear(now)
-  const fromWord = lower.includes('fresh') ? senior + 3
-    : lower.includes('soph') ? senior + 2
+  const fromWord = lower.includes('fresh') || /\bfr\b/.test(lower) ? senior + 3
+    : lower.includes('soph') || /\bso\b/.test(lower) ? senior + 2
     : lower.includes('junior') || lower.includes('jr') ? senior + 1
     : lower.includes('senior') || lower.includes('sr') ? senior
     : null

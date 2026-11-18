@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, AthleteInsert, Athlete, Json, ClassYear, OutreachStatus } from '@/lib/database.types'
-import { CLASS_YEARS, OUTREACH_STATUSES } from '@/lib/database.types'
+import { CLASS_YEARS, OUTREACH_STATUSES, seniorClassYear } from '@/lib/database.types'
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
@@ -346,7 +346,7 @@ export default function NewAthletePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label htmlFor="class_year" className="label">Class Year *</label>
-              <select name="class_year" id="class_year" required className="mt-1 input">
+              <select name="class_year" id="class_year" required defaultValue={String(seniorClassYear())} className="mt-1 input">
                 {CLASS_YEARS.map(cy => (
                   <option key={cy.value} value={cy.value}>{cy.label}</option>
                 ))}

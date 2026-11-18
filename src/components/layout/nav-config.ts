@@ -34,7 +34,7 @@ const titleMap: { prefix: string; title: string }[] = [
   { prefix: '/pipeline', title: 'Pipeline' },
   { prefix: '/tasks', title: 'Tasks' },
   { prefix: '/communications', title: 'Communications' },
-  { prefix: '/email', title: 'Inbox' },
+  { prefix: '/email', title: 'Email' },
   { prefix: '/brands', title: 'Brands' },
   { prefix: '/financials', title: 'Financials' },
   { prefix: '/contracts', title: 'Contracts' },

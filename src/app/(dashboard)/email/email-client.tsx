@@ -1,19 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatDate as formatDateHelper } from '@/lib/helpers'
 import { User, EmailTemplate } from '@/lib/database.types'
 
-interface Email {
+// An email sent from AthleteDesk, read from the communications log (not from Gmail)
+export interface SentEmail {
   id: string
-  threadId: string
-  from: string
   to: string
+  toEmail: string | null
   subject: string
-  snippet: string
   body: string
   date: string
-  isUnread: boolean
 }
 
 interface Athlete {
@@ -34,15 +33,15 @@ interface EmailClientProps {
   templates: EmailTemplate[]
   athletes: Athlete[]
   staffMembers: StaffMember[]
+  sentEmails: SentEmail[]
 }
 
-type Tab = 'inbox' | 'sent' | 'templates'
+type Tab = 'sent' | 'templates'
 
-export function EmailClient({ currentUser, templates, athletes, staffMembers }: EmailClientProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('inbox')
-  const [emails, setEmails] = useState<Email[]>([])
-  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
-  const [loading, setLoading] = useState(true)
+export function EmailClient({ templates, athletes, sentEmails }: EmailClientProps) {
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<Tab>('sent')
+  const [selectedEmail, setSelectedEmail] = useState<SentEmail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCompose, setShowCompose] = useState(false)
@@ -70,46 +69,12 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
     checkGmail()
   }, [])
 
-  // Fetch emails
-  useEffect(() => {
-    if (gmailConnected === false) {
-      setLoading(false)
-      return
-    }
-    if (gmailConnected === null) return
-
-    async function fetchEmails() {
-      setLoading(true)
-      setError(null)
-      try {
-        const endpoint = activeTab === 'inbox' ? '/api/gmail/inbox' : '/api/gmail/sent'
-        const url = new URL(endpoint, window.location.origin)
-        if (searchQuery) {
-          url.searchParams.set('q', searchQuery)
-        }
-
-        const res = await fetch(url.toString())
-        const data = await res.json()
-
-        if (!res.ok) {
-          throw new Error(data.error || 'Failed to fetch emails')
-        }
-
-        setEmails(data.emails || [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch emails')
-        setEmails([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (activeTab !== 'templates') {
-      fetchEmails()
-    } else {
-      setLoading(false)
-    }
-  }, [activeTab, gmailConnected, searchQuery])
+  const query = searchQuery.trim().toLowerCase()
+  const emails = query
+    ? sentEmails.filter(e =>
+        [e.to, e.toEmail, e.subject, e.body].some(v => v?.toLowerCase().includes(query))
+      )
+    : sentEmails
 
   const handleConnectGmail = () => {
     window.location.href = '/api/gmail/auth?returnUrl=/email'
@@ -161,24 +126,13 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
       setSelectedTemplate('')
       setSelectedAthleteId('')
 
-      // Refresh sent emails
-      if (activeTab === 'sent') {
-        setActiveTab('inbox')
-        setTimeout(() => setActiveTab('sent'), 100)
-      }
+      // Reload the sent list from the server
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send email')
     } finally {
       setSending(false)
     }
-  }
-
-  const handleReply = () => {
-    if (!selectedEmail) return
-    setComposeTo(selectedEmail.from.replace(/.*<(.+)>.*/, '$1') || selectedEmail.from)
-    setComposeSubject(selectedEmail.subject.startsWith('Re:') ? selectedEmail.subject : `Re: ${selectedEmail.subject}`)
-    setComposeBody(`\n\n---\nOn ${new Date(selectedEmail.date).toLocaleDateString()}, ${selectedEmail.from} wrote:\n${selectedEmail.body}`)
-    setShowCompose(true)
   }
 
   const formatDate = (dateStr: string) => {
@@ -196,11 +150,6 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
     } else {
       return formatDateHelper(dateStr, { short: true })
     }
-  }
-
-  const extractName = (fromStr: string) => {
-    const match = fromStr.match(/^"?([^"<]+)"?\s*</)
-    return match ? match[1].trim() : fromStr.split('@')[0]
   }
 
   if (gmailConnected === null) {
@@ -226,7 +175,7 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Connect Gmail to get started</h2>
             <p className="text-gray-500 mb-6">
-              Connect your Gmail account to send and receive emails directly from AthleteDesk.
+              Connect your Gmail account to send emails from AthleteDesk. Every email you send is saved to the athlete&apos;s history.
             </p>
             <button onClick={handleConnectGmail} className="btn-primary">
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -260,39 +209,22 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
       <div className="flex-shrink-0 px-4 md:px-6 py-3 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between gap-4">
           <div className="flex gap-1">
-            <button
-              onClick={() => { setActiveTab('inbox'); setSelectedEmail(null) }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'inbox'
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Inbox
-            </button>
-            <button
-              onClick={() => { setActiveTab('sent'); setSelectedEmail(null) }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'sent'
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Sent
-            </button>
-            <button
-              onClick={() => { setActiveTab('templates'); setSelectedEmail(null) }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'templates'
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Templates
-            </button>
+            {(['sent', 'templates'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab); setSelectedEmail(null) }}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === tab
+                    ? 'bg-brand-50 text-brand-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {tab === 'sent' ? 'Sent' : 'Templates'}
+              </button>
+            ))}
           </div>
 
-          {activeTab !== 'templates' && (
+          {activeTab === 'sent' && (
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,7 +232,7 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search emails..."
+                  placeholder="Search sent emails..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
@@ -309,6 +241,11 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
             </div>
           )}
         </div>
+        {activeTab === 'sent' && (
+          <p className="mt-2 text-xs text-gray-500">
+            Emails you sent from AthleteDesk. Replies arrive in your Gmail inbox.
+          </p>
+        )}
       </div>
 
       {/* Main Content */}
@@ -350,18 +287,14 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
           <>
             {/* Email List */}
             <div className={`w-full md:w-96 border-r border-gray-200 bg-white overflow-y-auto ${selectedEmail ? 'hidden md:block' : ''}`}>
-              {loading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-600"></div>
-                </div>
-              ) : error ? (
+              {error ? (
                 <div className="p-4 text-center text-red-600">{error}</div>
               ) : emails.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">
                   <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  <p>No emails found</p>
+                  <p>{query ? 'No emails found' : 'No emails sent from AthleteDesk yet'}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
@@ -371,18 +304,16 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
                       onClick={() => setSelectedEmail(email)}
                       className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
                         selectedEmail?.id === email.id ? 'bg-brand-50' : ''
-                      } ${email.isUnread ? 'bg-blue-50/50' : ''}`}
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className={`text-sm truncate ${email.isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                          {activeTab === 'inbox' ? extractName(email.from) : extractName(email.to)}
-                        </p>
+                        <p className="text-sm truncate font-medium text-gray-700">{email.to}</p>
                         <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
                       </div>
-                      <p className={`text-sm truncate mb-1 ${email.isUnread ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+                      <p className="text-sm truncate mb-1 text-gray-600">
                         {email.subject || '(no subject)'}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">{email.snippet}</p>
+                      <p className="text-xs text-gray-500 truncate">{email.body}</p>
                     </div>
                   ))}
                 </div>
@@ -409,29 +340,16 @@ export function EmailClient({ currentUser, templates, athletes, staffMembers }: 
                   {/* Email header */}
                   <div className="p-4 md:p-6 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-900 mb-3">{selectedEmail.subject || '(no subject)'}</h2>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm">
-                          <span className="text-gray-500">From:</span>{' '}
-                          <span className="font-medium text-gray-900">{selectedEmail.from}</span>
-                        </p>
-                        <p className="text-sm">
-                          <span className="text-gray-500">To:</span>{' '}
-                          <span className="text-gray-700">{selectedEmail.to}</span>
-                        </p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {new Date(selectedEmail.date).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleReply}
-                          className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-                        >
-                          Reply
-                        </button>
-                      </div>
-                    </div>
+                    <p className="text-sm">
+                      <span className="text-gray-500">To:</span>{' '}
+                      <span className="font-medium text-gray-900">{selectedEmail.to}</span>
+                      {selectedEmail.toEmail && selectedEmail.toEmail !== selectedEmail.to && (
+                        <span className="text-gray-500"> &lt;{selectedEmail.toEmail}&gt;</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {new Date(selectedEmail.date).toLocaleString()}
+                    </p>
                   </div>
 
                   {/* Email body */}

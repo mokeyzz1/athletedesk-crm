@@ -60,12 +60,41 @@ export default async function EmailPage() {
     staffMembers = (staffData || []) as { id: string; name: string; gmail_email: string | null }[]
   }
 
+  // Emails this user sent from AthleteDesk (we don't read Gmail itself)
+  const { data: sentData } = await supabase
+    .from('communications_log')
+    .select('id, subject, notes, communication_date, recipient_email, recipient_name, athletes(name, email)')
+    .eq('staff_member_id', currentUser.id)
+    .eq('type', 'email')
+    .like('notes', 'Sent via AthleteDesk%')
+    .order('communication_date', { ascending: false })
+    .limit(100)
+
+  type SentRow = {
+    id: string
+    subject: string | null
+    notes: string | null
+    communication_date: string
+    recipient_email: string | null
+    recipient_name: string | null
+    athletes: { name: string; email: string | null } | null
+  }
+  const sentEmails = ((sentData || []) as unknown as SentRow[]).map(row => ({
+    id: row.id,
+    to: row.athletes?.name ?? row.recipient_name ?? row.recipient_email ?? 'Unknown',
+    toEmail: row.athletes?.email ?? row.recipient_email ?? null,
+    subject: row.subject ?? '',
+    body: (row.notes ?? '').replace(/^Sent via AthleteDesk Gmail integration\.\n\n/, ''),
+    date: row.communication_date,
+  }))
+
   return (
     <EmailClient
       currentUser={currentUser}
       templates={templates}
       athletes={athletes}
       staffMembers={staffMembers}
+      sentEmails={sentEmails}
     />
   )
 }

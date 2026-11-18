@@ -51,6 +51,3 @@ export const OUTREACH_STATUSES: OutreachStatus[] = [
   'dead_lead',
   'signed',
 ]
-
-// Class years (updated annually)
-export const CLASS_YEARS = ['2025', '2026', '2027', '2028', '2029']

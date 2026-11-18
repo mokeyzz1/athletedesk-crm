@@ -8,7 +8,7 @@ import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import { DateDisplay } from '@/components/ui/date-display'
 import { getLocalDateString } from '@/lib/helpers'
 import type { OutreachStatus, ClassYear, RosterTeam } from '@/lib/database.types'
-import { OUTREACH_STATUSES, CLASS_YEARS, REGIONS, US_STATES } from '@/lib/database.types'
+import { OUTREACH_STATUSES, CLASS_YEARS, US_STATES } from '@/lib/database.types'
 import { bulkDeleteAthletes } from '@/lib/actions/athletes'
 import type { RecruitingAthlete, RegionStats, ClassYearStats } from './page'
 
@@ -584,7 +584,12 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const { openAthletePanel } = useAthletePanel()
+  const { openAthletePanel, recruitingRegions } = useAthletePanel()
+  // The agency's own regions, plus any region still on an athlete record
+  const regionOptions = Array.from(new Set([
+    ...recruitingRegions.map(r => r.name),
+    ...regionStats.map(s => s.region).filter(r => r !== 'Unassigned'),
+  ])).sort()
   const router = useRouter()
   const supabase = createClient()
 
@@ -910,7 +915,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                   className="input text-sm py-1.5 w-full md:w-auto"
                 >
                   <option value="all">All Regions</option>
-                  {REGIONS.map(r => (
+                  {regionOptions.map(r => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                   <option value="Unassigned">Unassigned</option>

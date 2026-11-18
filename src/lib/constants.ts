@@ -54,13 +54,3 @@ export const OUTREACH_STATUSES: OutreachStatus[] = [
 
 // Class years (updated annually)
 export const CLASS_YEARS = ['2025', '2026', '2027', '2028', '2029']
-
-// US Regions
-export const REGIONS = [
-  'Northeast',
-  'Southeast',
-  'Midwest',
-  'Southwest',
-  'West',
-  'International',
-]

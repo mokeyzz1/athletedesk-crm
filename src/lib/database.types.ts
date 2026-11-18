@@ -68,17 +68,6 @@ export type ActivityEventType =
   | 'brand.deleted'
   | 'brand.status_changed'
 
-// Region constants (not an enum in DB, just common values)
-export const REGIONS = [
-  'Northeast',
-  'Southeast',
-  'Midwest',
-  'Southwest',
-  'West',
-  'International',
-] as const
-export type Region = typeof REGIONS[number] | string
-
 export interface Database {
   public: {
     Tables: {

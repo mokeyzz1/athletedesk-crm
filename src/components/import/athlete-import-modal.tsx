@@ -9,7 +9,11 @@ import {
   athleteColumnMappings,
   type ParsedWorkbook,
 } from '@/lib/export'
-import type { AthleteInsert, Json } from '@/lib/database.types'
+import { CLASS_YEARS, type AthleteInsert, type Json } from '@/lib/database.types'
+
+const classYearLabel = (value: unknown) =>
+  CLASS_YEARS.find(cy => cy.value === value)?.label ?? (value ? String(value) : '—')
+import { useAthletePanel } from '@/contexts/athlete-panel-context'
 
 interface AthleteImportModalProps {
   isOpen: boolean
@@ -92,7 +96,9 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
   const [skippedRows, setSkippedRows] = useState<{ row: number; reason: string; value: string }[]>([])
   const [duplicates, setDuplicates] = useState<Set<number>>(new Set())
   const [skipDuplicates, setSkipDuplicates] = useState(true)
-  const [selectedSport, setSelectedSport] = useState<string>('Football')
+  const { sportsFocus } = useAthletePanel()
+  const sportOptions = Array.from(new Set([...sportsFocus, ...SPORTS]))
+  const [selectedSport, setSelectedSport] = useState<string>(sportsFocus[0] ?? 'Football')
   const [importType, setImportType] = useState<ImportType | null>(null)
   const [detectedType, setDetectedType] = useState<{ detected: ImportType; confidence: 'high' | 'low' } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -302,29 +308,9 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
     setImportProgress({ current: 0, total: dataToImport.length })
 
-    const uniqueRegions = Array.from(new Set(
-      previewData
-        .map(row => row.region ? String(row.region) : null)
-        .filter((r): r is string => r !== null && r.trim() !== '')
-    ))
-
-    if (uniqueRegions.length > 0) {
-      const { data: existingRegions } = await supabase
-        .from('recruiting_regions')
-        .select('name')
-
-      const existingNames = new Set((existingRegions as { name: string }[] || []).map(r => r.name))
-      const newRegions = uniqueRegions.filter(r => !existingNames.has(r))
-
-      if (newRegions.length > 0) {
-        await supabase
-          .from('recruiting_regions')
-          .insert(newRegions.map(name => ({ name, states: [] })) as never[])
-      }
-    }
-
     let successCount = 0
     let failedCount = 0
+    const importedRegions = new Set<string>()
 
     const batchSize = 10
     for (let i = 0; i < dataToImport.length; i += batchSize) {
@@ -373,6 +359,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
           console.error('Import error:', error)
         } else {
           successCount += athletesToInsert.length
+          athletesToInsert.forEach(a => { if (a.region?.trim()) importedRegions.add(a.region) })
 
           const effectivePipelineStage = pipelineStage || (importType === 'roster' ? 'signed_client' : 'prospect_identified')
           if (insertedAthletes && insertedAthletes.length > 0) {
@@ -396,6 +383,23 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
 
       failedCount += batch.length - athletesToInsert.length
       setImportProgress({ current: Math.min(i + batchSize, dataToImport.length), total: dataToImport.length })
+    }
+
+    // Create regions only for athletes that were actually saved, so skipped or
+    // failed rows (a legend tab, say) can't leave an empty region behind
+    if (importedRegions.size > 0) {
+      const { data: existingRegions } = await supabase
+        .from('recruiting_regions')
+        .select('name')
+
+      const existingNames = new Set((existingRegions as { name: string }[] || []).map(r => r.name))
+      const newRegions = Array.from(importedRegions).filter(r => !existingNames.has(r))
+
+      if (newRegions.length > 0) {
+        await supabase
+          .from('recruiting_regions')
+          .insert(newRegions.map(name => ({ name, states: [] })) as never[])
+      }
     }
 
     setImportResults({ success: successCount, failed: failedCount, duplicatesSkipped })
@@ -735,7 +739,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                   onChange={(e) => setSelectedSport(e.target.value)}
                   className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-brand-500 focus:border-brand-500 sm:w-auto"
                 >
-                  {SPORTS.map(sport => (
+                  {sportOptions.map(sport => (
                     <option key={sport} value={sport}>{sport}</option>
                   ))}
                 </select>
@@ -820,7 +824,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                     <div className="mobile-data-grid">
                       <div>
                         <div className="mobile-field-label">Class</div>
-                        <div className="font-medium text-gray-700">{String(row.class_year || '—').replace(/_/g, "'")}</div>
+                        <div className="font-medium text-gray-700">{classYearLabel(row.class_year)}</div>
                       </div>
                       <div>
                         <div className="mobile-field-label">Region</div>
@@ -857,7 +861,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                             {duplicates.has(idx) && <span className="ml-1 text-xs text-amber-600">(duplicate)</span>}
                           </td>
                           <td className="px-3 py-2 text-gray-600">{String(row.school || '—')}</td>
-                          <td className="px-3 py-2 text-gray-600">{String(row.class_year || '—').replace(/_/g, "'")}</td>
+                          <td className="px-3 py-2 text-gray-600">{classYearLabel(row.class_year)}</td>
                           <td className="px-3 py-2 text-gray-600">{String(row.region || '—')}</td>
                           <td className="px-3 py-2 text-gray-600 capitalize">{String(row.outreach_status || '—').replace(/_/g, ' ')}</td>
                         </tr>

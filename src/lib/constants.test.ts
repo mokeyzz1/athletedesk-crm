@@ -4,8 +4,6 @@ import {
   STATUS_BAR_COLORS,
   STATUS_LABELS,
   OUTREACH_STATUSES,
-  CLASS_YEARS,
-  REGIONS,
   OutreachStatus,
 } from './constants'
 
@@ -65,31 +63,3 @@ describe('OUTREACH_STATUSES', () => {
   })
 })
 
-describe('CLASS_YEARS', () => {
-  it('contains valid years', () => {
-    CLASS_YEARS.forEach(year => {
-      const numYear = parseInt(year)
-      expect(numYear).toBeGreaterThanOrEqual(2020)
-      expect(numYear).toBeLessThanOrEqual(2035)
-    })
-  })
-
-  it('is sorted ascending', () => {
-    const sorted = [...CLASS_YEARS].sort()
-    expect(CLASS_YEARS).toEqual(sorted)
-  })
-})
-
-describe('REGIONS', () => {
-  it('contains US regions', () => {
-    expect(REGIONS).toContain('Northeast')
-    expect(REGIONS).toContain('Southeast')
-    expect(REGIONS).toContain('Midwest')
-    expect(REGIONS).toContain('Southwest')
-    expect(REGIONS).toContain('West')
-  })
-
-  it('includes International', () => {
-    expect(REGIONS).toContain('International')
-  })
-})

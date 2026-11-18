@@ -87,7 +87,7 @@ export function MobileHeader({ user }: MobileHeaderProps) {
         <div className="flex items-center justify-between px-5 pb-3 pt-5">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
-              <span className="text-xs font-bold text-brand-600">AD</span>
+              <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-4 w-auto" />
             </div>
             <span className="text-sm font-semibold text-white">AthleteDesk</span>
           </div>
@@ -104,6 +104,18 @@ export function MobileHeader({ user }: MobileHeaderProps) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+          {user.is_super_admin && (
+            <Link
+              href="/admin"
+              onClick={() => setIsOpen(false)}
+              className="relative mb-3 flex items-center gap-3 rounded-xl border border-brand-700/70 bg-brand-900/70 px-3 py-3 text-sm font-semibold text-white"
+            >
+              <svg className="h-5 w-5 text-brand-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7m5 0h4" />
+              </svg>
+              Control Center
+            </Link>
+          )}
           {visibleNavItems.map((item) => {
             const isActive = item.href === '/dashboard'
               ? pathname === item.href

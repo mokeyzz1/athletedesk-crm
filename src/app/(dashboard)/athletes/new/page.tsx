@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, AthleteInsert, Athlete, Json, ClassYear, OutreachStatus } from '@/lib/database.types'
-import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
+import { CLASS_YEARS, OUTREACH_STATUSES, seniorClassYear } from '@/lib/database.types'
+import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
@@ -19,12 +20,14 @@ interface DuplicateWarning {
 export default function NewAthletePage() {
   const router = useRouter()
   const supabase = createClient()
+  const { recruitingRegions, sportsFocus } = useAthletePanel()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [users, setUsers] = useState<User[]>([])
 
   // Form state for dynamic fields
-  const [selectedSport, setSelectedSport] = useState('')
+  // A single-sport agency never has to pick the sport
+  const [selectedSport, setSelectedSport] = useState(sportsFocus.length === 1 ? sportsFocus[0] : '')
   const [sportSpecificStats, setSportSpecificStats] = useState<Record<string, unknown>>({})
   const [socialMedia, setSocialMedia] = useState<SocialMediaData>({})
 
@@ -343,21 +346,24 @@ export default function NewAthletePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label htmlFor="class_year" className="label">Class Year *</label>
-              <select name="class_year" id="class_year" required className="mt-1 input">
+              <select name="class_year" id="class_year" required defaultValue={String(seniorClassYear())} className="mt-1 input">
                 {CLASS_YEARS.map(cy => (
                   <option key={cy.value} value={cy.value}>{cy.label}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label htmlFor="region" className="label">Region</label>
-              <select name="region" id="region" className="mt-1 input">
-                <option value="">Select Region</option>
-                {REGIONS.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
+            {/* Agencies that don't use regions have none, so the field is hidden */}
+            {recruitingRegions.length > 0 && (
+              <div>
+                <label htmlFor="region" className="label">Region</label>
+                <select name="region" id="region" className="mt-1 input">
+                  <option value="">Select Region</option>
+                  {recruitingRegions.map(r => (
+                    <option key={r.id} value={r.name}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label htmlFor="outreach_status" className="label">Outreach Status *</label>
               <select name="outreach_status" id="outreach_status" required className="mt-1 input">

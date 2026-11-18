@@ -10,6 +10,10 @@ interface AthletePanelContextType {
   closeAthletePanel: () => void
   isOpen: boolean
   selectedAthleteId: string | null
+  /** This agency's own regions (empty if it doesn't use regions) */
+  recruitingRegions: RecruitingRegion[]
+  /** Sports the agency chose at onboarding (empty if none) */
+  sportsFocus: string[]
 }
 
 const AthletePanelContext = createContext<AthletePanelContextType | null>(null)
@@ -24,9 +28,10 @@ export function useAthletePanel() {
 
 interface AthletePanelProviderProps {
   children: React.ReactNode
+  sportsFocus: string[]
 }
 
-export function AthletePanelProvider({ children }: AthletePanelProviderProps) {
+export function AthletePanelProvider({ children, sportsFocus }: AthletePanelProviderProps) {
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
@@ -71,6 +76,8 @@ export function AthletePanelProvider({ children }: AthletePanelProviderProps) {
         closeAthletePanel,
         isOpen,
         selectedAthleteId,
+        recruitingRegions,
+        sportsFocus,
       }}
     >
       {children}

@@ -4,11 +4,12 @@ import { AthletePanelProvider } from '@/contexts/athlete-panel-context'
 
 interface DashboardProvidersProps {
   children: React.ReactNode
+  sportsFocus: string[]
 }
 
-export function DashboardProviders({ children }: DashboardProvidersProps) {
+export function DashboardProviders({ children, sportsFocus }: DashboardProvidersProps) {
   return (
-    <AthletePanelProvider>
+    <AthletePanelProvider sportsFocus={sportsFocus}>
       {children}
     </AthletePanelProvider>
   )

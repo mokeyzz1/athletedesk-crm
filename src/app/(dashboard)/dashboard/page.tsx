@@ -4,7 +4,6 @@ import type { DashboardSummary, PendingFollowUp, Athlete, FinancialTracking, Bra
 import { Greeting } from '@/components/greeting'
 import { UpcomingMeetingsCard } from '@/components/calendar/upcoming-meetings-card'
 import { DateDisplay, TimeAgo } from '@/components/ui/date-display'
-import { REGIONS } from '@/lib/database.types'
 import { getGoalProgressForUser, getTeamGoalsSummary } from '@/lib/queries/goal-progress'
 import { getLocalDateString, isDueToday as checkDueToday, isOverdue as checkOverdue, parseDate } from '@/lib/helpers'
 import { isAdminLike } from '@/lib/roles'

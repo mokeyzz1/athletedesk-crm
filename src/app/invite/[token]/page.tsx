@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 interface InviteData {
@@ -100,8 +101,8 @@ export default function InvitePage() {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-2xl font-bold text-white">AD</span>
+          <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center ring-1 ring-gray-200 shadow-sm">
+            <Image src="/brand/athletedesk-logo-transparent.png" alt="AthleteDesk" width={78} height={36} className="h-7 w-auto" />
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeClassYear, seniorClassYear } from './export'
+import { isDefaultSheetName, normalizeAthleteData, normalizeClassYear, seniorClassYear } from './export'
 
 const nov2026 = new Date(2026, 10, 18)
 
@@ -31,5 +31,29 @@ describe('normalizeClassYear', () => {
     expect(normalizeClassYear('12', nov2026)).toBe('n_a')
     expect(normalizeClassYear('unknown', nov2026)).toBe('n_a')
     expect(normalizeClassYear('Pro', nov2026)).toBe('pro')
+  })
+})
+
+describe('region from sheet name', () => {
+  it('recognises default tab names', () => {
+    expect(isDefaultSheetName('Sheet1')).toBe(true)
+    expect(isDefaultSheetName('sheet 2')).toBe(true)
+    expect(isDefaultSheetName('Table 1')).toBe(true)
+    expect(isDefaultSheetName('Northwest')).toBe(false)
+    expect(isDefaultSheetName('Great Lakes')).toBe(false)
+  })
+
+  it('uses a named tab as the region but never a default one', () => {
+    const row = { name: 'Jordan Cross', school: 'State U' }
+    const region = (sheet: string) =>
+      normalizeAthleteData([{ ...row, _sourceSheet: sheet }]).data[0].region
+
+    expect(region('Northwest')).toBe('Northwest')
+    expect(region('Sheet1')).toBeFalsy()
+  })
+
+  it('keeps a region column over the tab name', () => {
+    const { data } = normalizeAthleteData([{ name: 'Jordan Cross', region: 'South', _sourceSheet: 'Northwest' }])
+    expect(data[0].region).toBe('South')
   })
 })

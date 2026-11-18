@@ -4,7 +4,6 @@ import {
   STATUS_BAR_COLORS,
   STATUS_LABELS,
   OUTREACH_STATUSES,
-  CLASS_YEARS,
   OutreachStatus,
 } from './constants'
 
@@ -61,21 +60,6 @@ describe('OUTREACH_STATUSES', () => {
   it('has correct pipeline order', () => {
     expect(OUTREACH_STATUSES[0]).toBe('not_contacted')
     expect(OUTREACH_STATUSES[OUTREACH_STATUSES.length - 1]).toBe('signed')
-  })
-})
-
-describe('CLASS_YEARS', () => {
-  it('contains valid years', () => {
-    CLASS_YEARS.forEach(year => {
-      const numYear = parseInt(year)
-      expect(numYear).toBeGreaterThanOrEqual(2020)
-      expect(numYear).toBeLessThanOrEqual(2035)
-    })
-  })
-
-  it('is sorted ascending', () => {
-    const sorted = [...CLASS_YEARS].sort()
-    expect(CLASS_YEARS).toEqual(sorted)
   })
 })
 

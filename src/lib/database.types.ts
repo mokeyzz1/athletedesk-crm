@@ -29,7 +29,13 @@ export type IntegrationProvider = 'google_calendar' | 'calendly' | 'docusign' | 
 export type InviteType = 'new_org' | 'join_org'
 
 // New types for recruiting database
-export type ClassYear = '2025' | '2026' | '2027' | '2028' | '2029' | '2030' | 'pro' | 'n_a'
+// shortcut: class years are a database enum covering 2025-2035; convert the column to text before 2035
+export const CLASS_YEAR_MIN = 2025
+export const CLASS_YEAR_MAX = 2035
+export type ClassYear =
+  | '2025' | '2026' | '2027' | '2028' | '2029' | '2030'
+  | '2031' | '2032' | '2033' | '2034' | '2035'
+  | 'pro' | 'n_a'
 export type OutreachStatus = 'not_contacted' | 'contacted' | 'in_conversation' | 'interested' | 'dead_lead' | 'circling_back' | 'signed'
 export type DealType = 'revenue_share' | 'marketing_brand'
 export type DealStage = 'prospective' | 'active'
@@ -1432,12 +1438,10 @@ export type RecruitingSummary = Database['public']['Views']['recruiting_summary'
 
 // Constants for dropdowns
 export const CLASS_YEARS: { value: ClassYear; label: string }[] = [
-  { value: '2025', label: '2025' },
-  { value: '2026', label: '2026' },
-  { value: '2027', label: '2027' },
-  { value: '2028', label: '2028' },
-  { value: '2029', label: '2029' },
-  { value: '2030', label: '2030' },
+  ...Array.from({ length: CLASS_YEAR_MAX - CLASS_YEAR_MIN + 1 }, (_, i) => {
+    const year = String(CLASS_YEAR_MIN + i)
+    return { value: year as ClassYear, label: year }
+  }),
   { value: 'pro', label: 'Pro' },
   { value: 'n_a', label: 'N/A' },
 ]

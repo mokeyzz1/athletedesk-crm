@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { getLocalDateString, parseDate } from './helpers'
+import { CLASS_YEAR_MAX, CLASS_YEAR_MIN, type ClassYear } from './database.types'
 
 export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
@@ -541,6 +542,37 @@ const US_STATE_NAMES = [
   'WISCONSIN', 'WYOMING'
 ]
 
+/** Graduation year of the current senior class. The school year rolls over in August. */
+export function seniorClassYear(now = new Date()): number {
+  return now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear()
+}
+
+/**
+ * Turn whatever a spreadsheet has for class year (2027, '27, "Class of 2027",
+ * "Junior", "Pro") into a value the database accepts. Years outside the
+ * supported range become 'n_a' so one odd row can't fail a whole import batch.
+ */
+export function normalizeClassYear(raw: unknown, now = new Date()): ClassYear {
+  const text = String(raw).trim()
+  const lower = text.toLowerCase()
+
+  const fourDigit = text.match(/20\d{2}/)
+  const twoDigit = text.match(/'?(\d{2})/)
+  const year = fourDigit ? parseInt(fourDigit[0]) : twoDigit ? 2000 + parseInt(twoDigit[1]) : null
+  const inRange = (y: number) => y >= CLASS_YEAR_MIN && y <= CLASS_YEAR_MAX
+
+  if (year && inRange(year)) return String(year) as ClassYear
+  if (lower.includes('pro')) return 'pro'
+
+  const senior = seniorClassYear(now)
+  const fromWord = lower.includes('fresh') ? senior + 3
+    : lower.includes('soph') ? senior + 2
+    : lower.includes('junior') || lower.includes('jr') ? senior + 1
+    : lower.includes('senior') || lower.includes('sr') ? senior
+    : null
+  return fromWord && inRange(fromWord) ? (String(fromWord) as ClassYear) : 'n_a'
+}
+
 export function normalizeAthleteData(data: Record<string, unknown>[]): NormalizeResult {
   const skippedRows: { row: number; reason: string; value: string }[] = []
 
@@ -703,44 +735,8 @@ export function normalizeAthleteData(data: Record<string, unknown>[]): Normalize
       }
     }
 
-    // Normalize class_year - handle both number (27, 28) and text (2027, '27, Class of 2027)
     if (normalized.class_year !== undefined && normalized.class_year !== null && normalized.class_year !== '') {
-      const yearRaw = String(normalized.class_year).trim()
-      const yearLower = yearRaw.toLowerCase()
-
-      // Extract year number
-      let yearNum: number | null = null
-
-      // Check for 4-digit year
-      const fourDigitMatch = yearRaw.match(/20(\d{2})/)
-      if (fourDigitMatch) {
-        yearNum = parseInt(fourDigitMatch[0])
-      } else {
-        // Check for 2-digit year (27, 28, '27, '28)
-        const twoDigitMatch = yearRaw.match(/'?(\d{2})/)
-        if (twoDigitMatch) {
-          const twoDigit = parseInt(twoDigitMatch[1])
-          if (twoDigit >= 24 && twoDigit <= 35) {
-            yearNum = 2000 + twoDigit
-          }
-        }
-      }
-
-      if (yearNum && yearNum >= 2024 && yearNum <= 2035) {
-        normalized.class_year = String(yearNum)
-      } else if (yearLower.includes('pro') || yearLower.includes('professional')) {
-        normalized.class_year = 'pro'
-      } else if (yearLower.includes('fresh')) {
-        normalized.class_year = '2028' // Approximate
-      } else if (yearLower.includes('soph')) {
-        normalized.class_year = '2027'
-      } else if (yearLower.includes('junior') || yearLower.includes('jr')) {
-        normalized.class_year = '2026'
-      } else if (yearLower.includes('senior') || yearLower.includes('sr')) {
-        normalized.class_year = '2025'
-      } else {
-        normalized.class_year = 'n_a'
-      }
+      normalized.class_year = normalizeClassYear(normalized.class_year)
     }
 
     // Region - use sheet name directly, no mapping

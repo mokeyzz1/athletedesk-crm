@@ -347,6 +347,7 @@ function TableView({
   selectedAthletes,
   onSelectAll,
   onSelectAthlete,
+  showRegion,
 }: {
   athletes: RecruitingAthlete[]
   onStatusChange: (athleteId: string, newStatus: OutreachStatus) => void
@@ -354,6 +355,7 @@ function TableView({
   selectedAthletes: Set<string>
   onSelectAll: (checked: boolean) => void
   onSelectAthlete: (athleteId: string, checked: boolean) => void
+  showRegion: boolean
 }) {
   const [sortField, setSortField] = useState<'name' | 'sport' | 'class_year' | 'region' | 'outreach_status'>('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
@@ -434,10 +436,12 @@ function TableView({
                     <p className="mobile-field-label">Class</p>
                     <p className="text-gray-900">{CLASS_YEARS.find(c => c.value === athlete.class_year)?.label || 'N/A'}</p>
                   </div>
-                  <div>
-                    <p className="mobile-field-label">Region</p>
-                    <p className="truncate text-gray-900">{athlete.region || 'Unassigned'}</p>
-                  </div>
+                  {showRegion && (
+                    <div>
+                      <p className="mobile-field-label">Region</p>
+                      <p className="truncate text-gray-900">{athlete.region || 'Unassigned'}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="mobile-field-label">Emails</p>
                     <p className="text-gray-900">{athlete.emailCount}</p>
@@ -485,7 +489,7 @@ function TableView({
               <SortHeader field="sport" label="Sport" />
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
               <SortHeader field="class_year" label="Class" />
-              <SortHeader field="region" label="Region" />
+              {showRegion && <SortHeader field="region" label="Region" />}
               <SortHeader field="outreach_status" label="Status" />
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emails</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Contact</th>
@@ -520,9 +524,11 @@ function TableView({
                     {CLASS_YEARS.find(c => c.value === athlete.class_year)?.label || 'N/A'}
                   </span>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  {athlete.region || <span className="text-gray-400">Unassigned</span>}
-                </td>
+                {showRegion && (
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    {athlete.region || <span className="text-gray-400">Unassigned</span>}
+                  </td>
+                )}
                 <td className="px-4 py-3 whitespace-nowrap">
                   <select
                     value={athlete.outreach_status}
@@ -590,6 +596,8 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
     ...recruitingRegions.map(r => r.name),
     ...regionStats.map(s => s.region).filter(r => r !== 'Unassigned'),
   ])).sort()
+  // Agencies that don't use regions see no region card, filter, or column
+  const usesRegions = regionOptions.length > 0
   const router = useRouter()
   const supabase = createClient()
 
@@ -847,6 +855,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
         {totalProspects > 0 ? (
           <div className="px-4 md:px-6 py-4">
             {/* Region Progress Section */}
+            {usesRegions && (
             <div className="card mb-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-900">Region Progress</h2>
@@ -904,9 +913,11 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                 })()}
               </div>
             </div>
+            )}
 
             {/* Filters */}
             <div className="flex flex-col gap-3 mb-4 md:flex-row md:flex-wrap md:items-end">
+              {usesRegions && (
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Region</label>
                 <select
@@ -921,6 +932,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                   <option value="Unassigned">Unassigned</option>
                 </select>
               </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Class Year</label>
                 <select
@@ -962,6 +974,7 @@ export function RecruitingClient({ athletes: initialAthletes, regionStats: initi
                 selectedAthletes={selectedAthletes}
                 onSelectAll={handleSelectAll}
                 onSelectAthlete={handleSelectAthlete}
+                showRegion={usesRegions}
               />
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-4">

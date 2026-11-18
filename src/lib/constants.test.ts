@@ -5,7 +5,6 @@ import {
   STATUS_LABELS,
   OUTREACH_STATUSES,
   CLASS_YEARS,
-  REGIONS,
   OutreachStatus,
 } from './constants'
 
@@ -80,16 +79,3 @@ describe('CLASS_YEARS', () => {
   })
 })
 
-describe('REGIONS', () => {
-  it('contains US regions', () => {
-    expect(REGIONS).toContain('Northeast')
-    expect(REGIONS).toContain('Southeast')
-    expect(REGIONS).toContain('Midwest')
-    expect(REGIONS).toContain('Southwest')
-    expect(REGIONS).toContain('West')
-  })
-
-  it('includes International', () => {
-    expect(REGIONS).toContain('International')
-  })
-})

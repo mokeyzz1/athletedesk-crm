@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, Athlete, ClassYear, OutreachStatus } from '@/lib/database.types'
-import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
+import { CLASS_YEARS, OUTREACH_STATUSES } from '@/lib/database.types'
+import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
@@ -17,6 +18,7 @@ export default function EditAthletePage() {
   const params = useParams()
   const id = params.id as string
   const supabase = createClient()
+  const { recruitingRegions } = useAthletePanel()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -213,6 +215,8 @@ export default function EditAthletePage() {
     )
   }
 
+  const regionOptions = Array.from(new Set([...recruitingRegions.map(r => r.name), ...(athlete.region ? [athlete.region] : [])]))
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
@@ -372,20 +376,24 @@ export default function EditAthletePage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label htmlFor="region" className="label">Region</label>
-              <select
-                name="region"
-                id="region"
-                defaultValue={athlete.region || ''}
-                className="mt-1 input"
-              >
-                <option value="">Select Region</option>
-                {REGIONS.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
+            {/* The athlete's saved region is always offered, even if it's no longer
+                in the agency's list, so saving this form can't silently clear it */}
+            {regionOptions.length > 0 && (
+              <div>
+                <label htmlFor="region" className="label">Region</label>
+                <select
+                  name="region"
+                  id="region"
+                  defaultValue={athlete.region || ''}
+                  className="mt-1 input"
+                >
+                  <option value="">Select Region</option>
+                  {regionOptions.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label htmlFor="outreach_status" className="label">Outreach Status *</label>
               <select

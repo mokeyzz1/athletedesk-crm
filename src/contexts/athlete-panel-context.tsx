@@ -10,6 +10,8 @@ interface AthletePanelContextType {
   closeAthletePanel: () => void
   isOpen: boolean
   selectedAthleteId: string | null
+  /** This agency's own regions (empty if it doesn't use regions) */
+  recruitingRegions: RecruitingRegion[]
 }
 
 const AthletePanelContext = createContext<AthletePanelContextType | null>(null)
@@ -71,6 +73,7 @@ export function AthletePanelProvider({ children }: AthletePanelProviderProps) {
         closeAthletePanel,
         isOpen,
         selectedAthleteId,
+        recruitingRegions,
       }}
     >
       {children}

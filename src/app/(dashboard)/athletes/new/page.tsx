@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { User, LeagueLevel, RecruitingStatus, TransferPortalStatus, AthleteInsert, Athlete, Json, ClassYear, OutreachStatus } from '@/lib/database.types'
-import { CLASS_YEARS, OUTREACH_STATUSES, REGIONS } from '@/lib/database.types'
+import { CLASS_YEARS, OUTREACH_STATUSES } from '@/lib/database.types'
+import { useAthletePanel } from '@/contexts/athlete-panel-context'
 import { SportSelect, SportSpecificFields } from '@/components/forms/sport-specific-fields'
 import { SocialMediaFields } from '@/components/forms/social-media-fields'
 import type { SocialMediaData } from '@/lib/sport-fields'
@@ -19,6 +20,7 @@ interface DuplicateWarning {
 export default function NewAthletePage() {
   const router = useRouter()
   const supabase = createClient()
+  const { recruitingRegions } = useAthletePanel()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [users, setUsers] = useState<User[]>([])
@@ -349,15 +351,18 @@ export default function NewAthletePage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label htmlFor="region" className="label">Region</label>
-              <select name="region" id="region" className="mt-1 input">
-                <option value="">Select Region</option>
-                {REGIONS.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
+            {/* Agencies that don't use regions have none, so the field is hidden */}
+            {recruitingRegions.length > 0 && (
+              <div>
+                <label htmlFor="region" className="label">Region</label>
+                <select name="region" id="region" className="mt-1 input">
+                  <option value="">Select Region</option>
+                  {recruitingRegions.map(r => (
+                    <option key={r.id} value={r.name}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label htmlFor="outreach_status" className="label">Outreach Status *</label>
               <select name="outreach_status" id="outreach_status" required className="mt-1 input">

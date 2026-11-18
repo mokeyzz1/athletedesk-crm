@@ -75,6 +75,11 @@ export default function Home() {
             </div>
           </div>
         </main>
+        <footer className="pb-8 text-center text-sm text-brand-200">
+          <a href="/privacy" className="hover:text-white">Privacy Policy</a>
+          <span className="mx-3">·</span>
+          <a href="/terms" className="hover:text-white">Terms of Service</a>
+        </footer>
       </div>
     </div>
   )

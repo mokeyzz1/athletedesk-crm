@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { isDefaultSheetName, normalizeAthleteData, normalizeClassYear, seniorClassYear } from './export'
+import { isDefaultSheetName, normalizeAthleteData, normalizeClassYear } from './export'
+import { seniorClassYear } from './database.types'
 
 const nov2026 = new Date(2026, 10, 18)
 
@@ -23,6 +24,8 @@ describe('normalizeClassYear', () => {
     expect(normalizeClassYear('Jr', nov2026)).toBe('2028')
     expect(normalizeClassYear('Sophomore', nov2026)).toBe('2029')
     expect(normalizeClassYear('Freshman', nov2026)).toBe('2030')
+    expect(normalizeClassYear('Fr', nov2026)).toBe('2030')
+    expect(normalizeClassYear('RS So', nov2026)).toBe('2029')
   })
 
   it('never returns a year the database would reject', () => {

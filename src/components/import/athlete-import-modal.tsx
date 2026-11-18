@@ -9,7 +9,10 @@ import {
   athleteColumnMappings,
   type ParsedWorkbook,
 } from '@/lib/export'
-import type { AthleteInsert, Json } from '@/lib/database.types'
+import { CLASS_YEARS, type AthleteInsert, type Json } from '@/lib/database.types'
+
+const classYearLabel = (value: unknown) =>
+  CLASS_YEARS.find(cy => cy.value === value)?.label ?? (value ? String(value) : '—')
 import { useAthletePanel } from '@/contexts/athlete-panel-context'
 
 interface AthleteImportModalProps {
@@ -821,7 +824,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                     <div className="mobile-data-grid">
                       <div>
                         <div className="mobile-field-label">Class</div>
-                        <div className="font-medium text-gray-700">{String(row.class_year || '—').replace(/_/g, "'")}</div>
+                        <div className="font-medium text-gray-700">{classYearLabel(row.class_year)}</div>
                       </div>
                       <div>
                         <div className="mobile-field-label">Region</div>
@@ -858,7 +861,7 @@ export function AthleteImportModal({ isOpen, onClose, onSuccess, pipelineStage, 
                             {duplicates.has(idx) && <span className="ml-1 text-xs text-amber-600">(duplicate)</span>}
                           </td>
                           <td className="px-3 py-2 text-gray-600">{String(row.school || '—')}</td>
-                          <td className="px-3 py-2 text-gray-600">{String(row.class_year || '—').replace(/_/g, "'")}</td>
+                          <td className="px-3 py-2 text-gray-600">{classYearLabel(row.class_year)}</td>
                           <td className="px-3 py-2 text-gray-600">{String(row.region || '—')}</td>
                           <td className="px-3 py-2 text-gray-600 capitalize">{String(row.outreach_status || '—').replace(/_/g, ' ')}</td>
                         </tr>

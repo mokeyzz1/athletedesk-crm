@@ -32,6 +32,11 @@ export type InviteType = 'new_org' | 'join_org'
 // shortcut: class years are a database enum covering 2025-2035; convert the column to text before 2035
 export const CLASS_YEAR_MIN = 2025
 export const CLASS_YEAR_MAX = 2035
+
+/** Graduation year of the current senior class. The school year rolls over in August. */
+export function seniorClassYear(now = new Date()): number {
+  return now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear()
+}
 export type ClassYear =
   | '2025' | '2026' | '2027' | '2028' | '2029' | '2030'
   | '2031' | '2032' | '2033' | '2034' | '2035'

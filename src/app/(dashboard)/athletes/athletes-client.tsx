@@ -42,8 +42,7 @@ type SortColumn = 'name' | 'sport' | 'school' | 'class_year' | 'region' | 'outre
 type SortDirection = 'asc' | 'desc'
 type GroupFilter = 'all' | 'recruiting' | 'roster'
 
-export function AthletesClient({ athletes: initialAthletes, canImport = false }: AthletesClientProps) {
-  const [athletes] = useState(initialAthletes)
+export function AthletesClient({ athletes, canImport = false }: AthletesClientProps) {
   const [showImportModal, setShowImportModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sportFilter, setSportFilter] = useState('')
